@@ -1,0 +1,7 @@
+timeslice,days_represented,hours_in_timeslice,avg_net_load,peak_net_load,dominant_month,dominant_season,timeslice_name,is_pinned_summer,is_pinned_winter
+0,27,648,103699.00370304952,1011275.7623077006,4,other,TS00,False,False
+1,86,2064,305693.62915246526,597724.6140199443,9,other,TS01,False,False
+2,64,1536,532962.5328772828,1090997.6080631455,2,other,TS02,False,False
+3,186,4464,784791.5980173291,1237813.4655132762,8,other,TS03,False,False
+4,1,24,890798.5528209183,1237813.4655132762,7,summer,TS04_PINNED_SUMMER,True,False
+5,1,24,937859.975351565,1193769.6633353806,12,winter,TS05_PINNED_WINTER,False,True

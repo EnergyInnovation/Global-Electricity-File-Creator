@@ -1,0 +1,6 @@
+# Files over 100 MB (GitHub hard limit)
+data/tmp_eia/EBA.zip
+data/efs/EFSLoadProfile_Reference_Moderate.zip
+data/weather/ninja-weather-country-US-temperature_area_wtd-merra2.csv
+data/weather/ninja-weather-country-US-wind_speed_area_wtd-merra2.csv
+data/weather/ninja-weather-country-US-irradiance_surface_area_wtd-merra2.csv
