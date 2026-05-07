@@ -125,6 +125,29 @@ SOLAR_ORIENTATION_FACTOR = 1.1
 # Higher values → more wind shear → lower hub-height speeds.
 WIND_ROUGHNESS_LENGTH = 0.03
 
+# Capacity factor calibration mode for scaling synthetic solar/wind
+# capacity factors so their annual mean matches the value reported by
+# Ember.
+#
+#   'cap_redistribute' (recommended, default) — multiply, clip values >1
+#       to 1.0, then redistribute the clipped energy across unsaturated
+#       hours so the annual mean still hits the target. Bounded by
+#       construction (every output is in [0, 1]).
+#
+#   'multiplicative' — legacy method. Pure scalar multiplication. Can
+#       produce capacity factor values >1.0 when the implied multiplier
+#       is large (e.g., when the synthetic profile underestimates real
+#       wind speeds). Retained only for backward-compat / diff comparison
+#       against pre-fix runs. Do not use for any output you intend to
+#       hand off downstream.
+#
+# When the implied multiplier (Ember-target ÷ synthetic-mean) exceeds 1.5
+# the pipeline emits a UserWarning regardless of mode — that's a sign the
+# synthetic shape itself needs upstream tuning (hub height, roughness
+# length, power-curve assumptions). See HANDOFF.md → "Weather Data
+# Improvements" for the full discussion.
+CF_CALIBRATION_MODE = 'cap_redistribute'
+
 
 # ============================================================================
 # 5. PATHS  (only change if you've moved or renamed data directories)
@@ -173,6 +196,26 @@ CACHE_DIR = None
 
 
 # ============================================================================
+# 7. STATUS REPORTING  (controls how much progress info the run prints)
+# ============================================================================
+
+# How chatty the pipeline should be while running.
+#
+#   'quiet'   = only Python warnings/errors and the final [Metrics] summary.
+#               Use when piping output to a file you don't plan to watch.
+#
+#   'normal'  = recommended default. One status line per pipeline milestone:
+#               loading data, calibrating demand, weather, capacity factors
+#               (with calibration diagnostics), clustering, metrics, outputs.
+#               About 25–30 lines total per run.
+#
+#   'verbose' = adds per-seed k-means scoring details inside the clustering
+#               loop (~9 extra lines). Mostly useful for debugging or
+#               investigating clustering quality across seeds.
+VERBOSITY = 'normal'
+
+
+# ============================================================================
 # Execution  (DO NOT EDIT BELOW THIS LINE)
 # ============================================================================
 
@@ -201,13 +244,21 @@ def _effective_cache_dir() -> "str | None":
 
 
 def main() -> None:
+    import time as _time
+    pipeline.set_verbosity(VERBOSITY)
+
     print("Available country presets:")
     print(pipeline.list_country_presets().to_string(index=False))
     print()
-    print(f"Running pipeline: country={COUNTRY!r}, year={YEAR}, "
-          f"n_clusters={N_CLUSTERS}, last_n_years={LAST_N_YEARS}, "
-          f"use_cache={USE_CACHE}")
-    print()
+
+    pipeline._status(
+        'setup',
+        f"country={COUNTRY!r}  year={YEAR if YEAR is not None else 'preset default'}  "
+        f"n_clusters={N_CLUSTERS}  last_n_years={LAST_N_YEARS if LAST_N_YEARS is not None else 'preset default'}  "
+        f"use_cache={USE_CACHE}  verbosity={VERBOSITY!r}",
+    )
+
+    _run_start = _time.perf_counter()
 
     kwargs = {
         'country': COUNTRY,
@@ -224,11 +275,14 @@ def main() -> None:
         'roughness_length': WIND_ROUGHNESS_LENGTH,
         'use_cache': USE_CACHE,
         'cache_dir': _effective_cache_dir(),
+        'cf_calibration_mode': CF_CALIBRATION_MODE,
     }
     if DATA_DIR is not None:
         kwargs['data_dir'] = DATA_DIR
 
     pipeline.generate_full_pipeline_for_preset(**kwargs)
+
+    pipeline._status('done', "run complete", t=_run_start)
 
 
 if __name__ == '__main__':
