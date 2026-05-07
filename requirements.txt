@@ -1,0 +1,26 @@
+# Runtime dependencies for energy_timeslice_pipeline.py
+# Install with: pip install -r requirements.txt
+
+# Core scientific stack
+pandas
+numpy
+scikit-learn
+scipy
+pyyaml
+requests
+
+# Excel I/O
+openpyxl
+xlsxwriter
+
+# Deflate64 support for the EFS archive.
+# We use the local zipfile_deflate64.py shim (sits next to the pipeline
+# script) which is backed by 'inflate64'. This avoids needing the upstream
+# 'zipfile-deflate64' package, which has no prebuilt wheel for Python 3.12
+# on Windows and requires Microsoft Visual C++ Build Tools to compile.
+inflate64
+
+# Parquet engine for the intermediate cache (data/cache/*.parquet) used by
+# load_weather_data, load_enduse_data_mendeley, and load_enduse_data_efs_us
+# when USE_CACHE = True in run_pipeline.py.
+pyarrow

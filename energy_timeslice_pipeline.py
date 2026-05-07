@@ -441,6 +441,102 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
 }
 
 ###############################################################################
+# Parquet cache for parsed-and-filtered intermediates
+#
+# These helpers let the three slow data-loading functions
+# (``load_enduse_data_mendeley``, ``load_enduse_data_efs_us``, and
+# ``load_weather_data``) skip re-parsing their large source CSVs on every
+# run. The cache is opt-in: the loaders accept ``use_cache=False`` by
+# default, so existing callers see no behavior change.
+#
+# Cache files live under ``<data_dir>/cache/`` and are named with the
+# parameters that affect the result (region, year, scenario, etc.).
+# Staleness is detected by comparing each cached file's mtime to the
+# mtimes of all source files that fed it; if any source is newer, the
+# cache is rebuilt.
+#
+# Caches are derived from upstream source CSVs/zips that already live on
+# disk. Deleting ``data/cache/`` is always safe — it just forces the
+# next run to recompute. Caching does not change the modeled values; it
+# only avoids redoing the parse-and-filter work.
+###############################################################################
+
+CACHE_DIR_NAME = 'cache'
+
+
+def _safe_filename_part(value: Any) -> str:
+    """Sanitize a value so it can be embedded in a cache file name."""
+    s = str(value).strip().lower()
+    out = []
+    for ch in s:
+        if ch.isalnum() or ch in ('-', '.'):
+            out.append(ch)
+        elif ch in (' ', '/', '\\', ':', '+'):
+            out.append('_')
+    return ''.join(out) or 'na'
+
+
+def _resolve_cache_dir(data_dir: Optional[str], cache_dir: Optional[str]) -> str:
+    """Pick a cache directory, falling back to ``<data_dir>/cache``."""
+    if cache_dir:
+        return cache_dir
+    base = data_dir or DEFAULT_DATA_DIR
+    return os.path.join(base, CACHE_DIR_NAME)
+
+
+def _cache_is_stale(cache_path: str, source_paths: Iterable[str]) -> bool:
+    """
+    Return True if the cache must be (re)built.
+
+    Stale conditions:
+      * cache file does not exist
+      * any required source path does not exist (caller will likely error
+        anyway, but we surface that by treating the cache as stale)
+      * any source file's mtime is newer than the cache file's mtime
+    """
+    if not os.path.exists(cache_path):
+        return True
+    cache_mtime = os.path.getmtime(cache_path)
+    for src in source_paths:
+        if not os.path.exists(src):
+            return True
+        if os.path.getmtime(src) > cache_mtime:
+            return True
+    return False
+
+
+def _read_or_build_cached_parquet(
+    cache_path: str,
+    source_paths: Iterable[str],
+    build_fn,
+) -> pd.DataFrame:
+    """
+    Return a DataFrame, reading from the parquet cache if fresh, otherwise
+    calling ``build_fn()``, persisting its result, and returning it.
+
+    The cache file is written via ``DataFrame.to_parquet`` (pyarrow engine).
+    Index dtypes are preserved across the round-trip; tz-aware timestamps
+    survive intact, which matters for the weather data.
+    """
+    sources = list(source_paths)
+    if not _cache_is_stale(cache_path, sources):
+        try:
+            return pd.read_parquet(cache_path)
+        except Exception:
+            # Corrupt cache file — fall through and rebuild
+            pass
+    df = build_fn()
+    os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+    try:
+        df.to_parquet(cache_path)
+    except Exception:
+        # If parquet write fails (e.g. unsupported dtype), don't crash the
+        # caller — just skip caching for this run.
+        pass
+    return df
+
+
+###############################################################################
 # Capacity factor computation from weather data
 ###############################################################################
 
@@ -750,6 +846,8 @@ def load_weather_data(
     variables: Iterable[str],
     weight: str = 'area',
     dataset: str = 'merra2',
+    use_cache: bool = False,
+    cache_dir: Optional[str] = None,
 ) -> pd.DataFrame:
     """
     Load multiple weather variables for a given country from Renewables.ninja files.
@@ -797,6 +895,44 @@ def load_weather_data(
       Renewables.ninja server.
     """
     iso2 = country_code.upper()
+    variables_tuple = tuple(variables)
+
+    # ------------------------------------------------------------------
+    # Cache short-circuit. The cache key embeds country, dataset, weight,
+    # and the (sorted) variable list so different callers stay isolated.
+    # Source mtimes are checked against the cache; any newer source CSV
+    # invalidates and rebuilds.
+    # ------------------------------------------------------------------
+    if use_cache:
+        sorted_vars = '__'.join(sorted(_safe_filename_part(v) for v in variables_tuple))
+        cache_name = (
+            f"weather_{_safe_filename_part(iso2)}_"
+            f"{_safe_filename_part(dataset)}_{_safe_filename_part(weight)}_"
+            f"{sorted_vars}.parquet"
+        )
+        cache_path = os.path.join(_resolve_cache_dir(data_dir, cache_dir), cache_name)
+        source_paths = [
+            os.path.join(data_dir, build_weather_file_name(iso2, v, weight, dataset))
+            for v in variables_tuple
+        ]
+
+        def _build():
+            return _load_weather_data_uncached(
+                data_dir, iso2, variables_tuple, weight, dataset
+            )
+        return _read_or_build_cached_parquet(cache_path, source_paths, _build)
+
+    return _load_weather_data_uncached(data_dir, iso2, variables_tuple, weight, dataset)
+
+
+def _load_weather_data_uncached(
+    data_dir: str,
+    iso2: str,
+    variables: Tuple[str, ...],
+    weight: str,
+    dataset: str,
+) -> pd.DataFrame:
+    """Original (uncached) body of :func:`load_weather_data`."""
     frames = []
     for var in variables:
         fname = build_weather_file_name(iso2, var, weight, dataset)
@@ -1102,8 +1238,63 @@ def load_enduse_data_efs_us(
     split_template_root: Optional[str] = None,
     split_template_region: str = 'USA',
     split_template_scenario: str = 'SSP2',
+    use_cache: bool = False,
+    cache_dir: Optional[str] = None,
 ) -> pd.DataFrame:
     """Load U.S. hourly end-use demand using NREL's Electrification Futures Study."""
+
+    # ------------------------------------------------------------------
+    # Cache short-circuit. EFS streaming through the deflate64 shim takes
+    # several minutes; the cached parquet is one year × ~10 columns and
+    # reads in a few seconds. The cache is keyed on the EFS scenario and
+    # the resolved EFS year (which is rounded to the nearest available
+    # EFS year, so a 2025 request and a 2024 request hit the same cache).
+    # ------------------------------------------------------------------
+    if use_cache:
+        efs_year_for_key = _nearest_efs_year(requested_year)
+        cache_name = (
+            f"efs_{_safe_filename_part(electrification)}_"
+            f"{_safe_filename_part(technology_advancement)}_"
+            f"{_safe_filename_part(efs_year_for_key)}_"
+            f"{_safe_filename_part(split_template_region)}_"
+            f"{_safe_filename_part(split_template_scenario)}.parquet"
+        )
+        # Use the EFS zip's directory as the cache base when no cache_dir
+        # is supplied (keeps EFS-derived files near the source).
+        base_dir = cache_dir or _resolve_cache_dir(
+            os.path.dirname(os.path.dirname(efs_zip_path)),
+            None,
+        )
+        cache_path = os.path.join(base_dir, cache_name)
+        # Source mtimes that matter for invalidation:
+        #   - EFS zip itself (the bulk of the input)
+        #   - RECS workbook (drives the monthly heating/cooling split)
+        #   - Mendeley template directory's residential/service CSVs (drive
+        #     the sub-monthly split ratios). Watching just one stable file
+        #     in that directory is sufficient as a signal.
+        source_paths = [efs_zip_path]
+        if recs_workbook_path:
+            source_paths.append(recs_workbook_path)
+        if split_template_root:
+            source_paths.append(
+                os.path.join(split_template_root, 'Residential_heating_weekday.csv')
+            )
+
+        def _build():
+            return load_enduse_data_efs_us(
+                efs_zip_path=efs_zip_path,
+                requested_year=requested_year,
+                electrification=electrification,
+                technology_advancement=technology_advancement,
+                recs_workbook_path=recs_workbook_path,
+                split_template_root=split_template_root,
+                split_template_region=split_template_region,
+                split_template_scenario=split_template_scenario,
+                use_cache=False,
+                cache_dir=None,
+            )
+        return _read_or_build_cached_parquet(cache_path, source_paths, _build)
+
     try:
         import zipfile_deflate64  # noqa: F401
     except ImportError as exc:
@@ -1289,6 +1480,100 @@ def ensure_demandcast_source(
             f"DemandCast source root was not found at '{source_root}'."
         )
     return source_root
+
+
+# DemandCast retrievers that read pre-staged "manual" files look in
+# <demandcast_root>/data/electricity_demand/manual_downloads/. The canonical
+# home for those files in this repo is data/manual_downloads/. The pipeline
+# mirrors files matching these prefixes from the canonical folder into the
+# DemandCast clone before each run, so users only need to maintain one copy.
+#
+# Add a prefix here when you bring a new DemandCast manual source online
+# (each retriever module under
+# .vendor/demandcast/demandcast/retrievals/electricity_demand_data_sources/
+# documents the file prefix it expects).
+DEMANDCAST_MANUAL_FILE_PREFIXES: Tuple[str, ...] = (
+    'KRO',     # KROGD: South Korea hourly demand (data.go.kr → krogd.py)
+    # 'EPIAS', # Turkey (epias.py)             — uncomment when populated
+    # 'eskom', # South Africa (eskom.py)       — uncomment when populated
+    # 'NITI',  # India (niti.py)               — uncomment when populated
+    # 'NTDC',  # Pakistan (ntdc.py)            — uncomment when populated
+)
+
+
+def _sync_manual_downloads_to_demandcast(
+    data_dir: str,
+    demandcast_root: str,
+    prefixes: Iterable[str] = DEMANDCAST_MANUAL_FILE_PREFIXES,
+    quiet: bool = False,
+) -> int:
+    """
+    Mirror manually-staged demand files from ``<data_dir>/manual_downloads/``
+    into the DemandCast clone's ``data/electricity_demand/manual_downloads/``.
+
+    The canonical location is the project repo's ``data/manual_downloads/``;
+    this function only writes into the DemandCast clone, never the other way.
+    The sync is idempotent: a file that already exists at the destination
+    with a matching size and a not-older mtime is skipped.
+
+    Parameters
+    ----------
+    data_dir : str
+        The repo's data directory (the parent of ``manual_downloads/``).
+    demandcast_root : str
+        The DemandCast source root returned by :func:`ensure_demandcast_source`
+        (i.e. ``<repo>/demandcast``, not the wrapper checkout above it).
+    prefixes : iterable of str
+        Filename prefixes to mirror. Defaults to
+        :data:`DEMANDCAST_MANUAL_FILE_PREFIXES`.
+    quiet : bool, default False
+        When False, print a one-line summary if any files were copied.
+
+    Returns
+    -------
+    int
+        Number of files actually copied this call (0 means everything was
+        already up to date or no matching files existed).
+    """
+    src_dir = os.path.join(data_dir, 'manual_downloads')
+    dst_dir = os.path.join(
+        demandcast_root, 'data', 'electricity_demand', 'manual_downloads',
+    )
+    if not os.path.isdir(src_dir):
+        return 0
+    os.makedirs(dst_dir, exist_ok=True)
+    prefixes_t = tuple(prefixes)
+    if not prefixes_t:
+        return 0
+
+    copied = 0
+    for name in os.listdir(src_dir):
+        # Mirror only CSV files. DemandCast retrievers parse every prefix-matched
+        # file in their manual_downloads/ folder as a CSV, so any non-CSV (a
+        # README, sources.txt, notes.docx, etc.) that gets mirrored would crash
+        # the parser. The .csv-only filter here is defense in depth on top of
+        # the per-folder README convention documented in
+        # data/manual_downloads/README.md.
+        if not (name.startswith(prefixes_t) and name.lower().endswith('.csv')):
+            continue
+        src = os.path.join(src_dir, name)
+        if not os.path.isfile(src):
+            continue
+        dst = os.path.join(dst_dir, name)
+        if os.path.exists(dst):
+            src_st = os.stat(src)
+            dst_st = os.stat(dst)
+            if src_st.st_size == dst_st.st_size and dst_st.st_mtime >= src_st.st_mtime:
+                continue
+        shutil.copy2(src, dst)
+        copied += 1
+
+    if copied and not quiet:
+        print(
+            f"[manual-downloads] Mirrored {copied} file(s) from "
+            f"{src_dir} -> {dst_dir}"
+        )
+    return copied
 
 
 def resolve_output_path(output_path: Optional[str], country: Optional[str] = None) -> Optional[str]:
@@ -2155,6 +2440,8 @@ def generate_full_pipeline_for_country(
     mendeley_dataset_url: str = MENDELEY_DATASET_URL,
     mendeley_headers: Optional[Dict[str, str]] = None,
     weather_headers: Optional[Dict[str, str]] = None,
+    use_cache: bool = False,
+    cache_dir: Optional[str] = None,
     **kwargs,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series]:
     """
@@ -2287,9 +2574,14 @@ def generate_full_pipeline_for_country(
             split_template_root=mendeley_root,
             split_template_region=mendeley_region_name,
             split_template_scenario=scenario,
+            use_cache=use_cache,
+            cache_dir=cache_dir,
         )
     elif demand_shape_source == 'mendeley':
-        df_synthetic = load_enduse_data_mendeley(mendeley_root, mendeley_region_name, year, scenario)
+        df_synthetic = load_enduse_data_mendeley(
+            mendeley_root, mendeley_region_name, year, scenario,
+            use_cache=use_cache, cache_dir=cache_dir,
+        )
     else:
         raise ValueError(
             f"Unsupported demand_shape_source '{demand_shape_source}'. Expected 'mendeley' or 'efs'."
@@ -2316,7 +2608,15 @@ def generate_full_pipeline_for_country(
             load_col='load',
         )
     # Step 3: Load weather data and compute capacity factors
-    weather_df = load_weather_data(weather_dir, country_iso2, ['irradiance_surface', 'temperature', 'wind_speed'], weight, dataset)
+    weather_df = load_weather_data(
+        weather_dir,
+        country_iso2,
+        ['irradiance_surface', 'temperature', 'wind_speed'],
+        weight,
+        dataset,
+        use_cache=use_cache,
+        cache_dir=cache_dir,
+    )
     # Filter weather to the selected year
     weather_year = weather_df[(weather_df.index.year >= cal_start_year) & (weather_df.index.year <= cal_end_year)]
     # Compute capacity factors
@@ -2782,6 +3082,8 @@ def load_enduse_data_mendeley(
     region: str,
     year: int,
     scenario: str = 'SSP2',
+    use_cache: bool = False,
+    cache_dir: Optional[str] = None,
 ) -> pd.DataFrame:
     """Load hourly end‑use electricity demand from the Mendeley dataset.
 
@@ -2824,6 +3126,54 @@ def load_enduse_data_mendeley(
         the sum of sector totals.
     """
     region = region.strip()
+
+    # ------------------------------------------------------------------
+    # Cache short-circuit. Mendeley parsing reads ~22 ~9 MB CSVs; the
+    # cached parquet is tiny (one year × ~15 columns) and reads in ~1 s.
+    # ------------------------------------------------------------------
+    if use_cache:
+        cache_name = (
+            f"mendeley_{_safe_filename_part(region)}_"
+            f"{_safe_filename_part(year)}_{_safe_filename_part(scenario)}.parquet"
+        )
+        cache_path = os.path.join(_resolve_cache_dir(data_dir, cache_dir), cache_name)
+        # Source paths: the broad set of Mendeley CSVs this loader touches.
+        # If any of them changed, we rebuild.
+        _mendeley_sources = [
+            os.path.join(data_dir, name)
+            for name in (
+                f'Residential_total_weekday_{scenario}.csv',
+                f'Residential_total_weekend_{scenario}.csv',
+                f'Service_total_weekday_{scenario}.csv',
+                f'Service_total_weekend_{scenario}.csv',
+                f'Industry_total_weekday_{scenario}.csv',
+                f'Industry_total_weekend_{scenario}.csv',
+                'Transport_total_weekday.csv',
+                'Transport_total_weekend.csv',
+                'Residential_cooling_weekday.csv',
+                'Residential_cooling_weekend.csv',
+                'Residential_heating_weekday.csv',
+                'Residential_heating_weekend.csv',
+                'Residential_lighting_weekday.csv',
+                'Residential_lighting_weekend.csv',
+                'Residential_waterheating_weekday.csv',
+                'Residential_waterheating_weekend.csv',
+                'Service_cooling_weekday.csv',
+                'Service_cooling_weekend.csv',
+                'Service_heating_weekday.csv',
+                'Service_heating_weekend.csv',
+                'Service_waterheating_weekday.csv',
+                'Service_waterheating_weekend.csv',
+            )
+        ]
+
+        def _build():
+            return load_enduse_data_mendeley(
+                data_dir, region, year, scenario,
+                use_cache=False, cache_dir=None,
+            )
+        return _read_or_build_cached_parquet(cache_path, _mendeley_sources, _build)
+
     # Helper to form file names for aggregated sector totals
     def tot_path(sector: str, day_type: str) -> str:
         if sector.lower() in {'residential', 'service', 'industry'}:
@@ -2894,6 +3244,7 @@ def fetch_demand_data_demandcast(
     country_code: str,
     start_year: Optional[int] = None,
     end_year: Optional[int] = None,
+    data_dir: Optional[str] = None,
 ) -> pd.Series:
     """Fetch historical hourly electricity demand using DemandCast.
 
@@ -2966,6 +3317,18 @@ def fetch_demand_data_demandcast(
             "Install its dependencies or provide a pre-downloaded demand series "
             "to enable automatic demand retrieval."
         ) from inner_e
+
+    # Mirror manually-staged demand files from the canonical
+    # data/manual_downloads/ folder into the DemandCast clone, so users only
+    # need to maintain one copy. Best-effort: any failure (missing folder,
+    # permission denied, etc.) is silently ignored so that DemandCast can
+    # raise its own clearer "file not found" error if it actually needs them.
+    try:
+        _sync_manual_downloads_to_demandcast(
+            data_dir or DEFAULT_DATA_DIR, demandcast_root,
+        )
+    except Exception:
+        pass
 
     # Identify available data sources for the given code
     sources = _find_demandcast_sources_containing_code(demandcast_root, code)
@@ -4732,84 +5095,17 @@ def run_pipeline(
 
 
 if __name__ == '__main__':  # pragma: no cover
-    # Set the country name here for direct script runs.
-    RUN_CONFIG = {
-        'country': 'South Korea',
-        'year': None,
-        'n_clusters': 6,
-        'output_path': None,
-        'last_n_years': None,
-        'use_example_data': False,
-    }
-
-    if RUN_CONFIG.get('use_example_data'):
-        import datetime as dt  # noqa: F401
-
-        # Generate a year of hourly timestamps
-        timestamps = pd.date_range(start='2025-01-01', end='2025-12-31 23:00', freq='h')
-    else:
-        print("Available country presets:")
-        print(list_country_presets().to_string(index=False))
-        generate_full_pipeline_for_preset(
-            country=RUN_CONFIG['country'],
-            year=RUN_CONFIG.get('year'),
-            n_clusters=RUN_CONFIG['n_clusters'],
-            output_path=RUN_CONFIG['output_path'],
-            last_n_years=RUN_CONFIG.get('last_n_years'),
-        )
-        raise SystemExit(0)
-    n = len(timestamps)
-    # Create synthetic load data with seasonal patterns and random noise
-    np.random.seed(42)
-    base_load = 5000 + 1000 * np.sin(2 * np.pi * timestamps.dayofyear / 365)
-    hourly_variation = 300 * np.sin(2 * np.pi * timestamps.hour / 24)
-    noise = 500 * np.random.randn(n)
-    load = base_load + hourly_variation + noise
-    # Synthetic renewable generation (solar and wind) capacity factors
-    solar_cf = np.clip(0.5 * np.sin(2 * np.pi * timestamps.hour / 24 - np.pi/2), 0, 1)
-    wind_cf = np.clip(0.3 + 0.2 * np.sin(2 * np.pi * timestamps.hour / 24 + np.pi/4), 0, 1)
-    # Assume installed capacities (MW) for solar and wind
-    solar_capacity = 2000
-    wind_capacity = 3000
-    solar_gen = solar_cf * solar_capacity
-    wind_gen = wind_cf * wind_capacity
-    # End‑use loads: residential and industrial (synthetic)
-    residential = 0.4 * load + 100 * np.random.randn(n)
-    industrial = 0.6 * load + 200 * np.random.randn(n)
-    # Assemble DataFrame
-    df = pd.DataFrame({
-        'timestamp': timestamps,
-        'load': load,
-        'solar_gen': solar_gen,
-        'wind_gen': wind_gen,
-        'solar_cf': solar_cf,
-        'wind_cf': wind_cf,
-        'residential': residential,
-        'industrial': industrial,
-    })
-    # Run the pipeline
-    results = run_pipeline(
-        df,
-        load_col='load',
-        gen_cols=['solar_gen', 'wind_gen'],
-        cf_cols=['solar_cf', 'wind_cf'],
-        load_cols=['residential', 'industrial'],
-        n_clusters=RUN_CONFIG['n_clusters'],
-        output_path=RUN_CONFIG['output_path'],
-        country=RUN_CONFIG['country'],
-        return_details=True,
+    # All run-time settings (country, year, clustering, etc.) live in
+    # run_pipeline.py. This module is library code — please launch via:
+    #
+    #     python run_pipeline.py
+    #
+    # That file holds every setting you should normally need to edit, with
+    # inline documentation. Calling this script directly does nothing useful.
+    import sys
+    sys.stderr.write(
+        "energy_timeslice_pipeline.py is a library module.\n"
+        "Run the pipeline via:  python run_pipeline.py\n"
+        "(All editable settings live there, with inline documentation.)\n"
     )
-    cf_df = results['capacity_factors']
-    lf_df = results['load_factors']
-    hourly_lf_df = results['hourly_load_factors']
-    timeslice_metadata = results['timeslice_metadata']
-    # Display summary statistics
-    print("Capacity factors by timeslice:")
-    print(cf_df)
-    print("\nRepresentative-day shares by timeslice:")
-    print(lf_df.head())
-    print("\nPinned and labeled timeslices:")
-    print(timeslice_metadata[['timeslice_name', 'is_pinned_summer', 'is_pinned_winter']])
-    print("\nHourly sector-service annual shares by timeslice (first 12 rows):")
-    hourly_cols = [c for c in hourly_lf_df.columns if c.endswith('_load_factor')]
-    print(hourly_lf_df[hourly_cols].head(12))
+    sys.exit(2)
