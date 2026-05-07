@@ -54,6 +54,103 @@ Mapped but not fully revalidated in this thread:
 - `Mexico`
 - `United Kingdom`
 
+## Per-Country Manual Setup
+
+The pipeline auto-downloads most inputs (Mendeley end-use shapes, Ember annual statistics, DemandCast for most non-U.S. demand series). A few inputs cannot be retrieved automatically and must be staged by hand. This section documents the manual steps for each country whose preset has been verified end-to-end.
+
+> **Treat all citations and source URLs as starting points for review.** Verify license terms, dataset coverage, and unit conventions against the primary publishers before relying on derived results in any work product. If you need help arranging access or automating any of these fetches, contact **IT & Systems (itsystems@energyinnovation.org)**.
+
+### Common to every country
+
+These apply regardless of which country preset you run.
+
+| Input | Manual? | Where it goes | Notes |
+|---|---|---|---|
+| Mendeley end-use dataset (Zapata/Khanna) | Auto | `data/mendeley/pmd2dchk44-1/` | Downloaded by the pipeline on first use. Source: `https://data.mendeley.com/datasets/pmd2dchk44/1` |
+| Ember annual electricity data | Auto | `data/ember/yearly_full_release_long_format.csv` | Downloaded by the pipeline on first use. Source: `https://ember-energy.org/data/yearly-electricity-data/` |
+| DemandCast helper repo | Auto | `.vendor/demandcast/` | Cloned by the pipeline on first use. Source: `https://github.com/open-energy-transition/demandcast` |
+| EPS template tree (`SHELF/`, `SYSHECF/`, RECS workbook) | **Manual** | `../EPS Structure Testing/InputData/elec/` (sibling of repo) | Provided by the EPS team — ask the colleague who set up your EPS Vensim environment. Required for U.S. heating/cooling split and for any template-based EPS export. |
+| Renewables.ninja weather CSVs | **Manual** | `data/weather/ninja-weather-country-{ISO2}-{var}_area_wtd-merra2.csv` | Auto-download is blocked by the renewables.ninja server. Three files per country: `irradiance_surface`, `temperature`, `wind_speed`. Source portal: `https://www.renewables.ninja/`. License: CC-BY 4.0 (verify on the site). |
+
+### United States
+
+**Demand-shape source:** NREL Electrification Futures Study (EFS), Reference electrification × Moderate technology advancement.
+
+**Manual steps:**
+
+| # | Step | Notes |
+|---|---|---|
+| 1 | Set `EIA_API_KEY` in `.env` at the repo root | Free key from `https://www.eia.gov/opendata/`. Used by `_fetch_eia_us_national_series` to assemble hourly U.S. demand for calibration. |
+| 2 | Download the three U.S. renewables.ninja files into `data/weather/` | `ninja-weather-country-US-temperature_area_wtd-merra2.csv`, `_wind_speed_`, `_irradiance_surface_`. ~400 MB total. |
+| 3 | Confirm the EPS template tree is at `../EPS Structure Testing/InputData/elec/` | Specifically the SHELF folder containing `Seasonal Hourly Equipment Load Factors by End Use.xlsx` — this is the source of the RECS `CE8.2.M` and `CE8.3.M` tabs used to split EFS space-conditioning into heating vs. cooling. |
+| 4 | (Optional) Pre-download `data/efs/EFSLoadProfile_Reference_Moderate.zip` | The pipeline auto-downloads this from `https://data.nlr.gov/system/files/126/EFSLoadProfile_Reference_Moderate.zip` (~291 MB) on first use. Pre-downloading saves the wait on first run. |
+| 5 | Install `inflate64` (already in `requirements.txt`) | Needed by the `zipfile_deflate64.py` shim to read the EFS archive's Deflate64 entries. The shim ships with the repo. |
+
+**Citations to verify against primary sources:**
+
+- EFS dataset: NREL, *Electrification Futures Study*, OpenEI submission [`https://data.openei.org/submissions/8199`](https://data.openei.org/submissions/8199). Direct archive URL is hosted on the NREL data catalog.
+- RECS tables: U.S. EIA, *Residential Energy Consumption Survey* monthly tables `CE8.2.M` (heating) and `CE8.3.M` (cooling). Original source: `https://www.eia.gov/consumption/residential/data/`.
+- EIA hourly demand: U.S. EIA, *Hourly Electric Grid Monitor* via the v2 API.
+
+**Known caveats to flag for staff:**
+
+- The EFS dataset only contains the calendar years 2018, 2020, 2024, 2030, 2040, 2050. Other years are mapped to the nearest available year (e.g. a 2025 request resolves to 2024).
+- The heating/cooling split currently uses **national** RECS multipliers and is applied identically to commercial space conditioning. This is a documented simplification — region- or census-division-specific multipliers would require additional RECS tabs.
+- The pinned-peak-day clustering on the U.S. EFS run currently underperforms unpinned on annual net-load reconstruction NRMSE (`0.3891` vs `0.3473`). Pinned is preferred for investment realism, but this trade-off should be revisited if peak coverage matters less for a downstream use case.
+
+### South Korea
+
+**Demand-shape source:** Mendeley (Zapata/Khanna), region `Korea`.
+**Demand calibration source:** DemandCast → KROGD (Korean Open Government Data).
+
+**Manual steps:**
+
+| # | Step | Notes |
+|---|---|---|
+| 1 | Download the three Korean renewables.ninja files into `data/weather/` | `ninja-weather-country-KR-temperature_area_wtd-merra2.csv`, `_wind_speed_`, `_irradiance_surface_`. |
+| 2 | Download annual KROGD hourly demand CSVs into `data/manual_downloads/` | One file per calendar year of calibration history. File names must start with `KRO` (e.g. `KRO_demand_2025.csv`). The pipeline auto-mirrors them into the DemandCast clone on the next run — see below. |
+
+**Single source of truth:** Maintain KRO files only in `data/manual_downloads/`. Each pipeline run automatically mirrors files matching the configured prefixes (currently `KRO`) into the DemandCast clone's manual-downloads folder via `_sync_manual_downloads_to_demandcast` in [`energy_timeslice_pipeline.py`](energy_timeslice_pipeline.py). The mirror is one-way (canonical → DemandCast clone), idempotent, and refreshes the destination only when source size or mtime changed. To bring a different DemandCast manual source online (e.g. Turkey EPIAS, India NITI), add the appropriate filename prefix to `DEMANDCAST_MANUAL_FILE_PREFIXES`.
+
+**Why DemandCast is "manual" for Korea:**
+
+DemandCast uses programmatic APIs for most non-U.S. countries (ENTSO-E for Europe, CENACE for Mexico, etc.) but its *only* registered Korean source is `krogd.py`, a manual-file-drop module. The Korea Power Exchange dataset on data.go.kr does not expose a clean public API, so DemandCast's authors implemented the source as "look in a folder for files starting with `KRO`." See the docstring at [`.vendor/demandcast/demandcast/retrievals/electricity_demand_data_sources/krogd.py`](.vendor/demandcast/demandcast/retrievals/electricity_demand_data_sources/krogd.py).
+
+**Citations to verify against primary sources:**
+
+- KROGD dataset: Korea Power Exchange (한국전력거래소 / KPX), *시간별 전력수요량* ("Hourly Electricity Demand"), data.go.kr dataset ID `15065266`, page: `https://www.data.go.kr/data/15065266/fileData.do`.
+- File format: EUC-KR-encoded CSV. Header: `날짜,1시,2시,…,24시` (Date, Hour 1, …, Hour 24). One row per day; columns hold MW.
+- DemandCast's stated coverage for KROGD: 2013-01-01 to 2024-12-31 (per krogd.py docstring). Files for 2025+ are extensions your team has done manually beyond what DemandCast tracks.
+
+**Known caveats to flag for staff:**
+
+- Each new calibration year requires a fresh manual download. The 4-year calibration window (`last_n_years=4` in the South Korea preset) means the calibration mean will lag the real most-recent-year by however long it's been since you last refreshed.
+- Sanity-check each newly-downloaded file before committing it: confirm the first data row's date matches the filename year (data.go.kr exports have been observed to be mislabeled in past sessions), and strip any trailing all-comma blank row. If you strip blank rows manually, do it in **byte mode** to preserve the EUC-KR encoding of the Korean column headers.
+- The DemandCast clone copy is now refreshed automatically by `_sync_manual_downloads_to_demandcast` on every run, so you only maintain `data/manual_downloads/`. If you ever notice that the clone copy has drifted (it shouldn't — the sync is idempotent), delete files in `.vendor/demandcast/demandcast/data/electricity_demand/manual_downloads/` and the next run will repopulate them from the canonical location.
+
+### China
+
+**Demand-shape source:** Mendeley (Zapata/Khanna), region `China +`.
+**Demand calibration source:** DemandCast → Wu et al. (2023) Zenodo dataset (auto-downloaded at runtime).
+
+**Manual steps:**
+
+| # | Step | Notes |
+|---|---|---|
+| 1 | Download the three Chinese renewables.ninja files into `data/weather/` | `ninja-weather-country-CN-temperature_area_wtd-merra2.csv`, `_wind_speed_`, `_irradiance_surface_`. ~260 MB total. |
+
+That is the only manual step specific to China — the calibration demand series auto-downloads from Zenodo on first use.
+
+**Citations to verify against primary sources:**
+
+- China hourly demand: Wu, Y. et al., *Hourly electric power load dataset for China*, Zenodo, `https://zenodo.org/records/8322210`. License: CC-BY 4.0. Coverage: **2018 only** (Jan 1, 2018 – Dec 31, 2018) — this is why the China preset's `default_year` is 2018 with `last_n_years=1`.
+- DemandCast retrieval module: [`.vendor/demandcast/demandcast/retrievals/electricity_demand_data_sources/wu_et_al.py`](.vendor/demandcast/demandcast/retrievals/electricity_demand_data_sources/wu_et_al.py).
+
+**Known caveats to flag for staff:**
+
+- The China calibration window is **a single year (2018)**. This is much narrower than other countries and means weather-driven demand variability is not averaged out. If you want post-2018 calibration, you'll need a different upstream demand source — none is currently registered in DemandCast for CHN.
+- The Mendeley region key is `China +`, not `China`. The trailing `+` reflects how the Zapata/Khanna dataset names a regional aggregate that includes a small set of neighbouring areas. Worth confirming that aggregate matches your modeling boundary before publication.
+
 ## Demand-Shape Source Logic
 
 ### Non-U.S.
