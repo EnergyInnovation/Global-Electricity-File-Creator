@@ -227,16 +227,42 @@ Examples:
 
 ## Important Packages/Environment Notes
 
-Installed in the project environment during this work:
+The canonical install path is now:
 
-- `openpyxl`
-- `xlsxwriter`
-- `zipfile-deflate64`
+```
+pip install -r requirements.txt
+```
 
-These matter because:
+`requirements.txt` pins the pipeline's own dependencies **plus** the subset of DemandCast's runtime dependencies needed by the verified country paths.
 
-- Excel workbooks are now written directly
-- the EFS archive uses Deflate64 compression
+### What's in `requirements.txt`
+
+Pipeline-direct:
+
+- `pandas`, `numpy`, `scikit-learn`, `scipy` — core scientific stack
+- `pyyaml`, `requests` — config + HTTP
+- `openpyxl`, `xlsxwriter` — Excel workbook writers (EPS workbooks + run xlsx)
+- `pyarrow` — parquet engine for the parsed-intermediate cache under `data/cache/*.parquet`
+- `matplotlib` — diagnostic plots (`MAKE_DIAGNOSTIC_PLOTS = True` in `run_pipeline.py`)
+- `inflate64` — Deflate64 decompressor backing the local `zipfile_deflate64.py` shim, so we can read the EFS archive without needing the upstream `zipfile-deflate64` package (which has no Python 3.12 wheel on Windows and requires MSVC C++ Build Tools to compile from source)
+
+DemandCast transitive (we use the upstream repo via `git clone .vendor/demandcast/`, not as an installable package, so we have to declare its deps separately):
+
+- `pycountry`, `pycountry-convert` — ISO country code lookups used in `utils/entities.py`
+- `countryinfo` — country metadata
+- `entsoe-py` — imported at module level by `utils/fetcher.py` even though we don't currently hit ENTSO-E
+- `timezonefinder` — coordinate → IANA timezone lookups used by some retrievers
+
+If you add a new DemandCast retriever (e.g. CENACE for Mexico, EPIAS for Turkey, NITI for India), expect to add the next missing module to `requirements.txt`. The error message will name the module.
+
+### Manual data still required (per-country)
+
+See [README.md → Per-Country Manual Setup](README.md) for the country-specific list. The pipeline cannot auto-fetch:
+
+- Renewables.ninja weather CSVs for each country (CC-BY-NC 4.0, login-gated)
+- The EPS template tree at `../EPS Structure Testing/InputData/elec/` (provided by the EPS Vensim team)
+- KROGD demand files for South Korea (data.go.kr)
+- The EIA API key for U.S. demand (free, set as `EIA_API_KEY` in `.env`)
 
 ## Good Next Steps
 

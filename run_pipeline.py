@@ -216,6 +216,64 @@ VERBOSITY = 'normal'
 
 
 # ============================================================================
+# 8. DIAGNOSTIC PLOTS  (visual cluster inspection — optional)
+# ============================================================================
+
+# When True, the pipeline writes 24 PNG plots per run (6 timeslices × 4
+# variables: net_load, solar_cf, wind_cf, normalized hourly load) under
+# ``output/<country>_timeslice_results_plots/``. Each plot shows every day
+# in that cluster as a thin grey line, plus a 25–75th percentile band and
+# the cluster-mean profile. On the ``net_load`` plot only, the cluster's
+# representative day is overlaid in red.
+#
+# Useful for spot-checking how tight (or loose) each cluster is and how
+# well the representative day stands in for the rest of the cluster. Adds
+# ~3–5 seconds to a run.
+#
+# Requires `matplotlib` (already in requirements.txt). If matplotlib is
+# unavailable the pipeline skips the plots with a warning and continues.
+MAKE_DIAGNOSTIC_PLOTS = True
+
+
+# ============================================================================
+# 9. PINNED-VS-UNPINNED COMPARISON  (diagnostic — off by default)
+# ============================================================================
+
+# When True, the pipeline re-runs the clustering step twice (once with
+# pinned summer/winter peak days, once without) and writes both NRMSE
+# values to the metrics CSV. The pair quantifies how much the pinning
+# constraint costs (or saves) on annual net-load reconstruction — useful
+# for methodology disclosure when bringing a new country online.
+#
+# Cost: roughly doubles the clustering wall time (~10–30 seconds extra
+# for South Korea, more for the U.S. EFS run). The "pinned" answer here
+# is redundant with the production clustering that already ran above;
+# enabling this gets you the "unpinned" baseline at the cost of also
+# repeating the pinned work for symmetry.
+#
+# Default is False so routine runs are fast. Flip to True when validating
+# a new preset, when reviewing the methodology, or when generating the
+# pinned-vs-unpinned NRMSE pair for a publication or report.
+COMPARE_PINNED_UNPINNED = False
+
+
+# ============================================================================
+# 10. CALIBRATION-ONLY MODE  (fast iteration on calibration choices)
+# ============================================================================
+
+# When True, the pipeline runs the demand-shape load and calibration steps,
+# writes the calibration_overview.png plot, and then exits — no weather
+# loading, no capacity factor computation, no clustering, no EPS export.
+#
+# Useful when you're iterating on calibration parameters (level scaling,
+# seasonal calibration, calibration window) and only want to see the
+# resulting overview plot without paying for the full pipeline.
+#
+# Default False = full pipeline.
+CALIBRATION_ONLY = True
+
+
+# ============================================================================
 # Execution  (DO NOT EDIT BELOW THIS LINE)
 # ============================================================================
 
@@ -276,6 +334,9 @@ def main() -> None:
         'use_cache': USE_CACHE,
         'cache_dir': _effective_cache_dir(),
         'cf_calibration_mode': CF_CALIBRATION_MODE,
+        'make_plots': MAKE_DIAGNOSTIC_PLOTS,
+        'compare_pinned_unpinned': COMPARE_PINNED_UNPINNED,
+        'calibration_only': CALIBRATION_ONLY,
     }
     if DATA_DIR is not None:
         kwargs['data_dir'] = DATA_DIR

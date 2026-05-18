@@ -2721,6 +2721,321 @@ def write_metrics_reports(metrics_df: pd.DataFrame, output_path: Optional[str]) 
     combined.to_csv(GLOBAL_METRICS_SUMMARY_CSV, index=False)
 
 
+def make_cluster_diagnostic_plots(
+    df: pd.DataFrame,
+    labels: pd.Series,
+    timeslice_metadata: pd.DataFrame,
+    representative_dates: Dict[int, pd.Timestamp],
+    output_dir: str,
+    country: str = '',
+) -> "list[str]":
+    """
+    Write per-cluster diagnostic PNG plots for visual inspection of how
+    clustering grouped the year.
+
+    For each of the 6 timeslices, four plots are written:
+
+        <Label>_net_load.png        — net load (MW)
+        <Label>_solar_cf.png        — solar capacity factor (0–1)
+        <Label>_wind_cf.png         — wind capacity factor (0–1)
+        <Label>_normalized_load.png — total load / annual total load
+                                       (unitless; sums to 1 across the year)
+
+    Every plot shows:
+        * one thin grey line per day in the cluster (low alpha)
+        * a shaded band between the 25th and 75th percentiles, by hour
+        * a dashed steelblue line for the cluster mean profile
+
+    On the ``net_load`` plot only, an additional thick red line marks
+    the cluster's representative day — the same date the rest of the
+    pipeline uses as a stand-in for the whole timeslice when populating
+    SHELF/SYSHECF. For pinned timeslices, the rep day is the literal
+    summer/winter peak day rather than a centroid-nearest day, and the
+    legend says so.
+
+    The function imports matplotlib lazily so a missing install just
+    skips the plotting step with a warning instead of crashing the run.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Hourly DataFrame with columns ``net_load``, ``load``, ``solar_cf``,
+        ``wind_cf``. Index must be hourly (any timezone, but typically the
+        country's local TZ after the pipeline's tz_convert step).
+    labels : pandas.Series
+        Per-hour timeslice ID, same length and order as ``df``.
+    timeslice_metadata : pandas.DataFrame
+        Output of ``build_timeslice_metadata`` — must contain
+        ``is_pinned_summer`` and ``is_pinned_winter`` columns indexed by
+        the same timeslice IDs used in ``labels``.
+    representative_dates : dict[int, pandas.Timestamp]
+        Mapping from timeslice ID to the representative day's date.
+    output_dir : str
+        Directory to write the PNG files into. Created if missing.
+    country : str, optional
+        Country / region label inserted into each plot's title.
+
+    Returns
+    -------
+    list of str
+        Absolute paths of the PNG files written. Empty if matplotlib is
+        not available or the inputs are empty.
+    """
+    # Lazy import so a missing install isn't a hard fail.
+    try:
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
+    except ImportError:
+        import warnings
+        warnings.warn(
+            "matplotlib is not installed; cluster diagnostic plots will be "
+            "skipped. Install with `pip install matplotlib`."
+        )
+        return []
+
+    if df is None or df.empty or labels is None or len(labels) == 0:
+        return []
+
+    required_cols = ['net_load', 'load', 'solar_cf', 'wind_cf']
+    if any(col not in df.columns for col in required_cols):
+        return []
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Build a tidy work frame: date + hour + variable values + label.
+    work = df[required_cols].copy()
+    annual_total_load = float(pd.to_numeric(work['load'], errors='coerce').sum())
+    if annual_total_load > 0:
+        work['load_normalized'] = work['load'] / annual_total_load
+    else:
+        work['load_normalized'] = work['load']
+    work['__date'] = pd.to_datetime(work.index).floor('D')
+    work['__hour'] = pd.to_datetime(work.index).hour
+    work['__label'] = labels.values
+
+    # Pretty cluster labels (e.g. 'Summer Peak') and pinned-flag lookup.
+    try:
+        eps_label_map = build_eps_timeslice_label_map(timeslice_metadata)
+    except Exception:
+        # Fall back to numeric labels if EPS labeling cannot be built.
+        eps_label_map = pd.Series({i: f'Timeslice_{int(i)}' for i in pd.unique(labels)})
+
+    def _is_pinned(ts_id: int) -> bool:
+        if timeslice_metadata is None or timeslice_metadata.empty:
+            return False
+        if ts_id not in timeslice_metadata.index:
+            return False
+        return bool(
+            timeslice_metadata.loc[ts_id].get('is_pinned_summer', False)
+            or timeslice_metadata.loc[ts_id].get('is_pinned_winter', False)
+        )
+
+    # Variable spec: (column, y-axis label, filename suffix)
+    variables = [
+        ('net_load',         'Net load (MW)',                                  'net_load'),
+        ('solar_cf',         'Solar capacity factor',                          'solar_cf'),
+        ('wind_cf',          'Wind capacity factor',                           'wind_cf'),
+        ('load_normalized',  'Normalized hourly load (fraction of annual)',    'normalized_load'),
+    ]
+
+    paths_written: "list[str]" = []
+
+    for ts_id in sorted(pd.unique(labels.dropna())):
+        ts_id = int(ts_id)
+        ts_rows = work[work['__label'] == ts_id]
+        if ts_rows.empty:
+            continue
+        ts_label = str(eps_label_map.get(ts_id, f'Timeslice_{ts_id}'))
+        ts_label_safe = ts_label.replace(' ', '_').replace('/', '_')
+        n_days = ts_rows['__date'].nunique()
+        is_pinned = _is_pinned(ts_id)
+        rep_date = None
+        if representative_dates and ts_id in representative_dates:
+            rep_date = pd.Timestamp(representative_dates[ts_id]).floor('D')
+
+        for col, ylabel, suffix in variables:
+            if col not in ts_rows.columns:
+                continue
+            pivot = ts_rows.pivot_table(
+                index='__date', columns='__hour', values=col, aggfunc='first',
+            ).reindex(columns=range(24))
+            if pivot.empty:
+                continue
+
+            fig, ax = plt.subplots(figsize=(8.0, 4.5))
+
+            # Per-day curves (low alpha) — every day in the cluster as a thin grey line.
+            for _, day_row in pivot.iterrows():
+                ax.plot(
+                    range(24), day_row.values,
+                    color='0.55', linewidth=0.6, alpha=0.35,
+                )
+
+            # 25–75th percentile shaded band.
+            p25 = pivot.quantile(0.25, axis=0)
+            p75 = pivot.quantile(0.75, axis=0)
+            ax.fill_between(
+                range(24), p25.values, p75.values,
+                color='steelblue', alpha=0.18, label='25–75th pct',
+            )
+
+            # Cluster mean (dashed).
+            cluster_mean = pivot.mean(axis=0)
+            ax.plot(
+                range(24), cluster_mean.values,
+                color='steelblue', linestyle='--', linewidth=1.5, label='cluster mean',
+            )
+
+            # Rep-day overlay (red) — only on net_load.
+            if col == 'net_load' and rep_date is not None and rep_date in pivot.index:
+                rep_values = pivot.loc[rep_date].values
+                rep_label_parts = [f"rep day {rep_date.date()}"]
+                if is_pinned:
+                    rep_label_parts.append("(pinned)")
+                else:
+                    rep_label_parts.append("(centroid-nearest)")
+                ax.plot(
+                    range(24), rep_values,
+                    color='firebrick', linewidth=2.0,
+                    label=" ".join(rep_label_parts),
+                )
+
+            country_suffix = f" — {country}" if country else ""
+            ax.set_title(f"{ts_label} ({n_days} days){country_suffix}\n{ylabel}")
+            ax.set_xlabel('Hour of day (local)')
+            ax.set_ylabel(ylabel)
+            ax.set_xlim(0, 23)
+            ax.set_xticks(range(0, 24, 2))
+            ax.grid(True, alpha=0.3)
+            ax.legend(loc='best', fontsize='small', framealpha=0.85)
+            fig.tight_layout()
+
+            out_path = os.path.join(output_dir, f'{ts_label_safe}_{suffix}.png')
+            fig.savefig(out_path, dpi=110)
+            plt.close(fig)
+            paths_written.append(out_path)
+
+    return paths_written
+
+
+def make_calibration_overview_plot(
+    df_calibrated: pd.DataFrame,
+    real_demand: pd.Series,
+    output_path: str,
+    country: str = '',
+) -> Optional[str]:
+    """
+    One full-year overview plot showing the calibration result at daily-mean
+    resolution:
+
+      * **Stacked area** of the four sector totals (residential, service,
+        industry, transport) in the calibrated synthetic year — this is
+        what the rest of the pipeline consumes.
+      * **Line** for observed DemandCast demand, day-of-year-averaged
+        across the calibration window so a single curve overlays cleanly
+        on top of the stacked area.
+      * **Line** for total calibrated load (= top of the stacked area).
+        Slightly offset visually so it remains distinguishable; if it
+        diverges from the stack top there's a sum bug somewhere.
+
+    Returns the path written, or ``None`` if matplotlib is unavailable
+    or the inputs are insufficient.
+    """
+    try:
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
+    except ImportError:
+        import warnings
+        warnings.warn(
+            "matplotlib is not installed; calibration overview plot will be "
+            "skipped. Install with `pip install matplotlib`."
+        )
+        return None
+
+    if df_calibrated is None or df_calibrated.empty:
+        return None
+
+    sector_cols = [
+        col for col in (
+            'residential_total', 'service_total', 'industry_total', 'transport_total',
+        ) if col in df_calibrated.columns
+    ]
+    if not sector_cols:
+        return None
+
+    # Daily means for the synthetic year (one point per day of year).
+    syn_daily = df_calibrated[sector_cols + (['load'] if 'load' in df_calibrated.columns else [])].copy()
+    syn_daily['_doy'] = pd.to_datetime(syn_daily.index).dayofyear
+    syn_daily = syn_daily.groupby('_doy').mean()
+
+    # DemandCast: day-of-year mean across calibration years (gives one curve
+    # to compare against the synthetic single-year shape).
+    if real_demand is None or len(real_demand) == 0:
+        dc_daily = None
+    else:
+        real = pd.Series(real_demand).copy()
+        real_doy = pd.to_datetime(real.index).dayofyear
+        dc_daily = real.groupby(real_doy).mean()
+
+    os.makedirs(os.path.dirname(output_path) or '.', exist_ok=True)
+
+    fig, ax = plt.subplots(figsize=(11, 4.8))
+
+    # Stacked area of sector totals (calibrated).
+    sector_colors = {
+        'residential_total': '#4c72b0',
+        'service_total':     '#dd8452',
+        'industry_total':    '#55a868',
+        'transport_total':   '#c44e52',
+    }
+    sector_labels = {
+        'residential_total': 'Residential',
+        'service_total':     'Service / Commercial',
+        'industry_total':    'Industry',
+        'transport_total':   'Transport',
+    }
+    stack_arrays = [syn_daily[col].values for col in sector_cols]
+    stack_colors = [sector_colors.get(col, None) for col in sector_cols]
+    stack_labels = [sector_labels.get(col, col) for col in sector_cols]
+    ax.stackplot(
+        syn_daily.index, *stack_arrays,
+        labels=stack_labels, colors=stack_colors, alpha=0.75,
+    )
+
+    # Calibrated total-load line (top of stack — sanity check).
+    if 'load' in syn_daily.columns:
+        ax.plot(
+            syn_daily.index, syn_daily['load'].values,
+            color='black', linewidth=1.2, linestyle='--',
+            label='Calibrated load (synth sum)',
+        )
+
+    # DemandCast observed line.
+    if dc_daily is not None and not dc_daily.empty:
+        ax.plot(
+            dc_daily.index, dc_daily.values,
+            color='crimson', linewidth=1.6, label='DemandCast observed (DOY mean)',
+        )
+
+    country_suffix = f" — {country}" if country else ""
+    ax.set_title(
+        f"Calibration overview{country_suffix}\n"
+        "Stacked end-uses = calibrated synthetic year; lines = observed and synthetic totals"
+    )
+    ax.set_xlabel('Day of year')
+    ax.set_ylabel('Hourly demand (MW), daily-mean')
+    ax.set_xlim(1, max(syn_daily.index.max(), 365))
+    ax.grid(True, alpha=0.3)
+    ax.legend(loc='upper right', fontsize='small', framealpha=0.85, ncol=2)
+    fig.tight_layout()
+
+    fig.savefig(output_path, dpi=110)
+    plt.close(fig)
+    return output_path
+
+
 def print_metrics_summary(country: str, metrics_df: pd.DataFrame) -> None:
     """Print a short metrics summary for the current run."""
     if metrics_df is None or metrics_df.empty:
@@ -2799,6 +3114,9 @@ def generate_full_pipeline_for_country(
     cache_dir: Optional[str] = None,
     country_timezone: Optional[str] = None,
     cf_calibration_mode: str = 'cap_redistribute',
+    make_plots: bool = True,
+    compare_pinned_unpinned: bool = False,
+    calibration_only: bool = False,
     **kwargs,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series]:
     """
@@ -3006,6 +3324,30 @@ def generate_full_pipeline_for_country(
         _status('calibrate-load', "seasonal calibration applied (monthly-mean RMSE → ~0)")
     else:
         _status('calibrate-load', "seasonal calibration skipped (using level-scaled only)")
+
+    # ---- Calibration-overview plot (optional, can also short-circuit the run) ----
+    # We resolve the output path early so the calibration plot has somewhere
+    # to land before the heavy clustering work begins. If CALIBRATION_ONLY=True
+    # the rest of the pipeline is skipped entirely — useful for quickly
+    # iterating on calibration choices without paying for clustering/EPS export.
+    resolved_output_path_early = resolve_output_path(output_path, country=region_name)
+    if make_plots and resolved_output_path_early:
+        _plots_dir = os.path.splitext(resolved_output_path_early)[0] + '_plots'
+        _cal_plot_path = make_calibration_overview_plot(
+            df_calibrated=df_calibrated,
+            real_demand=real_demand_filtered,
+            output_path=os.path.join(_plots_dir, 'calibration_overview.png'),
+            country=region_name,
+        )
+        if _cal_plot_path:
+            _status('plots', f"wrote calibration overview → {_cal_plot_path}")
+    if calibration_only:
+        _status(
+            'done',
+            "CALIBRATION_ONLY=True — exiting before weather / clustering / EPS export",
+        )
+        # Return empty results in the same shape callers expect.
+        return pd.DataFrame(), pd.DataFrame(), pd.Series(dtype='float64')
     # Step 3: Load weather data and compute capacity factors
     _t = time.perf_counter()
     _status(
@@ -3237,23 +3579,39 @@ def generate_full_pipeline_for_country(
         columns=clustering_columns,
         representative_dates=run_details.get('representative_dates'),
     )
-    _status(
-        'cluster',
-        "running pinned-vs-unpinned reconstruction comparison "
-        "(re-clusters once without pinning to quantify the trade-off)...",
-    )
-    _t_compare = time.perf_counter()
-    comparison_metrics = compare_pinned_unpinned_clustering(
-        country=region_name,
-        year=year,
-        df=df_with_gen,
-        load_col='net_load',
-        gen_cols=[],
-        n_clusters=n_clusters,
-        feature_weight_mode=kwargs.get('feature_weight_mode', 'netload_focus'),
-        search_seeds=kwargs.get('search_seeds'),
-    )
-    _status('cluster', "comparison complete", t=_t_compare)
+    # The pinned-vs-unpinned comparison is opt-in because it re-runs the
+    # full clustering pipeline twice (~2× the clustering cost). The
+    # production answer is the pinned variant, which has already been
+    # computed above; the comparison only adds the unpinned baseline plus
+    # a redundant pinned re-run for symmetry. Worth enabling occasionally
+    # to verify the pinning trade-off on a new country; not worth the
+    # time on every routine run once the trade-off is understood.
+    if compare_pinned_unpinned:
+        _status(
+            'cluster',
+            "running pinned-vs-unpinned reconstruction comparison "
+            "(re-clusters once with and once without pinning)...",
+        )
+        _t_compare = time.perf_counter()
+        comparison_metrics = compare_pinned_unpinned_clustering(
+            country=region_name,
+            year=year,
+            df=df_with_gen,
+            load_col='net_load',
+            gen_cols=[],
+            n_clusters=n_clusters,
+            feature_weight_mode=kwargs.get('feature_weight_mode', 'netload_focus'),
+            search_seeds=kwargs.get('search_seeds'),
+        )
+        _status('cluster', "comparison complete", t=_t_compare)
+    else:
+        comparison_metrics = pd.DataFrame()
+        _status(
+            'cluster',
+            "skipping pinned-vs-unpinned comparison "
+            "(set COMPARE_PINNED_UNPINNED=True in run_pipeline.py to enable)",
+            level='verbose',
+        )
 
     metrics_df = pd.concat([metrics_df, clustering_metrics, comparison_metrics], ignore_index=True)
     _status(
@@ -3289,6 +3647,39 @@ def generate_full_pipeline_for_country(
             )
 
     print_metrics_summary(region_name, metrics_df)
+
+    # ---- Diagnostic plots (per-cluster, four variables each) ----
+    # Optional. Produces 24 PNG files (6 timeslices × 4 variables) under
+    # <output_root>_plots/. Skipped if `make_plots=False` or if matplotlib
+    # is not importable.
+    if make_plots and resolved_output_path:
+        _t_plots = time.perf_counter()
+        plots_dir = os.path.splitext(resolved_output_path)[0] + '_plots'
+        _ts_metadata_for_plots = run_details.get('timeslice_metadata')
+        plot_paths = make_cluster_diagnostic_plots(
+            df=df_with_gen,
+            labels=labels,
+            timeslice_metadata=_ts_metadata_for_plots,
+            representative_dates=run_details.get('representative_dates') or {},
+            output_dir=plots_dir,
+            country=region_name,
+        )
+        if plot_paths:
+            _status(
+                'plots',
+                f"wrote {len(plot_paths)} cluster diagnostic plots → {plots_dir}/",
+                t=_t_plots,
+            )
+        else:
+            _status(
+                'plots',
+                "diagnostic plots skipped (matplotlib unavailable or no data)",
+                level='verbose',
+            )
+
+        # The calibration-overview plot is now generated earlier (right after
+        # the calibration step). No re-emit here.
+
     return cf_results, lf_results, labels
 
 ###############################################################################

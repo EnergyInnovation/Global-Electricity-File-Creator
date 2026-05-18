@@ -6,6 +6,38 @@ The main script is:
 
 - `energy_timeslice_pipeline.py`
 
+The user-facing runner (the only file you should normally edit) is:
+
+- `run_pipeline.py`
+
+## Setup
+
+### 1. Install Python dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+This installs the pipeline's own dependencies (pandas, scikit-learn, openpyxl, xlsxwriter, matplotlib, etc.), the parquet cache backend (`pyarrow`), the Deflate64 codec for the EFS archive (`inflate64`), and **DemandCast's transitive runtime dependencies** (`pycountry`, `pycountry-convert`, `countryinfo`, `entsoe-py`, `timezonefinder`).
+
+DemandCast is used as a git clone under `.vendor/demandcast/` rather than as an installable package — its declared dependencies (~38 packages in `demandcast/pyproject.toml`) are not picked up automatically. We pin only the subset needed for the currently verified country presets (United States, South Korea, China). If you bring a new country preset online and see an error like `No module named 'XYZ'`, add `XYZ` to `requirements.txt` and reinstall.
+
+### 2. Stage data not auto-downloaded by the pipeline
+
+See [Per-Country Manual Setup](#per-country-manual-setup) for the country you plan to run. Most data files auto-download on first use; renewables.ninja weather CSVs, the EPS template tree, and the KROGD demand files for South Korea must be staged manually.
+
+### 3. Configure and run
+
+Edit the settings at the top of [`run_pipeline.py`](run_pipeline.py) (country, year, cache toggle, etc.), then:
+
+```bash
+python run_pipeline.py
+```
+
+Outputs land under `output/<country>_timeslice_results*` and `output/<country>_timeslice_results_EPS/`.
+
+> **Treat all citations, calibrated values, and derived capacity factors as starting points for review.** Verify against primary sources before treating any output as an EI deliverable. Contact **IT & Systems (itsystems@energyinnovation.org)** before installing new external dependencies or automating new data fetches.
+
 ## Primary Goals
 
 The work in this thread focused on four overlapping goals:
@@ -68,7 +100,7 @@ These apply regardless of which country preset you run.
 |---|---|---|---|
 | Mendeley end-use dataset (Zapata/Khanna) | Auto | `data/mendeley/pmd2dchk44-1/` | Downloaded by the pipeline on first use. Source: `https://data.mendeley.com/datasets/pmd2dchk44/1` |
 | Ember annual electricity data | Auto | `data/ember/yearly_full_release_long_format.csv` | Downloaded by the pipeline on first use. Source: `https://ember-energy.org/data/yearly-electricity-data/` |
-| DemandCast helper repo | Auto | `.vendor/demandcast/` | Cloned by the pipeline on first use. Source: `https://github.com/open-energy-transition/demandcast` |
+| DemandCast helper repo | Auto (clone) — but its Python deps are **manual** | `.vendor/demandcast/` | The pipeline clones DemandCast on first use. Its transitive Python dependencies (`pycountry`, `pycountry-convert`, `countryinfo`, `entsoe-py`, `timezonefinder`) are pinned in `requirements.txt`. If you add a new DemandCast retriever, you may need to add its imports too. Source: `https://github.com/open-energy-transition/demandcast` |
 | EPS template tree (`SHELF/`, `SYSHECF/`, RECS workbook) | **Manual** | `../EPS Structure Testing/InputData/elec/` (sibling of repo) | Provided by the EPS team — ask the colleague who set up your EPS Vensim environment. Required for U.S. heating/cooling split and for any template-based EPS export. |
 | Renewables.ninja weather CSVs | **Manual** | `data/weather/ninja-weather-country-{ISO2}-{var}_area_wtd-merra2.csv` | Auto-download is blocked by the renewables.ninja server. Three files per country: `irradiance_surface`, `temperature`, `wind_speed`. Source portal: `https://www.renewables.ninja/`. License: CC-BY 4.0 (verify on the site). |
 
