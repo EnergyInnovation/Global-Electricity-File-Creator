@@ -1,0 +1,15 @@
+State,Sector,Subsector,LocalHourID,LoadMW
+VA,Commercial,other,4985,5966.49197
+VA,Commercial,space heating and cooling,4985,4061.81712
+VA,Commercial,water heating,4985,32.6582
+VA,Industrial,machine drives,4985,1082.67
+VA,Industrial,other,4985,2111.5125304
+VA,Industrial,process heat,4985,1018.64
+VA,Residential,clothes and dish washing/drying,4985,410.4122
+VA,Residential,other,4985,3838.9523
+VA,Residential,space heating and cooling,4985,3808.27
+VA,Residential,water heating,4985,365.799
+VA,Transportation,heavy-duty trucks,4985,0.0
+VA,Transportation,light-duty vehicles,4985,240.1659
+VA,Transportation,medium-duty trucks,4985,0.106069
+VA,Transportation,other,4985,22.0176953

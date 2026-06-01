@@ -1,0 +1,15 @@
+Sector,Subsector,peak_LocalHourID,day_of_year,hour_of_day,peak_MW,mean_MW
+Transportation,heavy-duty trucks,1,1,0,0.0,0.0
+Residential,clothes and dish washing/drying,188,8,19,913.1672,316.4326383835617
+Residential,other,523,22,18,4672.4301,2659.202615455642
+Residential,water heating,776,33,7,1780.46,603.858051130137
+Residential,space heating and cooling,1015,43,6,7003.59,1348.6484823704943
+Commercial,space heating and cooling,4527,189,14,4618.84517,686.6936329142694
+Transportation,medium-duty trucks,4541,190,4,0.147636,0.10270538791095891
+Transportation,other,4541,190,4,31.068525,21.540570615936073
+Commercial,other,4983,208,14,6246.14519,4188.282679369977
+Industrial,process heat,4990,208,21,1130.24,815.5217839041095
+Industrial,machine drives,4990,208,21,1192.14,877.3915342465754
+Transportation,light-duty vehicles,6138,256,17,286.1082,80.84881770114156
+Industrial,other,7262,303,13,2345.78925,1572.5495882175992
+Commercial,water heating,7262,303,13,56.694,27.818937389269404

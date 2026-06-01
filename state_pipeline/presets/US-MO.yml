@@ -1,0 +1,81 @@
+# Preset for Missouri (US-MO)
+# Used by state_pipeline to locate inputs and configure SHELF + SYSHECF generation.
+
+region_code: US-MO
+parent_iso: US
+subregion_type: state
+state_iso2: MO
+display_name: Missouri
+output_slug: US-MO
+
+# Time zone -- Local Standard Time (MO is split CT/CST), no DST, hour-beginning, 8760-hour year
+tz: America/Chicago
+time_basis: CST_fixed_UTC-6
+calendar_year: 2018  # ResStock TMY3 calendar (2018 non-leap, starts Monday)
+
+# Census / RECS division
+census_region: Midwest
+census_division: West North Central
+recs_region: West North Central
+cbecs_region: West North Central
+
+# Geographic bbox (WGS84) -- west, south, east, north
+bbox: [-95.774, 35.996, -89.099, 40.613]
+
+# Climate / season parameterization (Northern Hemisphere defaults)
+season_months:
+  winter: [12, 1, 2]
+  spring: [3, 4, 5]
+  summer: [6, 7, 8]
+  fall:   [9, 10, 11]
+
+# Pipeline parameters
+n_timeslices: 6
+# Clustering uses rep-day reconstruction on net load (cluster_days_repday).
+# Optimizer self-terminates ~10-15 day peak slices; no cap needed.
+# See CLAUDE.md §2 + DECISIONS.md (2026-05-15) for rationale.
+peak_top_n_days: 1  # Initial pinned day per peak slice (the most extreme net-peak day)
+max_peak_days: 365  # Effectively uncapped — rep-day clustering self-terminates
+
+# Industry shape mode: flat (default) for bulk 24/7 industry
+industry_shape_mode: efs
+
+# Cambium curtailment add-back: empty for low-VRE state
+curtailment_addback: {}
+
+# ---- Source paths ----
+sources:
+  bcue_dir: state-eps-data-repository/MO/bldgs/BCEU
+  industry_csv: state-eps-data-repository/MO/indst/BIFUbC/BIFUbC-electricity.csv
+  transport_dir: state-eps-data-repository/MO/trans
+  resstock_dir: ResStock SHELF/ResStock_Upgrade0/state=MO
+  comstock_dir: ResStock SHELF/ComStock_tmy_release1/MO
+  legacy_shelf_dir: state-eps-data-repository/MO/elec/SHELF
+  legacy_syshecf_dir: state-eps-data-repository/MO/elec/SYSHECF
+  efs_zip: data/efs/EFSLoadProfile_Reference_Moderate.zip
+  cambium_hourly_csv: data/cambium22_midcase_state_hourly/Cambium22_MidCase_hourly_MO_2024.csv
+  cambium_annual_csv: data/cambium22_midcase_state_hourly/Cambium22_MidCase_annual_state.csv
+  cambium_year: 2024
+  datacenter_annual_twh: 0.0
+
+# ---- Output paths ----
+outputs:
+  shelf_dir: state-eps-data-repository/MO/elec/SHELF/_python_pipeline
+  syshecf_dir: state-eps-data-repository/MO/elec/SYSHECF/_python_pipeline
+  excel_workbook_demand_shelf: state-eps-data-repository/MO/elec/SHELF/_python_pipeline/MO - Hourly Demand and SHELF.xlsx
+  excel_workbook_syshecf: state-eps-data-repository/MO/elec/SYSHECF/_python_pipeline/MO - SYSHECF.xlsx
+  validation_dir: output/validation/US-MO
+
+# External reference values for cross-checks (Validation tab Section 10)
+external_refs:
+  total_annual_TWh:
+    value: 80.0
+    note: 'EIA SEDS 2022 MO total electricity consumption ~80 TWh; staff verify against current SEDS release'
+
+# ---- Status ----
+status: pilot
+last_validated: null
+notes: |
+  Phase 1 pilot state for v1.2 release. MO has substantial coal generation, growing wind
+  (especially in NW), and modest solar. Climate: humid continental, hot summers + cold winters,
+  generally summer-peaking but winter peaks growing with electrification.

@@ -1,0 +1,116 @@
+# Preset for Virginia (US-VA)
+# Used by state_pipeline to locate inputs and configure SHELF + SYSHECF generation.
+
+region_code: US-VA
+parent_iso: US
+subregion_type: state
+state_iso2: VA
+display_name: Virginia
+output_slug: US-VA
+
+# Time zone — Local Standard Time, no DST, hour-beginning, 8760-hour year
+tz: America/New_York
+time_basis: EST_fixed_UTC-5
+calendar_year: 2018  # ResStock TMY3 calendar (2018 non-leap, starts Monday)
+
+# Census / RECS division
+census_region: South
+census_division: South Atlantic
+recs_region: South Atlantic
+cbecs_region: South Atlantic
+
+# Geographic bbox (WGS84) — west, south, east, north
+bbox: [-83.675, 36.541, -75.241, 39.466]
+
+# Climate / season parameterization (Northern Hemisphere defaults)
+season_months:
+  winter: [12, 1, 2]
+  spring: [3, 4, 5]
+  summer: [6, 7, 8]
+  fall:   [9, 10, 11]
+
+# Pipeline parameters
+n_timeslices: 6
+# Clustering uses rep-day reconstruction on net load (cluster_days_repday).
+# Optimizer self-terminates ~10-15 day peak slices; no cap needed.
+# See CLAUDE.md §2 + DECISIONS.md (2026-05-15) for rationale.
+peak_top_n_days: 1  # Initial pinned day per peak slice (the most extreme net-peak day)
+max_peak_days: 365  # Effectively uncapped — rep-day clustering self-terminates
+
+# Industry shape mode (v1.1):
+#   efs              : original EFS Industrial weather-driven shape
+#   flat (default)   : constant per hour; most defensible for bulk industry
+#   cambium_residual : busbar_load - resstock - comstock; flat fallback if non-physical
+industry_shape_mode: efs
+
+# Cambium curtailment add-back (v1.1):
+#   Cambium 2022 state files have no explicit curtailment columns. Optional per-tech
+#   scaling factor f_t in [0, 0.5]; effective CF = cf_observed / (1 - f_t), clipped.
+#   For VA (low VRE share) leave empty. For CA/TX/etc. set non-zero values from
+#   external curtailment estimates (e.g. CAISO/ERCOT reports).
+curtailment_addback: {}
+  # Example for high-VRE state:
+  # solar-pv: 0.05
+  # onshore-wind: 0.03
+
+# ---- Source paths ----
+# Paths may be absolute or resolved against:
+#   1. cwd
+#   2. the parent of cwd (one level up; where state-eps-data-repository and ResStock SHELF live)
+sources:
+  # Buildings — per-bucket BCEU electricity csvs (urban + rural residential, commercial)
+  bcue_dir: state-eps-data-repository/VA/bldgs/BCEU
+
+  # Industry — annual electricity by NAICS/ISIC (per state)
+  industry_csv: state-eps-data-repository/VA/indst/BIFUbC/BIFUbC-electricity.csv
+
+  # Transportation — folder of per-vehicle-type CSV inputs (per state)
+  transport_dir: state-eps-data-repository/VA/trans
+
+  # ResStock TMY3 (residential building loads)
+  resstock_dir: ResStock SHELF/ResStock_Upgrade0/state=VA
+
+  # ComStock TMY release 1 (commercial building loads)
+  comstock_dir: ResStock SHELF/ComStock_tmy_release1/VA
+
+  # Existing SHELF/SYSHECF templates dir (used to seed non-variable SYSHECF tech profiles)
+  legacy_shelf_dir: state-eps-data-repository/VA/elec/SHELF
+  legacy_syshecf_dir: state-eps-data-repository/VA/elec/SYSHECF
+
+  # EFS for non-building sectors (industrial process detail, transportation shapes)
+  efs_zip: data/efs/EFSLoadProfile_Reference_Moderate.zip
+
+  # Cambium 2022 Mid-case state hourly + annual capacity (single anchor year 2024)
+  cambium_hourly_csv: data/cambium22_midcase_state_hourly/Cambium22_MidCase_hourly_VA_2024.csv
+  cambium_annual_csv: data/cambium22_midcase_state_hourly/Cambium22_MidCase_annual_state.csv
+  cambium_year: 2024
+
+  # Optional: data center annual demand (architected; populated when external source integrated)
+  datacenter_annual_twh: 0.0
+
+# ---- Output paths ----
+outputs:
+  shelf_dir: state-eps-data-repository/VA/elec/SHELF/_python_pipeline
+  syshecf_dir: state-eps-data-repository/VA/elec/SYSHECF/_python_pipeline
+  # v1.2: two consolidated workbooks
+  excel_workbook_demand_shelf: state-eps-data-repository/VA/elec/SHELF/_python_pipeline/VA - Hourly Demand and SHELF.xlsx
+  excel_workbook_syshecf: state-eps-data-repository/VA/elec/SYSHECF/_python_pipeline/VA - SYSHECF.xlsx
+  # Deprecated single-file workbook key (kept commented for reference):
+  # excel_workbook: state-eps-data-repository/VA/elec/SHELF/_python_pipeline/State Hourly Inputs and Timeslice Mapping.xlsx
+  validation_dir: output/validation/US-VA
+
+# External reference values for cross-checks (Validation tab Section 10)
+# Verify against primary sources before relying on these.
+external_refs:
+  total_annual_TWh:
+    value: 128.0
+    note: 'EIA SEDS 2022/2024 VA total electricity consumption ~127-130 TWh; staff verify against current SEDS release'
+
+# ---- Status ----
+status: pilot     # 'pilot' | 'verified' | 'production'
+last_validated: null
+notes: |
+  First state in the pipeline pilot. SHELF mappings locked from prior VA prototype
+  with EPS BCEU AEO conventions. Cambium 2022 weather basis is 2012; ResStock/
+  ComStock weather basis is TMY3 — accept misalignment for v1 smell test (documented
+  in Excel About sheet).

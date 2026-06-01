@@ -1,0 +1,18 @@
+Cambium 2024 MidCase US National 2025 - K6/H24 proper rebuild
+Input: C:\Users\RobbieOrvis\Models\Global Electricity File Creator\data\cambium24_midcase_national\Cambium24_MidCase_hourly_usa_2025.csv
+
+peak_top_n = 5
+max_peak_days = 10
+feature_weight_mode = netload_focus
+summer_months = (6,7,8); winter_months = (11,12,1,2)
+
+NRMSE = 0.070252
+best_seed = 0
+score_by_seed = {0: 0.07025170268742616, 1: 0.07042998639146683, 2: 0.07025170268742616, 3: 0.07025170268742616, 4: 0.07025170268742616, 5: 0.07025170268742616, 10: 0.07025170268742616, 20: 0.07025170268742616, 99: 0.07025170268742616}
+
+days_per_timeslice = {'Winter': 59, 'Spring': 121, 'Summer': 108, 'Fall': 57, 'Summer Peak': 10, 'Winter Peak': 10}
+Summer Peak DOYs = [171, 172, 179, 180, 186, 188, 205, 208, 215, 237]
+Summer Peak dates = ['2025-06-20', '2025-06-21', '2025-06-28', '2025-06-29', '2025-07-05', '2025-07-07', '2025-07-24', '2025-07-27', '2025-08-03', '2025-08-25']
+Winter Peak DOYs = [3, 4, 5, 12, 13, 16, 19, 43, 44, 346]
+Winter Peak dates = ['2025-01-03', '2025-01-04', '2025-01-05', '2025-01-12', '2025-01-13', '2025-01-16', '2025-01-19', '2025-02-12', '2025-02-13', '2025-12-12']
+
