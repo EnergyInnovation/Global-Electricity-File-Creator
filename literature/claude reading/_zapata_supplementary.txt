@@ -1,0 +1,65 @@
+Supplementary information  
+Illustration of biophysical parameters 
+Monthly variation of daylength was implemented for seasonal lighting demand for the residential and service sector as illustrated in Figure 10.
+Figure 10 Monthly variation of daylength for selected regions.
+For obtaining hourly variation of irradiance, the daylight hours were distributed throughout the day using a sinus function centered at an average solar noon of 12:30 hours. Bellow, the monthly curves obtained for Canada and India as an example.
+Figure 11 Monthly patterns of hourly irradiance variation for Canada (left) and India (right).
+Cooling degree hours (CDH) and heating degree hours (HDH) were implemented for obtaining the daily demand patterns for cooling and heating respectively. They were calculated from daily gridded temperature data for 26 world regions as explained in the methodology. CDHs monthly curves obtained for USA and India are shown in Figure 12 and Figure 13 shows the HDHs monthly curves obtained for the Western Europe and Brazil. As Brazil is in the southern hemisphere and closed to the equator, the HDH values are very low and with larger values for the months of Jun, July and August.
+Figure 12 Cooling degree hour for selected months for USA and India
+Figure 13 Heating degree hours per month for Western Europe and Brazil
+6.2 End-use stylized functions and calibration of the model 
+In this section the end-use stylized functions and the hourly patterns obtained are described and compared against the empirical end-use data. Furthermore, monthly variation of the modelled patterns obtained are illustrated in this section for the year 2019. The stylized functions are formulated for the end-uses demand patterns with climate dependence from the residential and service sector. The resulting day patterns from each of the stylized functions, varying per month and type of day, are normalized to the daily sum of electricity demand. Thereafter, an electricity demand ratio between weekday and weekend obtained from the empirical data is applied. Finally, a pattern describing the monthly variation is implemented which is obtained from the climate parameter used for each end-use. 
+6.2.1 Residential sector
+Lighting
+Electricity demand for residential lighting depends on active occupancy profile and normalized irradiance. The stylized function formulated for obtaining hourly demand patterns for lighting varying per type of day is in Equation 3. The constants were optimized to minimize the variance between the model outcome and the empirical data.  
+						(3)
+Where lighting is the lighting demand pattern per hour h for every month m and region r for weekday and weekend, AO is the active occupancy varying for weekday or weekend per hour h, I is the hourly normalized pattern of irradiance varying per region and month. 
+Monthly variation of the lighting demand patterns is illustrated in Figure 14 for Western Europe. For this region there is a large variation of the hourly lighting demand pattern throughout the year. During the winter season there is larger demand for this end-use with longer morning and evening peaks. The average annual pattern per day type and for the same region is illustrated in Figure 15. Further, the modelled pattern (orange line) is compared to the annual average pattern from empirical data (blue line). Differences between the measured and modelled curves are related to the occupancy profile used. The occupancy profile data used, HETUS data [44], for building the stylized functions have a larger sampling size and were gathered at a different time than the empirical electricity demand data (REMODECE campaign).
+Figure 14 Monthly modelled variation of lighting day-pattern for Western Europe region.
+ Figure 15 Comparison of modelled lighting demand pattern with REMODECE measured data for Europe [24].
+ Space heating
+Empirical space heating curves found in the literature [26,36,69] show a clear trend of very low demand during the night and peaks demand during morning and evening hours, highly resembling active occupancy profiles. Therefore, the parameters used are active occupancy profiles and heating degree hours. The stylized function for obtaining space heating hourly patterns per region is found below. The constants were also optimized for this end-use demand equation. After normalizing the patterns obtained for weekdays and weekend days, the seasonal variation component was included. This by making use of a monthly HDD data per region, which is determined in TIMER for the annual heating demand (Isaac & Van Vuuren, 2009).
+														         (4)
+Where AO is the active occupancy varying for weekday or weekend and HDH stands for heating degree hours pattern varying for every month and region.
+Figure 11 illustrates the monthly heating demand patterns for weekend and working days for Western Europe. The months with larger demand are January and December, they also depict slightly larger morning and evening peaks than the other months. 
+Figure 12 illustrates, for the same region, the difference between modelled and empirical patterns for the average annual day pattern. It is important to highlight that the empirical data is coming from Denmark while the modelled patterns are calculated based on HDH from Western Europe. Hence, the difference between the modelled and measured data can be caused by differences in temperatures and consequently the HDH parameter used.
+Figure 16 Monthly modelled variation of heating day-pattern for Western Europe region.
+ Figure 17 Comparison of modelled space heating demand pattern for Europe with a the Denmark average pattern from measured data [36] .
+Space cooling
+The parameters used for modelling residential demand for space cooling are cooling degree hours and total occupancy profile. It is assumed that people make use of air conditioning while sleeping and for this reason the total occupancy profile is implemented. The stylized function obtained for weekend and weekdays is described below. The calibration of this function was performed using empirical data from the USA.
+				(5)
+Where space cooling demand pattern varies per hour h, month m and region r for weekday and weekend, HO is the percentage of population in the residences per hour for weekday or weekend, CDH is the cooling degree hour varying for every month and region.
+Figure 13 illustrates the monthly variation of cooling demand pattern for the USA distinguishing between weekend and working days. During July and August, the demand is as expected higher. Figure 14 shows the yearly average modelled pattern from the USA in comparison to the empirically-based pattern used for calibration [26]. 
+Figure 18 Monthly modelled variation of cooling day-pattern for Western Europe region.
+Figure 19 Comparison of modelled average cooling demand pattern for USA with the average pattern from measured data for the same region [26].
+6.2.2 Water heating for residential and service sector.
+Daily water heating electricity demand is mainly dependent on factors related to people's behavior or service activities. Hence, an average water heating pattern for weekdays and weekend days derived from empirical data is implemented for both the residential and service sector. Figure 21 illustrates the patterns and differences within weekday and weekend days. 
+Figure 20 Weekday and weekend water heating hourly electricity demand pattern, left from residential sector and extracted from Cahill et al., 1992, right for service sector an obtained from EERE, 2013 .
+Seasonal variation for this end-use does depend on ambient temperature for which HDD was implemented as indicated in the equation below for the service sector (Equation 6) and residential sector (Equation 7). In Figure 21 the difference between the modelled monthly pattern and the reference pattern is described for both sectors. 
+ 						(6)
+						(7)
+Figure 21 Comparison of reference and modelled data for hot water demand. Residential hot water demand (left) modelled data is compared to an empirically-based average pattern from USA extracted from  Cahill et al., 1992. Hot water demand for service sector (right) modelled data is compared to the USA reference pattern extracted from EERE, 2013
+6.2.3 Service sector
+Lighting 
+According to studies made of lighting demand in office buildings, there is no relation between irradiance level and lighting hourly pattern while it mainly depends on people's behavior and building occupancy profile [57,58]. Therefore, an average pattern of lighting demand for weekdays and weekend days have been implemented as illustrated in Figure 22. In relation to seasonal variation, according to the hourly reference data from USA [29], there is a lower demand during summer months than during winter months which indicates a dependence on monthly daylength variation. The Equation 8 was formulated for modelling the monthly demand. A comparison of the modelled monthly variation and the reference data used from USA is illustrated in Figure 23.  
+					(8)
+Figure 22 Weekday and weekend lighting  hourly electricity demand pattern  [29].
+Figure 23 Comparison of  reference [29] and modelled data for monthly variation of lighting demand in USA. 
+Space Heating 
+Electric heating hourly pattern is known to depend on the outside temperature [49]. However, there was no relation found between the reference USA database available for this end-use [29] and the parameters implemented for making the stylized functions (hourly biophysical parameter (HDH) and the service occupancy profile). Therefore, the monthly patterns from the reference USA database were implemented for all regions for weekday and weekend days. Figure 24 illustrates the monthly patterns implemented for space heating from winter months as obtained from the USA database [29]. They were combined with the HDD data for accounting monthly variation of electricity demand. 
+Figure 24 Monthly variation of space heating day-pattern implemented for all regions from weekdays and weekend days [29]. 
+Space cooling 
+Space cooling load profile both for service and residential sector depends on two main parameters: occupancy profile of buildings, and on the outside temperature [50]. Therefore, stylized functions depending on these parameters were made as indicated in Equation 10. They enable to obtain day-patterns that vary per month and across regions. Figure 21 illustrates the monthly pattern variation for the USA. Further, a comparison between the reference pattern used for calibrating the stylized function and the modelled pattern obtained is illustrated in figure 22.
+ 			(10)
+Where space cooling varies for region r, month m, and hour h for weekend and weekdays. It is driven by cooling degree hours CDH and service sector building occupancy profile OCC.
+Figure 25 Monthly modelled variation of space cooling day-pattern for USA for weekdays and weekend days. 
+Figure 26 Comparison between the modelled space cooling demand pattern for USA for the month of August with the reference data implemented [29].
+6.3 End-uses without climate dependence
+In this section, information of the end-use patterns without climate dependence implemented is provided. Table 2 and table 3 show the weekday and the weekend hourly patterns implemented. They are normalized to the daily demand. Also, they include the day factor which accounts for demand differences between type of days. Cement and steel industry are industries that for most of their production implement continuous processes which require a steady electricity demand [37,70]. Hence, a continuous pattern was implemented. 
+Table 3 Weekday end-use patterns without climate dependence for hourly demand. 
+Table 4 Weekend end-use patterns without climate dependence for hourly demand.
+6.4 Comparison with empirical data for the month of September
+Figure 27 Comparison of measured and modelled hourly electricity demand patterns of the average weekday and weekend day for the month of September for Europe, USA and Brazil. The years vary per graph depending on the availability of measured data.
+6.5 Sectoral load demand
+Figure 28 Residential and service sector weekday load demand shape for 2019 for Western Europe region for the months of September and February.
+Figure 29 Non stacked sectoral decomposition of load duration curves for selected regions for the year 2019.
