@@ -19,6 +19,17 @@ Note for staff:
     derived capacity factors against primary sources before publishing.
 """
 
+import sys
+# Force UTF-8 on stdout/stderr so status messages containing → ° etc. don't
+# crash on Windows cp1252 consoles. No-op on Python <3.7 or on non-TextIO
+# streams (covered by the try/except).
+try:
+    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stderr.reconfigure(encoding='utf-8')
+except Exception:
+    pass
+
+
 # ============================================================================
 # 1. COUNTRY AND YEAR  (change these almost every run)
 # ============================================================================
@@ -35,7 +46,7 @@ Note for staff:
 #
 # Run the pipeline once to see the full preset table printed to the console.
 # Aliases work too (e.g. 'KR', 'kor', 'southkorea' all resolve to South Korea).
-COUNTRY = 'South Korea'
+COUNTRY = 'China'
 
 # Target year for the synthetic representative-day output.
 #
@@ -68,9 +79,51 @@ N_CLUSTERS = 6
 LAST_N_YEARS = None
 
 # Whether to apply the seasonal-mean calibration step in addition to the
-# annual-level scaling. Almost always desirable — disable only when
-# debugging or comparing a "raw scaled" baseline.
+# annual-level scaling. Only used when CALIBRATION_METHOD = 'level_seasonal'.
+# Ignored when CALIBRATION_METHOD = 'zapata_nnls'.
 SEASONAL_CALIBRATION = True
+
+# Calibration method for matching the Mendeley/Zapata synthetic shapes to
+# DemandCast observed totals.
+#
+#   'level_seasonal' (default, legacy) — multiplicative annual scaling
+#       then per-month and per-peak adjustments. Matches the production
+#       behavior pre-Zapata-integration. Annual mean matches exactly by
+#       construction; hourly NRMSE typically ~1.7–2.0 (worse than naive
+#       mean, since shape is unchanged).
+#
+#   'zapata_nnls' — regenerate the four climate-sensitive end-uses
+#       (residential cooling/heating/lighting + service cooling) from
+#       country-specific weather + HETUS occupancy + Forsythe daylength
+#       using Zapata 2022 stylized functions, then solve monthly NNLS for
+#       end-use weights against observed totals. Hourly NRMSE was 0.67
+#       (Korea 2024) and 1.06 (China 2018) in standalone tests — the
+#       first calibration to beat the naive-mean baseline. Suffers from
+#       basis-collinearity zero-flips that produce NaN/0 cells in SHELF
+#       outputs (e.g. industry going to zero in some timeslices).
+#
+#   'zapata_ridge_nnls' — Path B. Same shape regeneration as zapata_nnls,
+#       but first aligns all 11 basis columns to EPS-extracted per-end-use
+#       MWh/year magnitudes, then solves a ridge-regularized NNLS that
+#       anchors weights to w=1 (= EPS prior). Eliminates the zero-flip
+#       pathology while preserving the climate-sensitive shape signal.
+#       Self-consistent with how EPS consumes SHELF output (EPS provides
+#       magnitudes, our SHELF provides shape). REQUIRES the country preset
+#       to include an 'eps_prior_path' field pointing to a CSV produced by
+#       data/eps_priors/parse_eps_extract.py from the country's EPS run.
+#
+# Requires the country preset to include a 'latitude_deg' field. All 12
+# verified/mapped presets in energy_timeslice_pipeline.py already have it.
+# See zapata_implementation_readme.md for methodology, assumptions, and
+# the full standalone-test result comparison.
+CALIBRATION_METHOD = 'zapata_ridge_nnls'  # 'zapata_nnls'  'level_seasonal'
+
+# Ridge regularization strength for zapata_ridge_nnls. Ignored otherwise.
+#   0.0   — pure NNLS, equivalent to zapata_nnls (no EPS-prior anchoring)
+#   1.0   — equal weight to fit residual and prior deviation (recommended start)
+#   >>1.0 — strong anchoring to EPS prior, suppresses NNLS adjustment
+#   <<1.0 — weak anchoring, NNLS dominates (zero-flip risk returns)
+LAMBDA_RIDGE = 1.0
 
 # Custom path for the main Excel workbook. None = auto-name in output/
 # based on country (e.g. ``output/SouthKorea_timeslice_results.xlsx``).
@@ -270,7 +323,7 @@ COMPARE_PINNED_UNPINNED = False
 # resulting overview plot without paying for the full pipeline.
 #
 # Default False = full pipeline.
-CALIBRATION_ONLY = True
+CALIBRATION_ONLY = False #True
 
 
 # ============================================================================
@@ -337,6 +390,8 @@ def main() -> None:
         'make_plots': MAKE_DIAGNOSTIC_PLOTS,
         'compare_pinned_unpinned': COMPARE_PINNED_UNPINNED,
         'calibration_only': CALIBRATION_ONLY,
+        'calibration_method': CALIBRATION_METHOD,
+        'lambda_ridge': LAMBDA_RIDGE,
     }
     if DATA_DIR is not None:
         kwargs['data_dir'] = DATA_DIR

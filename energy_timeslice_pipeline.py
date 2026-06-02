@@ -304,6 +304,11 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         # before grouping by hour-of-day for SHELF/SYSHECF. EPS expects local
         # time. Verify against the country's actual operating-hour convention.
         'timezone': 'Asia/Seoul',
+        # Seoul-ish; KR is small, single point OK
+        'latitude_deg': 37.5,
+        # Path B (zapata_ridge_nnls): per-end-use MWh/year prior extracted
+        # from EPS-South Korea (eps-southkorea). See data/eps_priors/parse_eps_extract.py.
+        'eps_prior_path': 'data/eps_priors/eps_prior_KR.csv',
         'default_year': 2025,
         'last_n_years': 4,
         'status': 'verified',
@@ -320,6 +325,11 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         # though it geographically spans five. 'Asia/Shanghai' is the IANA
         # name for that single national timezone.
         'timezone': 'Asia/Shanghai',
+        # population-weighted central China; CN spans ~18–53°N
+        'latitude_deg': 32.0,
+        # Path B (zapata_ridge_nnls): per-end-use MWh/year prior extracted
+        # from EPS-China (eps-china-igdp). See data/eps_priors/parse_eps_extract.py.
+        'eps_prior_path': 'data/eps_priors/eps_prior_CN.csv',
         'default_year': 2018,
         'last_n_years': 1,
         'status': 'verified',
@@ -340,6 +350,11 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         # This is a starting point — verify it matches whatever convention
         # the EPS U.S. consumers expect.
         'timezone': 'America/Chicago',
+        # CONUS centroid; spans 25–49°N
+        'latitude_deg': 38.0,
+        # Path B (zapata_ridge_nnls): per-end-use MWh/year prior extracted
+        # from EPS-US (eps-us). See data/eps_priors/parse_eps_extract.py.
+        'eps_prior_path': 'data/eps_priors/eps_prior_US.csv',
         'default_year': 2025,
         'last_n_years': 3,
         'status': 'verified',
@@ -354,6 +369,8 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         'demand_shape_source': 'mendeley',
         # Most populous TZ (Eastern). Canada spans six timezones; for region-specific runs you'd want to refactor.
         'timezone': 'America/Toronto',
+        # population-weighted southern CA; spans 42–82°N
+        'latitude_deg': 50.0,
         'default_year': 2025,
         'last_n_years': 3,
         'status': 'mapped',
@@ -368,6 +385,8 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         'demand_shape_source': 'mendeley',
         # Japan is single-timezone (JST = UTC+9).
         'timezone': 'Asia/Tokyo',
+        # Honshu centroid
+        'latitude_deg': 36.0,
         'default_year': 2025,
         'last_n_years': 3,
         'status': 'mapped',
@@ -382,6 +401,8 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         'demand_shape_source': 'mendeley',
         # India is single-timezone (IST = UTC+5:30).
         'timezone': 'Asia/Kolkata',
+        # population-weighted central IN
+        'latitude_deg': 22.0,
         'default_year': 2025,
         'last_n_years': 3,
         'status': 'mapped',
@@ -396,6 +417,8 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         'demand_shape_source': 'mendeley',
         # Germany is single-timezone (CET/CEST).
         'timezone': 'Europe/Berlin',
+        # DE centroid
+        'latitude_deg': 51.0,
         'default_year': 2025,
         'last_n_years': 3,
         'status': 'mapped',
@@ -410,6 +433,8 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         'demand_shape_source': 'mendeley',
         # Metropolitan France only; overseas territories not modeled.
         'timezone': 'Europe/Paris',
+        # mainland FR centroid
+        'latitude_deg': 47.0,
         'default_year': 2025,
         'last_n_years': 3,
         'status': 'mapped',
@@ -424,6 +449,8 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         'demand_shape_source': 'mendeley',
         # GMT/BST.
         'timezone': 'Europe/London',
+        # UK centroid
+        'latitude_deg': 54.0,
         'default_year': 2025,
         'last_n_years': 3,
         'status': 'mapped',
@@ -438,6 +465,8 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         'demand_shape_source': 'mendeley',
         # Most populous TZ (AEDT/AEST). Australia spans 5+ timezones; for region-specific runs you'd want to refactor.
         'timezone': 'Australia/Sydney',
+        # population-weighted south-east coast; AU is southern hemisphere
+        'latitude_deg': -33.0,
         'default_year': 2025,
         'last_n_years': 3,
         'status': 'mapped',
@@ -452,6 +481,8 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         'demand_shape_source': 'mendeley',
         # Most populous TZ (BRT). Brazil spans four timezones.
         'timezone': 'America/Sao_Paulo',
+        # population-weighted south-east BR
+        'latitude_deg': -15.0,
         'default_year': 2025,
         'last_n_years': 3,
         'status': 'mapped',
@@ -466,6 +497,8 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         'demand_shape_source': 'mendeley',
         # Most populous TZ. Mexico spans four timezones.
         'timezone': 'America/Mexico_City',
+        # MX centroid
+        'latitude_deg': 23.0,
         'default_year': 2025,
         'last_n_years': 3,
         'status': 'mapped',
@@ -1792,6 +1825,9 @@ def generate_full_pipeline_for_preset(
         efs_electrification=preset.get('efs_electrification', 'Reference'),
         efs_technology_advancement=preset.get('efs_technology_advancement', 'Moderate'),
         country_timezone=preset.get('timezone'),
+        latitude_deg=preset.get('latitude_deg'),
+        eps_prior_path=preset.get('eps_prior_path'),
+        lambda_ridge=preset.get('lambda_ridge', kwargs.pop('lambda_ridge', 1.0)),
         **kwargs,
     )
 
@@ -3117,6 +3153,10 @@ def generate_full_pipeline_for_country(
     make_plots: bool = True,
     compare_pinned_unpinned: bool = False,
     calibration_only: bool = False,
+    latitude_deg: Optional[float] = None,
+    calibration_method: str = 'level_seasonal',
+    eps_prior_path: Optional[str] = None,
+    lambda_ridge: float = 1.0,
     **kwargs,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series]:
     """
@@ -3304,26 +3344,184 @@ def generate_full_pipeline_for_country(
         f"(mean {float(real_demand_filtered.mean()):,.0f} MW)",
         t=_t,
     )
-    # Calibrate synthetic load to match average real demand over the selected years
+    # Calibrate synthetic load to match observed demand. Two methods supported:
+    #   'level_seasonal' (default, legacy) — multiplicative annual scaling then
+    #       per-month/per-peak adjustments. Implemented in calibrate_synthetic_load
+    #       + calibrate_seasonal_enduse_load.
+    #   'zapata_nnls' — regenerate the 4 climate-sensitive end-uses from weather
+    #       + occupancy + Forsythe daylength via Zapata 2022 stylized functions,
+    #       then solve monthly NNLS for end-use weights to fit observed totals.
+    #       Substantially better hourly NRMSE in standalone tests; see
+    #       zapata_implementation_readme.md for methodology and result comparison.
     _synth_load_mean = float(pd.to_numeric(df_synthetic['load'], errors='coerce').mean())
     _real_load_mean = float(pd.to_numeric(real_demand_filtered, errors='coerce').mean())
     _level_multiplier = (_real_load_mean / _synth_load_mean) if _synth_load_mean else float('nan')
-    _status(
-        'calibrate-load',
-        f"level scaling: synthetic mean {_synth_load_mean:,.0f} MW × "
-        f"{_level_multiplier:.2f} → {_real_load_mean:,.0f} MW",
-    )
-    df_scaled = calibrate_synthetic_load(df_synthetic, real_demand_filtered, load_col='load')
-    df_calibrated = df_scaled
-    if seasonal_calibration:
-        df_calibrated = calibrate_seasonal_enduse_load(
-            df_scaled,
-            real_demand_filtered,
-            load_col='load',
+    _status('calibrate-load', f"method: {calibration_method}")
+
+    if calibration_method == 'zapata_nnls':
+        if latitude_deg is None:
+            raise ValueError(
+                "calibration_method='zapata_nnls' requires latitude_deg, but none "
+                "was supplied. Add a 'latitude_deg' field to the country preset, "
+                "or pass it directly to generate_full_pipeline_for_country."
+            )
+        # Load weather early for shape regeneration. Single target year — the
+        # Zapata stylized functions need country-specific weather covering the
+        # synthetic year only. The CF computation later re-uses the cache (via
+        # load_weather_data) for the calibration window of years.
+        _t_zw = time.perf_counter()
+        _status('calibrate-load', f"loading target-year weather for Zapata shape regeneration (lat {latitude_deg}°)")
+        _zapata_weather = load_weather_data(
+            weather_dir,
+            country_iso2,
+            ['temperature', 'irradiance_surface'],
+            weight,
+            dataset,
+            use_cache=use_cache,
+            cache_dir=cache_dir,
         )
-        _status('calibrate-load', "seasonal calibration applied (monthly-mean RMSE → ~0)")
+        # Localize to country TZ, strip tz, filter to the synthetic year so
+        # the index aligns with df_synthetic (naive local time).
+        if country_timezone:
+            if _zapata_weather.index.tz is None:
+                _zapata_weather.index = _zapata_weather.index.tz_localize('UTC')
+            _zapata_weather.index = _zapata_weather.index.tz_convert(country_timezone)
+        if _zapata_weather.index.tz is not None:
+            _zapata_weather.index = _zapata_weather.index.tz_localize(None)
+        _zapata_weather = _zapata_weather[_zapata_weather.index.year == year]
+        if _zapata_weather.empty:
+            raise ValueError(
+                f"No weather rows for {country_iso2} year {year}; cannot build Zapata basis. "
+                "Verify data/weather/ninja-weather-country-{ISO2}-*.csv covers the target year."
+            )
+        _status(
+            'calibrate-load',
+            f"building Zapata hybrid basis  ({len(_zapata_weather):,} hours × stylized funcs)",
+        )
+        _df_basis = build_zapata_hybrid_basis(
+            df_synthetic, _zapata_weather, latitude_deg=latitude_deg,
+        )
+        _zapata_end_use_cols = [
+            'residential_cooling', 'residential_heating', 'residential_lighting',
+            'residential_waterheating', 'residential_other',
+            'service_cooling', 'service_heating', 'service_waterheating',
+            'service_other', 'industry', 'transport',
+        ]
+        _status('calibrate-load', "solving monthly NNLS against observed totals")
+        df_calibrated, _zapata_weights = calibrate_via_monthly_nnls(
+            _df_basis, real_demand_filtered,
+            end_use_cols=[c for c in _zapata_end_use_cols if c in _df_basis.columns],
+        )
+        df_scaled = df_calibrated  # alias for downstream metric code referencing df_scaled
+        _status(
+            'calibrate-load',
+            f"Zapata-NNLS calibrated load: mean {df_calibrated['load'].mean():,.0f} MW  "
+            f"peak {df_calibrated['load'].max():,.0f} MW",
+            t=_t_zw,
+        )
+    elif calibration_method == 'zapata_ridge_nnls':
+        # Path B: regenerate climate-sensitive shapes, align all columns to
+        # country-specific EPS BAU magnitudes, then solve ridge-regularized
+        # monthly NNLS. Anchors weights to the EPS prior (w=1 ≡ EPS share
+        # is correct), preventing the basis-collinearity zero-flips that
+        # plague plain NNLS. See "Path B" comment block before
+        # load_eps_magnitude_prior for the rationale and EPS.mdl context.
+        if latitude_deg is None:
+            raise ValueError(
+                "calibration_method='zapata_ridge_nnls' requires latitude_deg, but none "
+                "was supplied. Add a 'latitude_deg' field to the country preset, "
+                "or pass it directly to generate_full_pipeline_for_country."
+            )
+        if eps_prior_path is None:
+            raise ValueError(
+                "calibration_method='zapata_ridge_nnls' requires eps_prior_path. "
+                "Add an 'eps_prior_path' field to the country preset pointing to "
+                "data/eps_priors/eps_prior_<ISO2>.csv (extracted via "
+                "data/eps_priors/parse_eps_extract.py)."
+            )
+        _t_zw = time.perf_counter()
+        _status('calibrate-load', f"loading target-year weather for Zapata shape regeneration (lat {latitude_deg}°)")
+        _zapata_weather = load_weather_data(
+            weather_dir,
+            country_iso2,
+            ['temperature', 'irradiance_surface'],
+            weight,
+            dataset,
+            use_cache=use_cache,
+            cache_dir=cache_dir,
+        )
+        if country_timezone:
+            if _zapata_weather.index.tz is None:
+                _zapata_weather.index = _zapata_weather.index.tz_localize('UTC')
+            _zapata_weather.index = _zapata_weather.index.tz_convert(country_timezone)
+        if _zapata_weather.index.tz is not None:
+            _zapata_weather.index = _zapata_weather.index.tz_localize(None)
+        _zapata_weather = _zapata_weather[_zapata_weather.index.year == year]
+        if _zapata_weather.empty:
+            raise ValueError(
+                f"No weather rows for {country_iso2} year {year}; cannot build Zapata basis."
+            )
+        _status('calibrate-load',
+                f"building Zapata hybrid basis  ({len(_zapata_weather):,} hours × stylized funcs)")
+        _df_basis_raw = build_zapata_hybrid_basis(
+            df_synthetic, _zapata_weather, latitude_deg=latitude_deg,
+        )
+        _zapata_end_use_cols = [
+            'residential_cooling', 'residential_heating', 'residential_lighting',
+            'residential_waterheating', 'residential_other',
+            'service_cooling', 'service_heating', 'service_waterheating',
+            'service_other', 'industry', 'transport',
+        ]
+        _zapata_cols_present = [c for c in _zapata_end_use_cols if c in _df_basis_raw.columns]
+
+        _status('calibrate-load', f"loading EPS magnitude prior from {eps_prior_path}")
+        eps_prior = load_eps_magnitude_prior(eps_prior_path, target_year=year)
+        _status(
+            'calibrate-load',
+            f"EPS prior: {len(eps_prior)} end-uses covering "
+            f"{sum(eps_prior.values()):,.0f} MWh/yr",
+        )
+        _df_basis, _scales = align_basis_to_prior(
+            _df_basis_raw, eps_prior, end_use_cols=_zapata_cols_present, verbose=True,
+        )
+        _status(
+            'calibrate-load',
+            f"solving monthly RIDGE NNLS (lambda={lambda_ridge}) against observed totals",
+        )
+        df_calibrated, _ridge_weights = calibrate_via_monthly_ridge_nnls(
+            _df_basis, real_demand_filtered,
+            end_use_cols=_zapata_cols_present,
+            lambda_ridge=lambda_ridge,
+        )
+        df_scaled = df_calibrated
+        _status(
+            'calibrate-load',
+            f"Zapata-Ridge calibrated load: mean {df_calibrated['load'].mean():,.0f} MW  "
+            f"peak {df_calibrated['load'].max():,.0f} MW",
+            t=_t_zw,
+        )
+    elif calibration_method == 'level_seasonal':
+        _status(
+            'calibrate-load',
+            f"level scaling: synthetic mean {_synth_load_mean:,.0f} MW × "
+            f"{_level_multiplier:.2f} → {_real_load_mean:,.0f} MW",
+        )
+        df_scaled = calibrate_synthetic_load(df_synthetic, real_demand_filtered, load_col='load')
+        df_calibrated = df_scaled
+        if seasonal_calibration:
+            df_calibrated = calibrate_seasonal_enduse_load(
+                df_scaled,
+                real_demand_filtered,
+                load_col='load',
+            )
+            _status('calibrate-load', "seasonal calibration applied (monthly-mean RMSE → ~0)")
+        else:
+            _status('calibrate-load', "seasonal calibration skipped (using level-scaled only)")
     else:
-        _status('calibrate-load', "seasonal calibration skipped (using level-scaled only)")
+        raise ValueError(
+            f"Unknown calibration_method={calibration_method!r}; expected "
+            "'level_seasonal', 'zapata_nnls', or 'zapata_ridge_nnls'."
+        )
 
     # ---- Calibration-overview plot (optional, can also short-circuit the run) ----
     # We resolve the output path early so the calibration plot has somewhere
@@ -4304,6 +4502,639 @@ def fetch_demand_data_demandcast(
             series = series[series.index <= end]
 
     return series
+
+
+###############################################################################
+# Zapata-based calibration  (Zapata et al., Energy 258 (2022) 124741)
+#
+# Implementation notes:
+#   * The four "climate-sensitive" end-uses (residential cooling, residential
+#     heating, residential lighting, service cooling) are REGENERATED from
+#     country-specific weather + occupancy + Forsythe daylength using the
+#     verbatim closed-form equations from the paper's online supplementary.
+#   * The other seven Mendeley end-uses keep their empirical hourly patterns;
+#     the paper says their HOURLY variation is empirical-not-stylized.
+#   * Calibration to observed totals is done via monthly non-negative least
+#     squares (NNLS) on the hybrid basis.
+#
+# See ``zapata_implementation_readme.md`` for the full methodology write-up,
+# equation references, and result comparison. Treat the constants below
+# (×7, /17.9, /12.43, etc.) as Zapata-fit against European/USA empirical
+# data; applying them unchanged to any new country inherits that bias.
+###############################################################################
+
+# Reference temperature for cooling- and heating-degree-hours.
+ZAPATA_REF_TEMP_C = 18.0
+
+# Climate-sensitive end-uses with stylized hourly functions per Zapata.
+ZAPATA_CLIMATE_SENSITIVE_COLS = (
+    'residential_cooling',
+    'residential_heating',
+    'residential_lighting',
+    'service_cooling',
+)
+
+# HETUS-style hourly occupancy profiles (hand-tuned approximations of paper
+# Fig. 3). Four profiles per sector: active/total × weekday/weekend.
+ZAPATA_RES_ACTIVE_WEEKDAY = np.array([
+    0.03, 0.02, 0.02, 0.02, 0.03, 0.10,
+    0.35, 0.55, 0.50, 0.40, 0.32, 0.30,
+    0.32, 0.30, 0.28, 0.30, 0.45, 0.65,
+    0.80, 0.88, 0.85, 0.65, 0.35, 0.10,
+])
+ZAPATA_RES_ACTIVE_WEEKEND = np.array([
+    0.05, 0.03, 0.03, 0.03, 0.04, 0.07,
+    0.18, 0.40, 0.60, 0.70, 0.72, 0.72,
+    0.68, 0.65, 0.62, 0.65, 0.70, 0.78,
+    0.85, 0.88, 0.85, 0.70, 0.45, 0.20,
+])
+ZAPATA_RES_TOTAL_WEEKDAY = np.array([
+    0.97, 0.98, 0.99, 0.99, 0.99, 0.97,
+    0.90, 0.78, 0.55, 0.40, 0.30, 0.28,
+    0.32, 0.30, 0.28, 0.30, 0.45, 0.65,
+    0.85, 0.93, 0.96, 0.97, 0.97, 0.97,
+])
+ZAPATA_RES_TOTAL_WEEKEND = np.array([
+    0.97, 0.98, 0.98, 0.98, 0.98, 0.97,
+    0.92, 0.85, 0.75, 0.80, 0.82, 0.82,
+    0.80, 0.78, 0.78, 0.80, 0.82, 0.85,
+    0.92, 0.95, 0.96, 0.97, 0.96, 0.96,
+])
+ZAPATA_SVC_WEEKDAY = np.array([
+    0.05, 0.05, 0.05, 0.05, 0.05, 0.10,
+    0.30, 0.60, 0.85, 0.95, 0.98, 0.95,
+    0.85, 0.90, 0.95, 0.93, 0.85, 0.65,
+    0.40, 0.20, 0.10, 0.08, 0.05, 0.05,
+])
+ZAPATA_SVC_WEEKEND = np.array([
+    0.03, 0.03, 0.03, 0.03, 0.03, 0.05,
+    0.10, 0.18, 0.25, 0.32, 0.38, 0.40,
+    0.40, 0.38, 0.35, 0.30, 0.25, 0.18,
+    0.12, 0.08, 0.05, 0.04, 0.03, 0.03,
+])
+
+
+def _zapata_forsythe_daylength_hours(latitude_deg: float, day_of_year: int) -> float:
+    """Forsythe et al. (1995) daylength formula (paper ref [59])."""
+    import math as _math
+    lat_rad = _math.radians(latitude_deg)
+    P = _math.asin(
+        0.39795 * _math.cos(
+            0.2163108 + 2 * _math.atan(0.9671396 * _math.tan(0.00860 * (day_of_year - 186)))
+        )
+    )
+    arg = (
+        (_math.sin(_math.radians(0.8333)) + _math.sin(lat_rad) * _math.sin(P))
+        / (_math.cos(lat_rad) * _math.cos(P))
+    )
+    if arg > 1.0:
+        return 0.0
+    if arg < -1.0:
+        return 24.0
+    return 24.0 - (24.0 / _math.pi) * _math.acos(arg)
+
+
+def _zapata_forsythe_irradiance_pattern_24h(
+    latitude_deg: float, day_of_year: int,
+) -> np.ndarray:
+    """Synthetic 24h irradiance pattern: half-sinus from sunrise to sunset,
+    centred at 12:30 local. Per paper Section 2.1.2 (p. 5), used as BP for
+    residential lighting instead of measured irradiance."""
+    import math as _math
+    D = _zapata_forsythe_daylength_hours(latitude_deg, day_of_year)
+    if D <= 0:
+        return np.zeros(24)
+    if D >= 24:
+        return np.ones(24)
+    sunrise = 12.5 - D / 2.0
+    sunset = 12.5 + D / 2.0
+    pattern = np.zeros(24)
+    for h in range(24):
+        h_mid = h + 0.5
+        if sunrise < h_mid < sunset:
+            pattern[h] = _math.sin(_math.pi * (h_mid - sunrise) / D)
+    return pattern
+
+
+# ---------- Stylized functions f_e (Zapata 2022 supplementary, verbatim) ----------
+
+def _zapata_residential_lighting(
+    occ_active: np.ndarray, irr_pattern: np.ndarray,
+) -> np.ndarray:
+    """Eq. 3 (supplementary):
+        Lighting = (AO + 0.15) / min(1, max(0.3, I/0.4))
+    """
+    denom = np.minimum(1.0, np.maximum(0.3, irr_pattern / 0.4))
+    return (occ_active + 0.15) / denom
+
+
+def _zapata_residential_heating(
+    occ_active: np.ndarray, hdh: np.ndarray,
+    hours: np.ndarray, is_weekend: np.ndarray,
+) -> np.ndarray:
+    """Eqs. 4 (supplementary), weekday and weekend variants with morning-peak window."""
+    weekday_morning = (~is_weekend) & (hours >= 5) & (hours <= 10)
+    weekend_morning = is_weekend & (hours >= 5) & (hours <= 12)
+    morning = weekday_morning | weekend_morning
+    ao_term = np.where(
+        morning,
+        np.maximum(0.01, occ_active + 0.4),
+        np.maximum(0.01, occ_active),
+    )
+    weekend_offpeak = is_weekend & ~weekend_morning
+    hdh_scaled = np.where(weekend_offpeak, 1.1 * hdh / 17.9, hdh / 17.9)
+    hdh_term = np.maximum(0.6, hdh_scaled)
+    return ao_term + hdh_term
+
+
+def _zapata_residential_cooling(
+    occ_total: np.ndarray, cdh: np.ndarray,
+) -> np.ndarray:
+    """Residential AC (supplementary, unnumbered):  HO × max(0.01, CDH × 7)."""
+    return occ_total * np.maximum(0.01, cdh * 7.0)
+
+
+def _zapata_service_cooling(
+    occ_svc: np.ndarray, cdh: np.ndarray, is_weekend: np.ndarray,
+) -> np.ndarray:
+    """Eqs. 8 & 9 (supplementary):
+        Weekday: CDH/12.43 + 0.5 + 0.6 × OCC
+        Weekend: CDH/12.43 + 0.5 + 0.2 × OCC
+    """
+    occ_scale = np.where(is_weekend, 0.2, 0.6)
+    return cdh / 12.43 + 0.5 + occ_scale * occ_svc
+
+
+def _zapata_broadcast_occupancy(
+    profile_weekday: np.ndarray, profile_weekend: np.ndarray,
+    hours: np.ndarray, is_weekend: np.ndarray,
+) -> np.ndarray:
+    """Pick the right HETUS profile per hour based on day-of-week."""
+    return np.where(is_weekend, profile_weekend[hours], profile_weekday[hours])
+
+
+def build_zapata_hybrid_basis(
+    mendeley_df: pd.DataFrame,
+    weather_df: pd.DataFrame,
+    latitude_deg: float,
+) -> pd.DataFrame:
+    """Assemble the Zapata hybrid basis: 4 climate-sensitive columns
+    regenerated from weather + occupancy + Forsythe daylength, plus the
+    other 7 Mendeley end-uses kept as empirical patterns.
+
+    Both inputs must be on the SAME naive (local-time) hourly index. Returns
+    a DataFrame indexed identically with all 11 end-use columns plus a
+    ``load`` column = sum across end-uses.
+
+    Parameters
+    ----------
+    mendeley_df : DataFrame
+        Output of ``load_enduse_data_mendeley`` for the target year and
+        region (naive hourly index, local time).
+    weather_df : DataFrame
+        Hourly weather DataFrame with at least a ``temperature`` column
+        (°C). Index must align with ``mendeley_df.index`` after stripping
+        timezone information.
+    latitude_deg : float
+        Latitude used for the Forsythe daylength term (degrees, +N).
+    """
+    if 'temperature' not in weather_df.columns:
+        raise KeyError(
+            "build_zapata_hybrid_basis requires weather_df['temperature']; "
+            f"got columns {list(weather_df.columns)}."
+        )
+
+    # Align weather to Mendeley index (drop tz if present). Both should be
+    # the same local-time naive hourly grid by the caller's contract.
+    w = weather_df.copy()
+    if getattr(w.index, 'tz', None) is not None:
+        w.index = w.index.tz_localize(None)
+    w = w.reindex(mendeley_df.index)
+    if w['temperature'].isna().any():
+        raise ValueError(
+            "weather_df cannot be aligned to mendeley_df index without NaN "
+            "after reindex — caller must ensure both cover the same year "
+            "and use matching naive local-time hour-beginning indices."
+        )
+
+    idx = mendeley_df.index
+    temp_C = w['temperature'].to_numpy(dtype=float)
+    hours = (idx.hour.to_numpy() if hasattr(idx.hour, 'to_numpy')
+             else np.asarray(idx.hour))
+    days = (idx.dayofyear.to_numpy() if hasattr(idx.dayofyear, 'to_numpy')
+            else np.asarray(idx.dayofyear))
+    is_weekend = idx.dayofweek.to_numpy() >= 5
+
+    occ_res_total = _zapata_broadcast_occupancy(
+        ZAPATA_RES_TOTAL_WEEKDAY, ZAPATA_RES_TOTAL_WEEKEND, hours, is_weekend,
+    )
+    occ_res_active = _zapata_broadcast_occupancy(
+        ZAPATA_RES_ACTIVE_WEEKDAY, ZAPATA_RES_ACTIVE_WEEKEND, hours, is_weekend,
+    )
+    occ_svc = _zapata_broadcast_occupancy(
+        ZAPATA_SVC_WEEKDAY, ZAPATA_SVC_WEEKEND, hours, is_weekend,
+    )
+
+    CDH = np.maximum(temp_C - ZAPATA_REF_TEMP_C, 0.0)
+    HDH = np.maximum(ZAPATA_REF_TEMP_C - temp_C, 0.0)
+
+    # Forsythe irradiance pattern, cached by day-of-year.
+    pattern_by_doy = {
+        int(d): _zapata_forsythe_irradiance_pattern_24h(latitude_deg, int(d))
+        for d in np.unique(days)
+    }
+    irr_pattern_hourly = np.asarray([
+        pattern_by_doy[int(d)][int(h)] for d, h in zip(days, hours)
+    ], dtype=float)
+
+    basis = mendeley_df.copy()
+    basis['residential_cooling'] = _zapata_residential_cooling(occ_res_total, CDH)
+    basis['residential_heating'] = _zapata_residential_heating(
+        occ_res_active, HDH, hours, is_weekend,
+    )
+    basis['residential_lighting'] = _zapata_residential_lighting(
+        occ_res_active, irr_pattern_hourly,
+    )
+    basis['service_cooling'] = _zapata_service_cooling(occ_svc, CDH, is_weekend)
+
+    # Recompute totals and load = sum of end-use components.
+    basis = _recompute_enduse_totals(basis)
+    return basis
+
+
+def calibrate_via_monthly_nnls(
+    basis_df: pd.DataFrame,
+    real_series: pd.Series,
+    end_use_cols: Iterable[str],
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Solve monthly NNLS to find non-negative end-use weights that best
+    fit observed totals. Returns:
+
+      * a calibrated DataFrame with the same end-use columns as ``basis_df``,
+        each scaled by its NNLS weight for that hour's month; plus a
+        recomputed ``load`` column = sum of calibrated components.
+      * a weights DataFrame with columns 'month', 'hours_in_month',
+        'residual_norm_mw', and one column per end-use.
+
+    The function expects ``basis_df.index`` to be naive local-time hourly
+    and ``real_series`` to cover the same period (caller should align
+    them first; the function does an inner-join on indices for safety).
+    """
+    from scipy.optimize import nnls as _nnls
+
+    end_use_cols = list(end_use_cols)
+    missing = [c for c in end_use_cols if c not in basis_df.columns]
+    if missing:
+        raise KeyError(f"basis_df missing end-use columns: {missing}")
+
+    # Align: strip tz info on the real series if present, then inner-join
+    # on index.
+    rs = real_series.copy()
+    if getattr(rs.index, 'tz', None) is not None:
+        rs.index = rs.index.tz_localize(None)
+    rs = rs.groupby(rs.index).mean().sort_index()
+
+    common = basis_df.index.intersection(rs.index)
+    if len(common) == 0:
+        raise ValueError(
+            "No overlapping timestamps between basis_df and real_series for NNLS."
+        )
+
+    X_full = basis_df.loc[common, end_use_cols].astype(float)
+    y_full = rs.loc[common].astype(float)
+    months = pd.Series(common, index=common).dt.month
+
+    weights_rows: list[Dict[str, Any]] = []
+    monthly_weights: Dict[int, np.ndarray] = {}
+    for month, idx_in_month in months.groupby(months).groups.items():
+        X = X_full.loc[idx_in_month].to_numpy()
+        y = y_full.loc[idx_in_month].to_numpy()
+        if X.size == 0 or y.size == 0:
+            continue
+        w, residual_norm = _nnls(X, y)
+        monthly_weights[int(month)] = w
+        weights_rows.append({
+            'month': int(month),
+            'hours_in_month': int(len(idx_in_month)),
+            'residual_norm_mw': float(residual_norm),
+            **{col: float(w_i) for col, w_i in zip(end_use_cols, w)},
+        })
+    weights_df = pd.DataFrame(weights_rows)
+
+    # Apply weights to the FULL basis_df. For each (month, end-use) pair,
+    # multiply the basis_df column by the NNLS weight for that month. Hours
+    # in a month with no NNLS solve (real_series didn't cover it) get 0.0;
+    # caller should warn in that case rather than fabricating values.
+    #
+    # IMPORTANT: do NOT fall back to the raw basis_df value when the NNLS
+    # weight is zero — NNLS can legitimately produce a zero weight, and
+    # falling back to the unscaled basis (which may be in Mendeley raw
+    # units ~1e8) would massively inflate the output. The correct
+    # interpretation of a zero weight is "this end-use contributes nothing
+    # this month," and the calibrated column should reflect that.
+    calibrated = basis_df.copy()
+    basis_months = pd.Series(basis_df.index, index=basis_df.index).dt.month.values
+    for col_idx, col in enumerate(end_use_cols):
+        # Map each hour's month → weight (0.0 if month not in monthly_weights)
+        weight_for_hour = np.asarray([
+            monthly_weights.get(int(m), np.zeros(len(end_use_cols)))[col_idx]
+            for m in basis_months
+        ], dtype=float)
+        calibrated[col] = basis_df[col].astype(float).to_numpy() * weight_for_hour
+
+    calibrated = _recompute_enduse_totals(calibrated)
+    return calibrated, weights_df
+
+
+# ============================================================================
+# Path B — EPS-anchored ridge NNLS calibration
+# ----------------------------------------------------------------------------
+# Background: the production zapata_nnls method (Path A) suffers from
+# basis-collinearity zero-flips. NNLS picks one column as a "flat baseload"
+# stand-in and zeros others in some months, producing NaN/0 cells in the
+# SHELF output (e.g. industry shape goes to 0 in winter/spring for China,
+# which then propagates as zero industrial hourly demand in those timeslices
+# when EPS consumes the SHELF).
+#
+# Ridge regularization fixes this by adding a soft prior that each end-use's
+# weight should stay close to 1.0 (in aligned-column units). The prior comes
+# from a country-specific EPS BAU sectoral demand extract — see
+# data/eps_priors/ for the extraction methodology. Because EPS itself
+# provides the magnitudes that get multiplied by SHELF shapes downstream,
+# anchoring our basis to EPS's own per-end-use magnitudes makes the entire
+# pipeline self-consistent with how its output will be consumed.
+#
+# Key insight (verified by reading EPS.mdl line 12716-12749): SHELF files
+# in EPS are SHAPE ONLY — header reads "Unit: dimensionless (ratio of
+# electricity demand in this hour to annual demand)". EPS multiplies them
+# by BAU [Sector] Electricity Demand internally. So the role of the
+# magnitude alignment is purely to make NNLS well-conditioned, not to
+# ensure correct magnitudes in the final output (those come from EPS).
+# ============================================================================
+
+def load_eps_magnitude_prior(
+    prior_csv_path: str,
+    target_year: int,
+) -> Dict[str, float]:
+    """Load per-end-use MWh/year magnitudes from an EPS BAU prior CSV.
+
+    The CSV must have columns ``end_use``, ``year``, ``eps_mwh_per_year``
+    (long format). Produced by ``data/eps_priors/parse_eps_extract.py``
+    against the country's EPS Vensim run.
+
+    Parameters
+    ----------
+    prior_csv_path : str
+        Path to the EPS prior CSV (per-country, e.g.
+        ``data/eps_priors/eps_prior_CN.csv``).
+    target_year : int
+        Calibration year. If the EPS run does not cover this year, the
+        nearest available year is used (with a printed warning).
+
+    Returns
+    -------
+    Dict[str, float]
+        Mapping {end_use_name: MWh_per_year_for_target_year}.
+    """
+    if not os.path.exists(prior_csv_path):
+        raise FileNotFoundError(
+            f"EPS prior CSV not found: {prior_csv_path}. Run "
+            "data/eps_priors/parse_eps_extract.py against the country's "
+            "EPS Vensim output first."
+        )
+    df = pd.read_csv(prior_csv_path)
+    required = {'end_use', 'year', 'eps_mwh_per_year'}
+    missing = required - set(df.columns)
+    if missing:
+        raise ValueError(
+            f"EPS prior CSV {prior_csv_path} missing columns: {missing}"
+        )
+    available_years = sorted(df['year'].unique())
+    if target_year in available_years:
+        used_year = target_year
+    else:
+        used_year = min(available_years, key=lambda y: abs(y - target_year))
+        print(
+            f"[eps-prior] WARNING: target year {target_year} not in EPS prior "
+            f"(available {min(available_years)}-{max(available_years)}); "
+            f"using nearest year {used_year}"
+        )
+    yr_df = df[df['year'] == used_year]
+    return {row['end_use']: float(row['eps_mwh_per_year']) for _, row in yr_df.iterrows()}
+
+
+def align_basis_to_prior(
+    basis_df: pd.DataFrame,
+    prior: Dict[str, float],
+    end_use_cols: Iterable[str],
+    verbose: bool = True,
+) -> Tuple[pd.DataFrame, Dict[str, float]]:
+    """Per-column rescale ``basis_df`` so each end-use's annual MEAN matches
+    the EPS prior MWh/year converted to MW (MWh/yr ÷ 8760).
+
+    After alignment, every aligned column has mean ≈ target_mean_MW, so a
+    ridge-prior weight of 1.0 on each column is meaningful: w=1 reproduces
+    the EPS prior's relative share, w!=1 means NNLS overrode the prior.
+
+    End-uses present in ``end_use_cols`` but not in ``prior`` are left
+    unscaled (with a warning).
+
+    Returns
+    -------
+    aligned_df : DataFrame
+        Copy of basis_df with the end-use columns rescaled.
+    scale_factors : Dict[str, float]
+        The per-column multiplier applied (target_mean / current_mean).
+    """
+    hours_per_year = 8760.0
+    end_use_cols = list(end_use_cols)
+    aligned = basis_df.copy()
+    scale_factors: Dict[str, float] = {}
+
+    # Fallback magnitude for columns NOT in the EPS prior (e.g. waterheating,
+    # which EPS folds into 'appliances' or 'other component' and doesn't track
+    # separately). Use the median of the priored targets — keeps the column
+    # at a comparable magnitude so ridge NNLS treats it on the same footing
+    # as the other end-uses rather than letting its raw Mendeley magnitude
+    # (which can be 10⁸×) dominate the basis.
+    prior_means_mw = [v / hours_per_year for v in prior.values() if v > 0]
+    fallback_target_mw = float(np.median(prior_means_mw)) if prior_means_mw else 1.0
+
+    if verbose:
+        print(f"[eps-prior] aligning {len(end_use_cols)} basis columns to EPS magnitudes:")
+        print(f"[eps-prior]   fallback magnitude for no-prior columns: "
+              f"{fallback_target_mw:,.4g} MW (median of priored targets)")
+        print(f"  {'end_use':<26} {'current_mean':>14} {'target_mean_MW':>16} {'scale':>14}")
+
+    for col in end_use_cols:
+        if col not in basis_df.columns:
+            continue
+        current_mean = float(pd.to_numeric(basis_df[col], errors='coerce').mean())
+        if col not in prior:
+            # No EPS prior: scale to the fallback magnitude so this column
+            # doesn't dominate the basis with its raw Mendeley units.
+            target_mean_mw = fallback_target_mw
+            label = '<fallback>'
+        else:
+            target_mean_mw = prior[col] / hours_per_year
+            label = None
+        if current_mean <= 0:
+            if verbose:
+                print(f"  {col:<26} {current_mean:>14.4g} {target_mean_mw:>16.4g} "
+                      f"{'<degenerate>':>14}")
+            scale_factors[col] = 1.0
+            continue
+        s = target_mean_mw / current_mean
+        aligned[col] = basis_df[col].astype(float) * s
+        scale_factors[col] = s
+        if verbose:
+            scale_str = label if label else f"{s:.4g}"
+            print(f"  {col:<26} {current_mean:>14.4g} {target_mean_mw:>16.4g} {scale_str:>14}")
+
+    aligned = _recompute_enduse_totals(aligned)
+    return aligned, scale_factors
+
+
+def calibrate_via_monthly_ridge_nnls(
+    basis_df: pd.DataFrame,
+    real_series: pd.Series,
+    end_use_cols: Iterable[str],
+    lambda_ridge: float = 1.0,
+    prior_weights: Optional[Dict[str, float]] = None,
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Solve monthly RIDGE NNLS with a per-end-use prior anchor.
+
+    Mathematically: for each month, solve
+
+        min  ||X·w - y||² + lambda * ||w - w_prior||²    s.t.  w >= 0
+
+    via stacked NNLS on
+
+        X' = [X; sqrt(lambda) * I]
+        y' = [y; sqrt(lambda) * w_prior]
+
+    where I is the identity and w_prior is the per-end-use prior weight
+    vector (defaults to 1.0 for every column, which assumes basis_df has
+    been pre-aligned to a magnitude prior via ``align_basis_to_prior``).
+
+    Parameters
+    ----------
+    basis_df : DataFrame
+        Hourly basis matrix (T × n_end_uses). Should be pre-aligned to a
+        magnitude prior so that w=1 is a meaningful anchor.
+    real_series : Series
+        Observed total electricity demand (MW), naive local time index.
+    end_use_cols : iterable of str
+        Column names in basis_df to use as the end-use basis.
+    lambda_ridge : float, default 1.0
+        Ridge strength. 0.0 reduces to plain NNLS; larger values pull
+        weights more strongly toward ``prior_weights``.
+    prior_weights : Dict[str, float] or None
+        Per-end-use prior weight (default 1.0 for all).
+
+    Returns
+    -------
+    calibrated_df : DataFrame
+        basis_df with each end-use column scaled by its (month, end-use)
+        ridge-NNLS weight, plus recomputed ``load`` = sum of end-uses.
+    weights_df : DataFrame
+        Per-month diagnostic: monthly residual norm, prior deviation,
+        and one column per end-use weight.
+    """
+    from scipy.optimize import nnls as _nnls
+
+    end_use_cols = list(end_use_cols)
+    missing = [c for c in end_use_cols if c not in basis_df.columns]
+    if missing:
+        raise KeyError(f"basis_df missing end-use columns: {missing}")
+
+    if prior_weights is None:
+        prior_weights = {col: 1.0 for col in end_use_cols}
+    w_prior = np.asarray(
+        [float(prior_weights.get(col, 1.0)) for col in end_use_cols], dtype=float,
+    )
+
+    # Align real series to basis index (strip tz if present)
+    rs = real_series.copy()
+    if getattr(rs.index, 'tz', None) is not None:
+        rs.index = rs.index.tz_localize(None)
+    rs = rs.groupby(rs.index).mean().sort_index()
+    common = basis_df.index.intersection(rs.index)
+    if len(common) == 0:
+        raise ValueError(
+            "No overlapping timestamps between basis_df and real_series for ridge NNLS."
+        )
+
+    X_full = basis_df.loc[common, end_use_cols].astype(float)
+    y_full = rs.loc[common].astype(float)
+    months = pd.Series(common, index=common).dt.month
+
+    n_e = len(end_use_cols)
+
+    # Per-month per-column effective lambda. ``lambda_ridge`` is dimensionless
+    # ("how much do I trust the EPS prior vs the data fit?"). 1.0 means "equal
+    # weight per residual entry"; >1 = trust prior more; <1 = trust data more.
+    #
+    # Without scaling, the data block has T_month ≈ 720 residual entries in
+    # MW² while the ridge block has n_e ≈ 11 in dimensionless w-space — that's
+    # an automatic 65× advantage for the data plus the magnitude mismatch
+    # between MW residuals and unit-scale prior deviations. To make
+    # `lambda_ridge=1` actually mean "equal weight," we scale each ridge row
+    # by `sigma_y * sqrt(T_month / n_e)` so each prior-residual entry has the
+    # same expected squared magnitude as a data-residual entry.
+
+    weights_rows: list[Dict[str, Any]] = []
+    monthly_weights: Dict[int, np.ndarray] = {}
+    for month, idx_in_month in months.groupby(months).groups.items():
+        X = X_full.loc[idx_in_month].to_numpy()
+        y = y_full.loc[idx_in_month].to_numpy()
+        if X.size == 0 or y.size == 0:
+            continue
+        if lambda_ridge > 0:
+            t_month = X.shape[0]
+            # Use std of y to set the natural scale of a single residual MW
+            # entry. clip to avoid division by zero in pathological cases.
+            sigma_y = float(np.std(y))
+            sigma_y = max(sigma_y, 1e-6)
+            # Effective per-entry ridge scale that makes one prior-residual
+            # entry have the same expected squared magnitude as one data
+            # residual entry.
+            effective_scale = sigma_y * float(np.sqrt(max(1.0, t_month / max(1, n_e))))
+            sqrt_lambda = float(np.sqrt(lambda_ridge)) * effective_scale
+            ridge_block_X = sqrt_lambda * np.eye(n_e)
+            ridge_block_y = sqrt_lambda * w_prior
+            X_aug = np.vstack([X, ridge_block_X])
+            y_aug = np.concatenate([y, ridge_block_y])
+            w, residual_norm = _nnls(X_aug, y_aug)
+        else:
+            w, residual_norm = _nnls(X, y)
+        # Diagnostics: how close did the solver stay to the prior?
+        prior_deviation = float(np.linalg.norm(w - w_prior))
+        # Data-only fit residual (excluding the ridge block)
+        data_residual = float(np.linalg.norm(X @ w - y))
+        monthly_weights[int(month)] = w
+        weights_rows.append({
+            'month': int(month),
+            'hours_in_month': int(len(idx_in_month)),
+            'data_residual_mw': data_residual,
+            'prior_deviation': prior_deviation,
+            'augmented_residual': float(residual_norm),
+            **{col: float(w_i) for col, w_i in zip(end_use_cols, w)},
+        })
+    weights_df = pd.DataFrame(weights_rows)
+
+    # Apply weights to the FULL basis_df (zero for months not solved).
+    calibrated = basis_df.copy()
+    basis_months = pd.Series(basis_df.index, index=basis_df.index).dt.month.values
+    for col_idx, col in enumerate(end_use_cols):
+        weight_for_hour = np.asarray([
+            monthly_weights.get(int(m), np.zeros(n_e))[col_idx]
+            for m in basis_months
+        ], dtype=float)
+        calibrated[col] = basis_df[col].astype(float).to_numpy() * weight_for_hour
+
+    calibrated = _recompute_enduse_totals(calibrated)
+    return calibrated, weights_df
 
 
 def calibrate_synthetic_load(
