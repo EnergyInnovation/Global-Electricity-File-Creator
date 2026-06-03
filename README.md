@@ -2,9 +2,110 @@
 
 This project builds country-specific representative-day electricity inputs for EPS-style power-sector modeling.
 
-The main script is:
+Two lineages live in this repository and share **one** clustering implementation
+(`state_pipeline/builders/clustering_repday.cluster_days_repday` — see
+[`CLUSTERING_METHODOLOGY.md`](CLUSTERING_METHODOLOGY.md)):
 
-- `energy_timeslice_pipeline.py`
+- **International / country pipeline** — `energy_timeslice_pipeline.py`, driven by the user-facing
+  runner `run_pipeline.py`. Builds SHELF + SYSHECF for any built-in country preset (United States,
+  China, South Korea, and 9 more) from Zapata/Mendeley (non-US) or NREL EFS (US) demand shapes.
+- **US national + per-state EPS pipeline** — `rebuild_us_national_v2.py` and the `state_pipeline/`
+  package. Builds the canonical US EPS SHELF/SYSHECF from ResStock/ComStock/EFS/Cambium with EIA
+  calibration. See [`CLAUDE.md`](CLAUDE.md).
+
+The two main scripts are:
+
+- `energy_timeslice_pipeline.py` — all international execution code
+- `run_pipeline.py` — **the user-facing runner for the international pipeline; the only file you
+  normally edit.** Designed to be usable by any team member who clones the repo: edit the documented
+  CONFIG blocks at the top, then `python run_pipeline.py`.
+
+## Setup
+
+### 1. Install Python dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+This installs the pipeline's own dependencies (pandas, scikit-learn, openpyxl, xlsxwriter,
+matplotlib, etc.), the parquet cache backend (`pyarrow`), the Deflate64 codec for the EFS archive
+(`inflate64`), and **DemandCast's transitive runtime dependencies** (`pycountry`,
+`pycountry-convert`, `countryinfo`, `entsoe-py`, `timezonefinder`).
+
+DemandCast is used as a git clone under `.vendor/demandcast/` rather than as an installable package —
+its declared dependencies (~38 packages in `demandcast/pyproject.toml`) are not picked up
+automatically. We pin only the subset needed for the currently verified country presets (United
+States, South Korea, China). If you bring a new country preset online and see an error like
+`No module named 'XYZ'`, add `XYZ` to `requirements.txt` and reinstall.
+
+### 2. Stage data not auto-downloaded by the pipeline
+
+See [Per-Country Manual Setup](#per-country-manual-setup) for the country you plan to run. Most data
+files auto-download on first use; renewables.ninja weather CSVs, the EPS template tree, and the KROGD
+demand files for South Korea must be staged manually.
+
+### 3. Configure and run
+
+Edit the settings at the top of [`run_pipeline.py`](run_pipeline.py) (country, year, calibration
+method, plot toggle, cache toggle, etc.), then:
+
+```bash
+python run_pipeline.py
+```
+
+Outputs land under `output/<country>_timeslice_results*` and `output/<country>_timeslice_results_EPS/`.
+
+> **Treat all citations, calibrated values, and derived capacity factors as starting points for
+> review.** Verify against primary sources before treating any output as an EI deliverable. Contact
+> **IT & Systems (itsystems@energyinnovation.org)** before installing new external dependencies or
+> automating new data fetches.
+
+## Configuring a run (`run_pipeline.py`)
+
+`run_pipeline.py` is the single control surface for the international pipeline. All execution logic
+lives in `energy_timeslice_pipeline.py`; you edit only the documented CONFIG blocks at the top of
+`run_pipeline.py`. Every setting is documented inline in the file. The most-changed settings:
+
+| Setting | Purpose | Default |
+|---|---|---|
+| `COUNTRY` | Which preset to build (name or alias, e.g. `'China'`, `'KR'`) | `'China'` |
+| `YEAR` | Target year; `None` = preset default | `None` |
+| `N_CLUSTERS` | Representative timeslices (EPS expects 6) | `6` |
+| `CALIBRATION_METHOD` | Non-US demand-shape calibration (see below) | `'zapata_ridge_nnls'` |
+| `LAMBDA_RIDGE` | EPS-prior anchoring strength for ridge NNLS | `1.0` |
+| `MAKE_DIAGNOSTIC_PLOTS` | **Boolean** — write per-cluster plots comparing each representative day against the actual days in that cluster | `True` |
+| `COMPARE_PINNED_UNPINNED` | Boolean — also report the unpinned NRMSE baseline | `False` |
+| `CALIBRATION_ONLY` | Boolean — stop after calibration + overview plot | `False` |
+| `USE_CACHE` / `VERBOSITY` / `DATA_DIR` | Performance / logging / data paths | — |
+
+**Diagnostic cluster plots (kept by design).** With `MAKE_DIAGNOSTIC_PLOTS = True` the run writes
+PNGs under `output/<country>_timeslice_results_plots/` showing, per timeslice, every assigned day as
+a thin grey line, a 25–75th-percentile band, the cluster-mean profile, and (on the net-load plot) the
+representative day overlaid in red. This is the visual "clusters vs. actual data" check, and it is
+controlled solely by that boolean selector.
+
+**Non-US calibration methods** (`CALIBRATION_METHOD`, applies to Zapata/Mendeley countries — the
+default is `zapata_ridge_nnls`):
+- `'zapata_ridge_nnls'` *(default)* — regenerate the four climate-sensitive end-uses (residential
+  cooling/heating/lighting + service cooling) from country weather + HETUS occupancy + Forsythe
+  daylength, align all 11 basis columns to EPS per-end-use MWh/year priors, then solve a
+  ridge-regularized NNLS anchored to the EPS prior (`LAMBDA_RIDGE`). Requires the preset's
+  `eps_prior_path`.
+- `'zapata_nnls'` — same shape regeneration, plain monthly NNLS, no EPS-prior anchoring (can produce
+  basis-collinearity zero-flips).
+- `'level_seasonal'` — legacy multiplicative annual + seasonal scaling; shape unchanged.
+
+The non-US calibration math and its data sources (DemandCast observed demand, Mendeley/Zapata
+end-use shapes, Ember annual CF targets, Renewables.ninja weather) operate exactly as on the prior
+`develop` branch. What changed in this trunk is only how the calibrated net-load series is **clustered**:
+it now flows through the consolidated, hemisphere-aware `cluster_days_repday` (see
+[`CLUSTERING_METHODOLOGY.md`](CLUSTERING_METHODOLOGY.md)).
+
+**US-specific choices.** For United States runs the demand-shape source is NREL EFS, and the EFS
+electrification × technology-advancement scenario and the RECS-based heating/cooling split are
+US-only choices. These are surfaced in `run_pipeline.py` (Section 3 — EFS settings) with inline
+documentation so a US run is configured from the same control surface as any other country.
 
 ## Primary Goals
 
@@ -68,7 +169,7 @@ These apply regardless of which country preset you run.
 |---|---|---|---|
 | Mendeley end-use dataset (Zapata/Khanna) | Auto | `data/mendeley/pmd2dchk44-1/` | Downloaded by the pipeline on first use. Source: `https://data.mendeley.com/datasets/pmd2dchk44/1` |
 | Ember annual electricity data | Auto | `data/ember/yearly_full_release_long_format.csv` | Downloaded by the pipeline on first use. Source: `https://ember-energy.org/data/yearly-electricity-data/` |
-| DemandCast helper repo | Auto | `.vendor/demandcast/` | Cloned by the pipeline on first use. Source: `https://github.com/open-energy-transition/demandcast` |
+| DemandCast helper repo | Auto (clone) — but its Python deps are **manual** | `.vendor/demandcast/` | The pipeline clones DemandCast on first use. Its transitive Python dependencies (`pycountry`, `pycountry-convert`, `countryinfo`, `entsoe-py`, `timezonefinder`) are pinned in `requirements.txt`. If you add a new DemandCast retriever, you may need to add its imports too. Source: `https://github.com/open-energy-transition/demandcast` |
 | EPS template tree (`SHELF/`, `SYSHECF/`, RECS workbook) | **Manual** | `../EPS Structure Testing/InputData/elec/` (sibling of repo) | Provided by the EPS team — ask the colleague who set up your EPS Vensim environment. Required for U.S. heating/cooling split and for any template-based EPS export. |
 | Renewables.ninja weather CSVs | **Manual** | `data/weather/ninja-weather-country-{ISO2}-{var}_area_wtd-merra2.csv` | Auto-download is blocked by the renewables.ninja server. Three files per country: `irradiance_surface`, `temperature`, `wind_speed`. Source portal: `https://www.renewables.ninja/`. License: CC-BY 4.0 (verify on the site). |
 

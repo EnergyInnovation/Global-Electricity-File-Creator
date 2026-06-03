@@ -8,6 +8,76 @@ See `CLAUDE.md` for the canonical methodology that these decisions inform.
 
 ---
 
+## 2026-06-03 — Plan: integrate develop's non-US calibration layer onto master (control surface + calibration defaults)
+
+> **Status: PROPOSED — for staff review. Not yet executed.** Phase 0 branch audit is complete; no
+> code has been merged. See `INTERNATIONAL_INTEGRATION_PLAN.md` for the full plan and the verified
+> Phase 0 findings.
+
+### Context
+The branches diverged at `d4ef526`. `master` carries the clustering consolidation (the hemisphere-aware
+`cluster_timeslices` wrapper → `cluster_days_repday`), the `state_pipeline/` package, and the
+methodology docs. `develop` carries a self-contained international calibration layer that `master`
+lacks: physically-based Zapata end-use shape regeneration, monthly NNLS / ridge-NNLS calibration to
+EPS per-end-use priors, weather caching, DemandCast manual-source mirroring, calibration/cluster
+diagnostic plots, and the `run_pipeline.py` user-facing control script. The goal is to bring develop's
+non-US capability onto `master` without losing master's clustering or US/state pipeline.
+
+A Phase 0 audit (2026-06-03) found that a `git merge origin/develop` produces a **textually clean tree
+with no conflicts and no "hybrid" function bodies**: `cluster_timeslices` resolves to master's wrapper
+(intended), `generate_full_pipeline_for_preset`/`for_country` resolve to develop's (the international
+orchestrator), and develop's new helper functions + `run_pipeline.py` + `data/eps_priors/` are imported
+additively. The one verified functional gap is that develop's `run_pipeline()` does not forward
+`country` into the clustering call, so the Southern-Hemisphere season flip would not engage without a
+one-line fix.
+
+### Decision (proposed)
+1. Make `master` the single trunk carrying both lineages.
+2. **`run_pipeline.py` is the user-facing control surface** for the international pipeline, intended to
+   be usable by **any team member** who clones the repo. All execution code stays in
+   `energy_timeslice_pipeline.py`; users edit only the documented CONFIG blocks. It selects the country
+   and all key run settings.
+3. **Diagnostic cluster-vs-actual plots are retained**, gated by the `MAKE_DIAGNOSTIC_PLOTS` boolean in
+   `run_pipeline.py` (per-timeslice PNGs: all assigned days as grey lines + IQR band + cluster mean +
+   representative day overlaid on net load).
+4. **Non-US calibration default = `zapata_ridge_nnls`**, selectable per run via `CALIBRATION_METHOD`
+   (`zapata_ridge_nnls` / `zapata_nnls` / `level_seasonal`), with `LAMBDA_RIDGE` for prior anchoring.
+5. **Non-US calibration and its data sources operate identically to `develop`** (DemandCast observed
+   demand, Mendeley/Zapata end-use shapes, Ember annual CFs, Renewables.ninja weather). Only their
+   **downstream use in clustering changes** — the calibrated net load now flows through master's
+   consolidated, hemisphere-aware `cluster_days_repday` instead of develop's inline implementation.
+6. **Surface US-specific choices on `run_pipeline.py` with inline documentation** — EFS electrification
+   × technology-advancement scenario and the RECS heating/cooling split. (Enhancement over `develop`,
+   where these are preset-locked and explicitly non-overridable from the runner.)
+7. **Large data files committed into `master`'s history** (CN/KR MERRA-2 weather CSVs, literature PDFs)
+   per staff direction 2026-06-03. Git LFS noted as an optional future refinement, not this round.
+
+### Rationale
+- One source of truth for both clustering and the international calibration; future fixes to
+  `cluster_days_repday` benefit all geographies automatically.
+- Keeps master's superior rep-day clustering (develop's inline version was algorithmically equivalent
+  but slower and not hemisphere-aware) while keeping develop's proven, validated calibration.
+- A single documented control surface lowers the barrier for any team member to produce files for a
+  new country or scenario without editing pipeline internals.
+
+### Affected files / variables
+- `energy_timeslice_pipeline.py` — one-line `country=country` forward in `run_pipeline()`; surfacing of
+  US-specific EFS settings in the runner.
+- Imported from develop: `run_pipeline.py`, `requirements.txt`, `zipfile_deflate64.py`,
+  `data/eps_priors/`, `data/weather/` (CN/KR), `data/output_demand_ninja/china_*`, `literature/`.
+- Docs: `README.md`, `CLUSTERING_METHODOLOGY.md` (new per-region section), `DECISIONS.md` (this entry),
+  `INTERNATIONAL_INTEGRATION_PLAN.md` (new).
+
+### Verification (planned)
+US regression bit-identical (US/state clustering untouched); Brazil SH smoke test (Summer Peak DOYs in
+Dec–Feb; days_per_timeslice sums to 365); Korea + China end-to-end with `zapata_ridge_nnls`. Validate
+all derived outputs against primary sources before any work-product use.
+
+### Effect on model output
+None yet — proposal stage. No files merged or regenerated.
+
+---
+
 ## 2026-05-15 — Finding: Limited/Reference supply curve ratios are misleading for deployment scaling
 
 ### Context

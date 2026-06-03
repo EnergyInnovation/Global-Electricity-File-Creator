@@ -276,6 +276,78 @@ This means all 12 country presets in the project share the same canonical cluste
 
 ---
 
+## Per-region data sources and how the methodology differs
+
+**The clustering step is identical across every region.** All geographies run through the same
+`cluster_days_repday` (rep-day reconstruction on net load, fixed rep profiles, NRMSE-std scoring,
+no peak-day cap, hemisphere-aware season months). What differs by region is everything **upstream**
+of clustering — how the hourly demand shape is built, how it is calibrated to observed totals, and
+which hemisphere's season-month defaults apply. The table below is the canonical reference for those
+inputs. *(Verify every source against its primary publisher before using derived outputs in any work
+product.)*
+
+| Region / preset | Demand-shape source | Observed-demand calibration source | Default calibration method | VRE (weather) source | Annual CF target | Hemisphere |
+|---|---|---|---|---|---|---|
+| **United States** (international preset, `demand_shape_source='efs'`) | NREL Electrification Futures Study (Reference × Moderate); RECS `CE8.2.M`/`CE8.3.M` heating/cooling split | EIA Hourly Electric Grid Monitor (v2 API) | `level_seasonal` (US uses EFS shapes; Zapata methods available if `eps_prior_path` set) | Renewables.ninja MERRA-2 | Ember | Northern |
+| **South Korea** | Mendeley/Zapata, region `Korea` | DemandCast → KROGD manual files (`KRO*` in `data/manual_downloads/`) | `zapata_ridge_nnls` | Renewables.ninja MERRA-2 | Ember | Northern |
+| **China** | Mendeley/Zapata, region `China +` | DemandCast → Wu et al. 2023 Zenodo (**2018 only**) | `zapata_ridge_nnls` | Renewables.ninja MERRA-2 | Ember | Northern |
+| **Canada, Japan, India, Germany, France, United Kingdom, Mexico** | Mendeley/Zapata | DemandCast (programmatic: ENTSO-E for EU, CENACE for MX, etc.) | `zapata_ridge_nnls` (needs `eps_prior_path`) else `level_seasonal` | Renewables.ninja MERRA-2 | Ember | Northern |
+| **Australia, Brazil** | Mendeley/Zapata | DemandCast | `zapata_ridge_nnls` / `level_seasonal` | Renewables.ninja MERRA-2 | Ember | **Southern** |
+
+### Two distinct US lineages — do not conflate
+
+There are **two** US treatments in this repository, with different data sources and different intended
+consumers:
+
+1. **Canonical US EPS pipeline** — `state_pipeline/` + `rebuild_us_national_v2.py`. Buildings from
+   **ResStock/ComStock**, industry/transport from **EFS**, net load + VRE from **Cambium**, SYSHECF
+   CFs calibrated to **EIA Table 4.8.B (national)** or **EIA State Electricity Profiles (per-state)**.
+   This is the lineage that produces the US EPS model's SHELF/SYSHECF files. See `CLAUDE.md` §1.
+2. **International-pipeline US preset** — `energy_timeslice_pipeline.py` with the `united states`
+   preset (`demand_shape_source='efs'`). Uses **EFS** demand shapes + **EIA hourly** calibration +
+   **RECS** heating/cooling split. It exists for cross-country methodological consistency, not as the
+   source of record for the US EPS files.
+
+Both now share the same clustering engine, but their **inputs and outputs are different**. Use lineage
+1 for US EPS deliverables.
+
+### Non-US calibration methods (`CALIBRATION_METHOD`)
+
+The non-US demand-shape calibration (and its data sources) operates exactly as it did on the prior
+`develop` branch — only the downstream **use of the calibrated net load in clustering** changed (now
+the consolidated, hemisphere-aware `cluster_days_repday`). The three methods, selectable per run in
+`run_pipeline.py`:
+
+- **`zapata_ridge_nnls`** *(default for non-US)* — regenerate the four climate-sensitive end-uses
+  (residential cooling/heating/lighting + service cooling) from country weather + HETUS occupancy +
+  Forsythe daylength (Zapata et al. 2022 stylized functions), align all 11 basis columns to
+  EPS-extracted per-end-use MWh/year priors, then solve a ridge-regularized NNLS anchored to the EPS
+  prior (`LAMBDA_RIDGE`, default 1.0). Eliminates the basis-collinearity zero-flips that plain NNLS
+  produces, and is self-consistent with how EPS consumes SHELF (EPS supplies magnitudes, the SHELF
+  supplies shape). **Requires** the preset's `eps_prior_path` (CSVs in `data/eps_priors/`, built by
+  `parse_eps_extract.py`).
+- **`zapata_nnls`** — same shape regeneration, plain monthly NNLS, no EPS-prior anchoring. Can drive
+  some end-uses to zero in a timeslice (NaN/0 SHELF cells). Retained for diagnosis/comparison.
+- **`level_seasonal`** — legacy multiplicative annual scaling + per-month/per-peak adjustment; the
+  synthetic shape is unchanged. Annual mean matches by construction. This is the U.S. default.
+
+### What is the same vs. different — summary
+
+| Stage | Same across regions? | Notes |
+|---|---|---|
+| Day clustering (rep-day on net load, fixed profiles, no cap) | **Same** | `cluster_days_repday` |
+| Season-month defaults | Hemisphere-dependent | `_hemisphere_season_months(country)`; SH = Australia, Brazil (+ Argentina, Chile, etc. when added) |
+| Demand-shape construction | **Differs** | EFS (US) vs Zapata/Mendeley (non-US) |
+| Calibration to observed totals | **Differs** | EIA hourly (US) vs DemandCast (non-US); `level_seasonal` vs `zapata_*` |
+| VRE / weather | Same source family | Renewables.ninja MERRA-2 → CF, calibrated to Ember annual |
+| SHELF/SYSHECF export format | **Same** | 6 slices × 24 hours; EPS-ready CSV + workbooks |
+
+See `DECISIONS.md` (2026-06-03 entry) and `INTERNATIONAL_INTEGRATION_PLAN.md` for the integration
+decision that brought the non-US calibration layer onto this trunk while keeping the consolidated
+clustering.
+
+---
+
 ## Adapting to a new geography (global pipeline)
 
 For applying this methodology to a different country / region:
