@@ -300,6 +300,15 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         'mendeley_region_name': 'Korea',
         'ember_country_name': 'South Korea',
         'demand_shape_source': 'mendeley',
+        # IANA timezone used to localize hourly weather (UTC) into local time
+        # before grouping by hour-of-day for SHELF/SYSHECF. EPS expects local
+        # time. Verify against the country's actual operating-hour convention.
+        'timezone': 'Asia/Seoul',
+        # Seoul-ish; KR is small, single point OK
+        'latitude_deg': 37.5,
+        # Path B (zapata_ridge_nnls): per-end-use MWh/year prior extracted
+        # from EPS-South Korea (eps-southkorea). See data/eps_priors/parse_eps_extract.py.
+        'eps_prior_path': 'data/eps_priors/eps_prior_KR.csv',
         'default_year': 2025,
         'last_n_years': 4,
         'status': 'verified',
@@ -312,6 +321,15 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         'mendeley_region_name': 'China +',
         'ember_country_name': 'China',
         'demand_shape_source': 'mendeley',
+        # China officially uses one timezone nationwide (CST = UTC+8) even
+        # though it geographically spans five. 'Asia/Shanghai' is the IANA
+        # name for that single national timezone.
+        'timezone': 'Asia/Shanghai',
+        # population-weighted central China; CN spans ~18–53°N
+        'latitude_deg': 32.0,
+        # Path B (zapata_ridge_nnls): per-end-use MWh/year prior extracted
+        # from EPS-China (eps-china-igdp). See data/eps_priors/parse_eps_extract.py.
+        'eps_prior_path': 'data/eps_priors/eps_prior_CN.csv',
         'default_year': 2018,
         'last_n_years': 1,
         'status': 'verified',
@@ -326,6 +344,17 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         'demand_shape_source': 'efs',
         'efs_electrification': 'Reference',
         'efs_technology_advancement': 'Moderate',
+        # CONUS spans four timezones. We pick Central as a centroid-of-load
+        # approximation for a national EFS-driven run; for region-specific
+        # runs you'd want to refactor to a per-subregion timezone instead.
+        # This is a starting point — verify it matches whatever convention
+        # the EPS U.S. consumers expect.
+        'timezone': 'America/Chicago',
+        # CONUS centroid; spans 25–49°N
+        'latitude_deg': 38.0,
+        # Path B (zapata_ridge_nnls): per-end-use MWh/year prior extracted
+        # from EPS-US (eps-us). See data/eps_priors/parse_eps_extract.py.
+        'eps_prior_path': 'data/eps_priors/eps_prior_US.csv',
         'default_year': 2025,
         'last_n_years': 3,
         'status': 'verified',
@@ -338,6 +367,10 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         'mendeley_region_name': 'Canada',
         'ember_country_name': 'Canada',
         'demand_shape_source': 'mendeley',
+        # Most populous TZ (Eastern). Canada spans six timezones; for region-specific runs you'd want to refactor.
+        'timezone': 'America/Toronto',
+        # population-weighted southern CA; spans 42–82°N
+        'latitude_deg': 50.0,
         'default_year': 2025,
         'last_n_years': 3,
         'status': 'mapped',
@@ -350,6 +383,10 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         'mendeley_region_name': 'Japan',
         'ember_country_name': 'Japan',
         'demand_shape_source': 'mendeley',
+        # Japan is single-timezone (JST = UTC+9).
+        'timezone': 'Asia/Tokyo',
+        # Honshu centroid
+        'latitude_deg': 36.0,
         'default_year': 2025,
         'last_n_years': 3,
         'status': 'mapped',
@@ -362,6 +399,10 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         'mendeley_region_name': 'India',
         'ember_country_name': 'India',
         'demand_shape_source': 'mendeley',
+        # India is single-timezone (IST = UTC+5:30).
+        'timezone': 'Asia/Kolkata',
+        # population-weighted central IN
+        'latitude_deg': 22.0,
         'default_year': 2025,
         'last_n_years': 3,
         'status': 'mapped',
@@ -374,6 +415,10 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         'mendeley_region_name': 'Germany',
         'ember_country_name': 'Germany',
         'demand_shape_source': 'mendeley',
+        # Germany is single-timezone (CET/CEST).
+        'timezone': 'Europe/Berlin',
+        # DE centroid
+        'latitude_deg': 51.0,
         'default_year': 2025,
         'last_n_years': 3,
         'status': 'mapped',
@@ -386,6 +431,10 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         'mendeley_region_name': 'France',
         'ember_country_name': 'France',
         'demand_shape_source': 'mendeley',
+        # Metropolitan France only; overseas territories not modeled.
+        'timezone': 'Europe/Paris',
+        # mainland FR centroid
+        'latitude_deg': 47.0,
         'default_year': 2025,
         'last_n_years': 3,
         'status': 'mapped',
@@ -398,6 +447,10 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         'mendeley_region_name': 'United Kingdom',
         'ember_country_name': 'United Kingdom',
         'demand_shape_source': 'mendeley',
+        # GMT/BST.
+        'timezone': 'Europe/London',
+        # UK centroid
+        'latitude_deg': 54.0,
         'default_year': 2025,
         'last_n_years': 3,
         'status': 'mapped',
@@ -410,6 +463,10 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         'mendeley_region_name': 'Australia',
         'ember_country_name': 'Australia',
         'demand_shape_source': 'mendeley',
+        # Most populous TZ (AEDT/AEST). Australia spans 5+ timezones; for region-specific runs you'd want to refactor.
+        'timezone': 'Australia/Sydney',
+        # population-weighted south-east coast; AU is southern hemisphere
+        'latitude_deg': -33.0,
         'default_year': 2025,
         'last_n_years': 3,
         'status': 'mapped',
@@ -422,6 +479,10 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         'mendeley_region_name': 'Brazil',
         'ember_country_name': 'Brazil',
         'demand_shape_source': 'mendeley',
+        # Most populous TZ (BRT). Brazil spans four timezones.
+        'timezone': 'America/Sao_Paulo',
+        # population-weighted south-east BR
+        'latitude_deg': -15.0,
         'default_year': 2025,
         'last_n_years': 3,
         'status': 'mapped',
@@ -434,11 +495,190 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         'mendeley_region_name': 'Mexico',
         'ember_country_name': 'Mexico',
         'demand_shape_source': 'mendeley',
+        # Most populous TZ. Mexico spans four timezones.
+        'timezone': 'America/Mexico_City',
+        # MX centroid
+        'latitude_deg': 23.0,
         'default_year': 2025,
         'last_n_years': 3,
         'status': 'mapped',
     },
 }
+
+###############################################################################
+# Status / progress reporting
+#
+# Pipeline runs are long. Without inline status, the only sign of life is
+# sklearn's KMeans memory-leak warning printed dozens of times during the
+# clustering phase. Inline status lines turn that into useful progress.
+#
+# Format conventions:
+#   - Every status line starts with `[stage]` for grep-ability. Stages are
+#     'setup', 'demand', 'calibrate-load', 'weather', 'cf', 'gen',
+#     'cluster', 'metrics', 'output', 'eps', 'done'.
+#   - Slow steps include `[X.Xs]` or `[Xm Ys]` timing in brackets. Pass
+#     ``t=time.perf_counter()`` start to ``_status`` to render this.
+#   - Pipeline modules call ``_status(...)`` to emit lines; consumers
+#     control the volume by calling ``set_verbosity('quiet'|'normal'|'verbose')``.
+#
+# `quiet`   = no status output (only Python warnings/errors)
+# `normal`  = the default — one status line per pipeline milestone
+# `verbose` = adds per-iteration kmeans seed details (mostly for debugging)
+###############################################################################
+
+_VERBOSITY = 'normal'
+
+
+def set_verbosity(level: str) -> None:
+    """Set pipeline status verbosity. Levels: 'quiet', 'normal', 'verbose'."""
+    global _VERBOSITY
+    if level not in ('quiet', 'normal', 'verbose'):
+        raise ValueError(
+            f"Unknown verbosity level {level!r}; expected one of "
+            "'quiet', 'normal', 'verbose'."
+        )
+    _VERBOSITY = level
+
+
+def _status(stage: str, msg: str, *, t: Optional[float] = None, level: str = 'normal') -> None:
+    """Emit a single pipeline status line.
+
+    Parameters
+    ----------
+    stage : str
+        Short tag used as a `[bracket]` prefix (e.g. 'demand', 'cluster').
+    msg : str
+        The message body. Should fit on one line.
+    t : float, optional
+        ``time.perf_counter()`` start. If supplied, elapsed time is
+        appended in compact form (seconds for short, m+s for long).
+    level : str, default 'normal'
+        Minimum verbosity level required to print this line. ``'normal'``
+        always prints unless quiet; ``'verbose'`` prints only when verbose.
+    """
+    if _VERBOSITY == 'quiet':
+        return
+    if level == 'verbose' and _VERBOSITY != 'verbose':
+        return
+    line = f"[{stage}] {msg}"
+    if t is not None:
+        elapsed = time.perf_counter() - t
+        if elapsed < 60:
+            line += f"  [{elapsed:.1f}s]"
+        else:
+            line += f"  [{int(elapsed // 60)}m {int(elapsed % 60)}s]"
+    print(line, flush=True)
+
+
+# Suppress the repetitive sklearn KMeans MKL memory-leak warning so it
+# fires once instead of on every fit. The clustering step runs k-means 9+
+# times in a single country run; without this filter the legitimate status
+# lines get drowned out. Setting OMP_NUM_THREADS=2 in the environment
+# silences the underlying issue, but a filter here is enough for log
+# readability.
+import warnings as _kmeans_warnings_module
+_kmeans_warnings_module.filterwarnings(
+    'once',
+    message='KMeans is known to have a memory leak',
+    category=UserWarning,
+)
+
+
+###############################################################################
+# Parquet cache for parsed-and-filtered intermediates
+#
+# These helpers let the three slow data-loading functions
+# (``load_enduse_data_mendeley``, ``load_enduse_data_efs_us``, and
+# ``load_weather_data``) skip re-parsing their large source CSVs on every
+# run. The cache is opt-in: the loaders accept ``use_cache=False`` by
+# default, so existing callers see no behavior change.
+#
+# Cache files live under ``<data_dir>/cache/`` and are named with the
+# parameters that affect the result (region, year, scenario, etc.).
+# Staleness is detected by comparing each cached file's mtime to the
+# mtimes of all source files that fed it; if any source is newer, the
+# cache is rebuilt.
+#
+# Caches are derived from upstream source CSVs/zips that already live on
+# disk. Deleting ``data/cache/`` is always safe — it just forces the
+# next run to recompute. Caching does not change the modeled values; it
+# only avoids redoing the parse-and-filter work.
+###############################################################################
+
+CACHE_DIR_NAME = 'cache'
+
+
+def _safe_filename_part(value: Any) -> str:
+    """Sanitize a value so it can be embedded in a cache file name."""
+    s = str(value).strip().lower()
+    out = []
+    for ch in s:
+        if ch.isalnum() or ch in ('-', '.'):
+            out.append(ch)
+        elif ch in (' ', '/', '\\', ':', '+'):
+            out.append('_')
+    return ''.join(out) or 'na'
+
+
+def _resolve_cache_dir(data_dir: Optional[str], cache_dir: Optional[str]) -> str:
+    """Pick a cache directory, falling back to ``<data_dir>/cache``."""
+    if cache_dir:
+        return cache_dir
+    base = data_dir or DEFAULT_DATA_DIR
+    return os.path.join(base, CACHE_DIR_NAME)
+
+
+def _cache_is_stale(cache_path: str, source_paths: Iterable[str]) -> bool:
+    """
+    Return True if the cache must be (re)built.
+
+    Stale conditions:
+      * cache file does not exist
+      * any required source path does not exist (caller will likely error
+        anyway, but we surface that by treating the cache as stale)
+      * any source file's mtime is newer than the cache file's mtime
+    """
+    if not os.path.exists(cache_path):
+        return True
+    cache_mtime = os.path.getmtime(cache_path)
+    for src in source_paths:
+        if not os.path.exists(src):
+            return True
+        if os.path.getmtime(src) > cache_mtime:
+            return True
+    return False
+
+
+def _read_or_build_cached_parquet(
+    cache_path: str,
+    source_paths: Iterable[str],
+    build_fn,
+) -> pd.DataFrame:
+    """
+    Return a DataFrame, reading from the parquet cache if fresh, otherwise
+    calling ``build_fn()``, persisting its result, and returning it.
+
+    The cache file is written via ``DataFrame.to_parquet`` (pyarrow engine).
+    Index dtypes are preserved across the round-trip; tz-aware timestamps
+    survive intact, which matters for the weather data.
+    """
+    sources = list(source_paths)
+    if not _cache_is_stale(cache_path, sources):
+        try:
+            return pd.read_parquet(cache_path)
+        except Exception:
+            # Corrupt cache file — fall through and rebuild
+            pass
+    df = build_fn()
+    os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+    try:
+        df.to_parquet(cache_path)
+    except Exception:
+        # If parquet write fails (e.g. unsupported dtype), don't crash the
+        # caller — just skip caching for this run.
+        pass
+    return df
+
 
 ###############################################################################
 # Capacity factor computation from weather data
@@ -750,6 +990,8 @@ def load_weather_data(
     variables: Iterable[str],
     weight: str = 'area',
     dataset: str = 'merra2',
+    use_cache: bool = False,
+    cache_dir: Optional[str] = None,
 ) -> pd.DataFrame:
     """
     Load multiple weather variables for a given country from Renewables.ninja files.
@@ -797,6 +1039,44 @@ def load_weather_data(
       Renewables.ninja server.
     """
     iso2 = country_code.upper()
+    variables_tuple = tuple(variables)
+
+    # ------------------------------------------------------------------
+    # Cache short-circuit. The cache key embeds country, dataset, weight,
+    # and the (sorted) variable list so different callers stay isolated.
+    # Source mtimes are checked against the cache; any newer source CSV
+    # invalidates and rebuilds.
+    # ------------------------------------------------------------------
+    if use_cache:
+        sorted_vars = '__'.join(sorted(_safe_filename_part(v) for v in variables_tuple))
+        cache_name = (
+            f"weather_{_safe_filename_part(iso2)}_"
+            f"{_safe_filename_part(dataset)}_{_safe_filename_part(weight)}_"
+            f"{sorted_vars}.parquet"
+        )
+        cache_path = os.path.join(_resolve_cache_dir(data_dir, cache_dir), cache_name)
+        source_paths = [
+            os.path.join(data_dir, build_weather_file_name(iso2, v, weight, dataset))
+            for v in variables_tuple
+        ]
+
+        def _build():
+            return _load_weather_data_uncached(
+                data_dir, iso2, variables_tuple, weight, dataset
+            )
+        return _read_or_build_cached_parquet(cache_path, source_paths, _build)
+
+    return _load_weather_data_uncached(data_dir, iso2, variables_tuple, weight, dataset)
+
+
+def _load_weather_data_uncached(
+    data_dir: str,
+    iso2: str,
+    variables: Tuple[str, ...],
+    weight: str,
+    dataset: str,
+) -> pd.DataFrame:
+    """Original (uncached) body of :func:`load_weather_data`."""
     frames = []
     for var in variables:
         fname = build_weather_file_name(iso2, var, weight, dataset)
@@ -1102,8 +1382,63 @@ def load_enduse_data_efs_us(
     split_template_root: Optional[str] = None,
     split_template_region: str = 'USA',
     split_template_scenario: str = 'SSP2',
+    use_cache: bool = False,
+    cache_dir: Optional[str] = None,
 ) -> pd.DataFrame:
     """Load U.S. hourly end-use demand using NREL's Electrification Futures Study."""
+
+    # ------------------------------------------------------------------
+    # Cache short-circuit. EFS streaming through the deflate64 shim takes
+    # several minutes; the cached parquet is one year × ~10 columns and
+    # reads in a few seconds. The cache is keyed on the EFS scenario and
+    # the resolved EFS year (which is rounded to the nearest available
+    # EFS year, so a 2025 request and a 2024 request hit the same cache).
+    # ------------------------------------------------------------------
+    if use_cache:
+        efs_year_for_key = _nearest_efs_year(requested_year)
+        cache_name = (
+            f"efs_{_safe_filename_part(electrification)}_"
+            f"{_safe_filename_part(technology_advancement)}_"
+            f"{_safe_filename_part(efs_year_for_key)}_"
+            f"{_safe_filename_part(split_template_region)}_"
+            f"{_safe_filename_part(split_template_scenario)}.parquet"
+        )
+        # Use the EFS zip's directory as the cache base when no cache_dir
+        # is supplied (keeps EFS-derived files near the source).
+        base_dir = cache_dir or _resolve_cache_dir(
+            os.path.dirname(os.path.dirname(efs_zip_path)),
+            None,
+        )
+        cache_path = os.path.join(base_dir, cache_name)
+        # Source mtimes that matter for invalidation:
+        #   - EFS zip itself (the bulk of the input)
+        #   - RECS workbook (drives the monthly heating/cooling split)
+        #   - Mendeley template directory's residential/service CSVs (drive
+        #     the sub-monthly split ratios). Watching just one stable file
+        #     in that directory is sufficient as a signal.
+        source_paths = [efs_zip_path]
+        if recs_workbook_path:
+            source_paths.append(recs_workbook_path)
+        if split_template_root:
+            source_paths.append(
+                os.path.join(split_template_root, 'Residential_heating_weekday.csv')
+            )
+
+        def _build():
+            return load_enduse_data_efs_us(
+                efs_zip_path=efs_zip_path,
+                requested_year=requested_year,
+                electrification=electrification,
+                technology_advancement=technology_advancement,
+                recs_workbook_path=recs_workbook_path,
+                split_template_root=split_template_root,
+                split_template_region=split_template_region,
+                split_template_scenario=split_template_scenario,
+                use_cache=False,
+                cache_dir=None,
+            )
+        return _read_or_build_cached_parquet(cache_path, source_paths, _build)
+
     try:
         import zipfile_deflate64  # noqa: F401
     except ImportError as exc:
@@ -1291,6 +1626,100 @@ def ensure_demandcast_source(
     return source_root
 
 
+# DemandCast retrievers that read pre-staged "manual" files look in
+# <demandcast_root>/data/electricity_demand/manual_downloads/. The canonical
+# home for those files in this repo is data/manual_downloads/. The pipeline
+# mirrors files matching these prefixes from the canonical folder into the
+# DemandCast clone before each run, so users only need to maintain one copy.
+#
+# Add a prefix here when you bring a new DemandCast manual source online
+# (each retriever module under
+# .vendor/demandcast/demandcast/retrievals/electricity_demand_data_sources/
+# documents the file prefix it expects).
+DEMANDCAST_MANUAL_FILE_PREFIXES: Tuple[str, ...] = (
+    'KRO',     # KROGD: South Korea hourly demand (data.go.kr → krogd.py)
+    # 'EPIAS', # Turkey (epias.py)             — uncomment when populated
+    # 'eskom', # South Africa (eskom.py)       — uncomment when populated
+    # 'NITI',  # India (niti.py)               — uncomment when populated
+    # 'NTDC',  # Pakistan (ntdc.py)            — uncomment when populated
+)
+
+
+def _sync_manual_downloads_to_demandcast(
+    data_dir: str,
+    demandcast_root: str,
+    prefixes: Iterable[str] = DEMANDCAST_MANUAL_FILE_PREFIXES,
+    quiet: bool = False,
+) -> int:
+    """
+    Mirror manually-staged demand files from ``<data_dir>/manual_downloads/``
+    into the DemandCast clone's ``data/electricity_demand/manual_downloads/``.
+
+    The canonical location is the project repo's ``data/manual_downloads/``;
+    this function only writes into the DemandCast clone, never the other way.
+    The sync is idempotent: a file that already exists at the destination
+    with a matching size and a not-older mtime is skipped.
+
+    Parameters
+    ----------
+    data_dir : str
+        The repo's data directory (the parent of ``manual_downloads/``).
+    demandcast_root : str
+        The DemandCast source root returned by :func:`ensure_demandcast_source`
+        (i.e. ``<repo>/demandcast``, not the wrapper checkout above it).
+    prefixes : iterable of str
+        Filename prefixes to mirror. Defaults to
+        :data:`DEMANDCAST_MANUAL_FILE_PREFIXES`.
+    quiet : bool, default False
+        When False, print a one-line summary if any files were copied.
+
+    Returns
+    -------
+    int
+        Number of files actually copied this call (0 means everything was
+        already up to date or no matching files existed).
+    """
+    src_dir = os.path.join(data_dir, 'manual_downloads')
+    dst_dir = os.path.join(
+        demandcast_root, 'data', 'electricity_demand', 'manual_downloads',
+    )
+    if not os.path.isdir(src_dir):
+        return 0
+    os.makedirs(dst_dir, exist_ok=True)
+    prefixes_t = tuple(prefixes)
+    if not prefixes_t:
+        return 0
+
+    copied = 0
+    for name in os.listdir(src_dir):
+        # Mirror only CSV files. DemandCast retrievers parse every prefix-matched
+        # file in their manual_downloads/ folder as a CSV, so any non-CSV (a
+        # README, sources.txt, notes.docx, etc.) that gets mirrored would crash
+        # the parser. The .csv-only filter here is defense in depth on top of
+        # the per-folder README convention documented in
+        # data/manual_downloads/README.md.
+        if not (name.startswith(prefixes_t) and name.lower().endswith('.csv')):
+            continue
+        src = os.path.join(src_dir, name)
+        if not os.path.isfile(src):
+            continue
+        dst = os.path.join(dst_dir, name)
+        if os.path.exists(dst):
+            src_st = os.stat(src)
+            dst_st = os.stat(dst)
+            if src_st.st_size == dst_st.st_size and dst_st.st_mtime >= src_st.st_mtime:
+                continue
+        shutil.copy2(src, dst)
+        copied += 1
+
+    if copied and not quiet:
+        print(
+            f"[manual-downloads] Mirrored {copied} file(s) from "
+            f"{src_dir} -> {dst_dir}"
+        )
+    return copied
+
+
 def resolve_output_path(output_path: Optional[str], country: Optional[str] = None) -> Optional[str]:
     """Resolve output paths into the default output directory unless absolute."""
     if output_path is None and country is None:
@@ -1370,12 +1799,30 @@ def generate_full_pipeline_for_preset(
     data_dir: str = DEFAULT_DATA_DIR,
     seasonal_calibration: bool = True,
     scenario: str = 'SSP2',
+    efs_electrification: Optional[str] = None,
+    efs_technology_advancement: Optional[str] = None,
     **kwargs,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series]:
-    """Run the full pipeline using a built-in country preset."""
+    """Run the full pipeline using a built-in country preset.
+
+    United-States-only EFS scenario choices (``efs_electrification`` /
+    ``efs_technology_advancement``) may be supplied from the caller (e.g. the
+    ``run_pipeline.py`` control surface). When provided they OVERRIDE the
+    preset's default; when left ``None`` the preset default is used. They are
+    ignored for non-US presets, which use Zapata/Mendeley demand shapes.
+    """
     preset = get_country_preset(country)
     selected_year = year or preset['default_year']
     selected_last_n_years = last_n_years or preset.get('last_n_years', 3)
+    # Runner override (if not None) takes precedence over the preset default.
+    resolved_efs_electrification = (
+        efs_electrification if efs_electrification is not None
+        else preset.get('efs_electrification', 'Reference')
+    )
+    resolved_efs_technology_advancement = (
+        efs_technology_advancement if efs_technology_advancement is not None
+        else preset.get('efs_technology_advancement', 'Moderate')
+    )
     return generate_full_pipeline_for_country(
         mendeley_dir=os.path.join(data_dir, 'mendeley'),
         efs_dir=os.path.join(data_dir, 'efs'),
@@ -1393,8 +1840,12 @@ def generate_full_pipeline_for_preset(
         seasonal_calibration=seasonal_calibration,
         scenario=scenario,
         demand_shape_source=preset.get('demand_shape_source', 'mendeley'),
-        efs_electrification=preset.get('efs_electrification', 'Reference'),
-        efs_technology_advancement=preset.get('efs_technology_advancement', 'Moderate'),
+        efs_electrification=resolved_efs_electrification,
+        efs_technology_advancement=resolved_efs_technology_advancement,
+        country_timezone=preset.get('timezone'),
+        latitude_deg=preset.get('latitude_deg'),
+        eps_prior_path=preset.get('eps_prior_path'),
+        lambda_ridge=preset.get('lambda_ridge', kwargs.pop('lambda_ridge', 1.0)),
         **kwargs,
     )
 
@@ -1755,10 +2206,139 @@ def load_ember_annual_capacity_factors(
     return capacity_dict, cf_dict
 
 
+CF_CALIBRATION_MODES = ('cap_redistribute', 'multiplicative')
+CF_CALIBRATION_MULTIPLIER_WARN_THRESHOLD = 1.5
+
+
+def _cap_and_redistribute_cf(
+    values: np.ndarray,
+    target_mean: float,
+    *,
+    max_iter: int = 10,
+    tol: float = 1e-9,
+) -> Tuple[np.ndarray, Dict[str, Any]]:
+    """
+    Scale ``values`` so that the non-NaN mean equals ``target_mean`` while
+    keeping every entry in [0, 1].
+
+    The algorithm:
+      1. Apply the multiplicative scale ``s = target_mean / sample_mean``.
+      2. If ``s <= 1`` (we are scaling down), no entry can exceed 1.0 from
+         the multiplication alone — clip to [0, 1] and return.
+      3. Otherwise some entries may exceed 1.0. Clip them to 1.0, sum the
+         excess, and redistribute it across unsaturated entries with
+         per-entry weights proportional to their headroom ``(1 - cf_i)``.
+         The redistribution preserves the target mean exactly (single
+         iteration is mathematically sufficient; we still loop a few times
+         as a safety net against floating-point drift).
+
+    Returns
+    -------
+    (np.ndarray, dict)
+        The bounded calibrated values and a diagnostics dict containing:
+            ``mode`` — always ``'cap_redistribute'`` for this helper
+            ``initial_mean`` — pre-calibration sample mean
+            ``target_mean`` — the requested target
+            ``initial_multiplier`` — ``target_mean / initial_mean``
+            ``iterations`` — how many cap-and-redistribute passes ran
+            ``fraction_at_cap`` — share of non-NaN hours pinned at 1.0
+            ``final_max`` — max calibrated value
+            ``residual_mean_error`` — calibrated_mean − target_mean
+            ``mean_unreachable`` — True if the target could not be hit
+                                     because the synthetic distribution
+                                     is too saturated to absorb the
+                                     redistributed energy.
+    """
+    arr = np.asarray(values, dtype=float).copy()
+    nan_mask = np.isnan(arr)
+    finite = arr[~nan_mask]
+    n_finite = finite.size
+
+    diag: Dict[str, Any] = {
+        'mode': 'cap_redistribute',
+        'initial_mean': float(np.nanmean(arr)) if n_finite else float('nan'),
+        'target_mean': float(target_mean) if target_mean is not None else float('nan'),
+        'initial_multiplier': float('nan'),
+        'iterations': 0,
+        'fraction_at_cap': float('nan'),
+        'final_max': float(np.nanmax(arr)) if n_finite else float('nan'),
+        'residual_mean_error': float('nan'),
+        'mean_unreachable': False,
+    }
+
+    if n_finite == 0 or target_mean is None or not np.isfinite(target_mean):
+        return arr, diag
+
+    if target_mean < 0 or target_mean > 1:
+        raise ValueError(
+            f"target_mean must lie in [0, 1] for capacity factor calibration; "
+            f"got {target_mean!r}."
+        )
+
+    initial_mean = diag['initial_mean']
+    if not np.isfinite(initial_mean) or initial_mean <= 0:
+        # Cannot scale a zero-mean (or NaN-mean) sample; leave unchanged.
+        return arr, diag
+
+    multiplier = target_mean / initial_mean
+    diag['initial_multiplier'] = float(multiplier)
+
+    # Apply the initial multiplicative scale.
+    out = arr * multiplier
+
+    if multiplier <= 1.0:
+        # Scaling down or by exactly 1: no cap step needed (no value can
+        # exceed 1.0 if it started in [0, 1]). Clip negatives just in case.
+        np.clip(out, 0.0, 1.0, out=out)
+        finite_out = out[~nan_mask]
+        diag['iterations'] = 1
+        diag['fraction_at_cap'] = float(np.mean(finite_out >= 1.0 - 1e-9))
+        diag['final_max'] = float(np.nanmax(out))
+        diag['residual_mean_error'] = float(np.nanmean(out) - target_mean)
+        return out, diag
+
+    # Multiplier > 1: cap-and-redistribute loop.
+    for it in range(1, max_iter + 1):
+        diag['iterations'] = it
+        excess_per_hour = np.where(~nan_mask, np.maximum(out - 1.0, 0.0), 0.0)
+        excess = float(excess_per_hour.sum())
+        # Clip excess down to 1.0
+        out = np.where(nan_mask, out, np.clip(out, 0.0, 1.0))
+        if excess <= tol:
+            break
+        # Headroom is the per-entry amount we can still absorb.
+        headroom = np.where(~nan_mask & (out < 1.0), 1.0 - out, 0.0)
+        headroom_total = float(headroom.sum())
+        if headroom_total <= tol:
+            # Cannot redistribute — every non-NaN hour is already saturated.
+            # Target is unreachable from this synthetic distribution.
+            diag['mean_unreachable'] = True
+            break
+        if excess > headroom_total + tol:
+            # Even filling all unsaturated hours to 1.0 cannot absorb the
+            # excess. We will fall short of the target on this pass and
+            # subsequent iterations will see no further excess (everything
+            # is at 1.0). Mark unreachable and let the loop exit naturally.
+            diag['mean_unreachable'] = True
+        # Redistribute proportionally to headroom.
+        scale = excess / headroom_total
+        out = np.where(nan_mask, out, out + headroom * scale)
+
+    # Final safety clip.
+    out = np.where(nan_mask, out, np.clip(out, 0.0, 1.0))
+    finite_out = out[~nan_mask]
+    diag['fraction_at_cap'] = float(np.mean(finite_out >= 1.0 - 1e-9))
+    diag['final_max'] = float(np.nanmax(out))
+    diag['residual_mean_error'] = float(np.nanmean(out) - target_mean)
+    return out, diag
+
+
 def calibrate_capacity_factors(
     cf_df: pd.DataFrame,
     observed_cf: Dict[str, float],
     rename_map: Dict[str, str] = None,
+    mode: str = 'cap_redistribute',
+    multiplier_warn_threshold: float = CF_CALIBRATION_MULTIPLIER_WARN_THRESHOLD,
 ) -> pd.DataFrame:
     """
     Scale simulated capacity factor time series to match observed average values.
@@ -1775,38 +2355,109 @@ def calibrate_capacity_factors(
         capacity statistics (e.g. Ember data).
     rename_map : dict, optional
         Optional mapping from the keys in ``observed_cf`` to the column
-        names in ``cf_df``.  For example, ``{'Solar': 'solar_cf', 'Wind':
-        'wind_cf'}``.  If ``None``, the keys of ``observed_cf`` must
-        directly match the column names in ``cf_df``.
+        names in ``cf_df``.
+    mode : {'cap_redistribute', 'multiplicative'}, default 'cap_redistribute'
+        Calibration method.
+
+        * ``'cap_redistribute'`` (default): apply the multiplicative scale,
+          clip values that exceed 1.0, then redistribute the clipped energy
+          to unsaturated hours so the annual mean still equals the target.
+          Bounded by construction (every output is in [0, 1]).
+        * ``'multiplicative'``: legacy behavior — pure scalar multiplication.
+          Can produce capacity factor values > 1.0 when the implied
+          multiplier is large (e.g., when observed annual mean is much
+          higher than the synthetic mean). Retained only for backward
+          compatibility / diff comparison with prior runs.
+    multiplier_warn_threshold : float, default 1.5
+        When the implied multiplier ``observed_mean / synthetic_mean``
+        exceeds this value, emit a ``UserWarning`` recommending an upstream
+        physics check (hub height, roughness length, power-curve
+        assumptions). The warning fires regardless of ``mode`` because a
+        large multiplier indicates a synthetic-shape mismatch that the
+        calibration step is masking.
 
     Returns
     -------
     pandas.DataFrame
-        Scaled capacity factor time series.  Each column in ``cf_df`` is
-        multiplied by a constant factor so that its mean equals the
-        corresponding observed value.  Columns without a matching entry in
-        ``observed_cf`` are returned unchanged.
+        Scaled capacity factor time series. ``df.attrs['calibration_diagnostics']``
+        holds a ``{column_name: diag_dict}`` map describing what the
+        calibration did per column (initial multiplier, iterations,
+        fraction at cap, residual mean error, etc.). Use ``build_run_metrics``
+        to surface these into the per-run metrics CSV.
 
     Notes
     -----
-    * If the mean of a simulated capacity factor column is zero, the
-      corresponding scaling factor is set to 0 to avoid division by zero.
-    * This function does not impose any upper or lower bounds on the
-      resulting capacity factors; clipping (0–1) should be applied after
-      scaling if necessary.
+    See ``_cap_and_redistribute_cf`` for the full algorithm in the bounded
+    mode. The 'multiplicative' mode is equivalent to the original behavior
+    of this function before the cap-and-redistribute fix.
     """
+    if mode not in CF_CALIBRATION_MODES:
+        raise ValueError(
+            f"Unknown calibration mode {mode!r}; expected one of "
+            f"{CF_CALIBRATION_MODES}."
+        )
     df_scaled = cf_df.copy()
     mapping = rename_map or {k: k for k in observed_cf}
+    diagnostics: Dict[str, Dict[str, Any]] = {}
+
     for obs_key, obs_value in observed_cf.items():
         col = mapping.get(obs_key)
-        if col not in df_scaled.columns:
+        if col is None or col not in df_scaled.columns:
             continue
-        sim_mean = df_scaled[col].mean()
-        if sim_mean <= 0 or np.isnan(sim_mean):
-            factor = 0.0
-        else:
-            factor = obs_value / sim_mean
-        df_scaled[col] = df_scaled[col] * factor
+        column = pd.to_numeric(df_scaled[col], errors='coerce')
+        sim_mean = float(column.mean())
+
+        if not np.isfinite(sim_mean) or sim_mean <= 0:
+            # No information to calibrate against; leave the column unchanged
+            # so downstream callers see the same series as today.
+            diagnostics[col] = {
+                'mode': mode,
+                'initial_mean': sim_mean,
+                'target_mean': float(obs_value) if obs_value is not None else float('nan'),
+                'initial_multiplier': float('nan'),
+                'iterations': 0,
+                'fraction_at_cap': float('nan'),
+                'final_max': float(column.max()) if column.notna().any() else float('nan'),
+                'residual_mean_error': float('nan'),
+                'mean_unreachable': False,
+            }
+            continue
+
+        multiplier = float(obs_value) / sim_mean
+        if multiplier > multiplier_warn_threshold:
+            import warnings
+            warnings.warn(
+                f"Capacity factor calibration for {col!r} requires a multiplier of "
+                f"{multiplier:.2f}× (synthetic mean {sim_mean:.4f} vs observed "
+                f"{obs_value:.4f}). This is a sign the synthetic shape needs upstream "
+                "tuning (hub_height, roughness_length, power-curve parameters, or the "
+                "underlying renewables.ninja weather product). The cap-and-redistribute "
+                "mode will keep values in [0, 1] but cannot fix the shape mismatch. "
+                "See HANDOFF.md → 'Weather Data Improvements' for context.",
+                stacklevel=2,
+            )
+
+        if mode == 'cap_redistribute':
+            new_values, diag = _cap_and_redistribute_cf(column.to_numpy(), float(obs_value))
+            df_scaled[col] = new_values
+        else:  # 'multiplicative' — legacy
+            new_values = column.to_numpy() * multiplier
+            df_scaled[col] = new_values
+            finite = new_values[~np.isnan(new_values)]
+            diag = {
+                'mode': 'multiplicative',
+                'initial_mean': sim_mean,
+                'target_mean': float(obs_value),
+                'initial_multiplier': multiplier,
+                'iterations': 1,
+                'fraction_at_cap': float(np.mean(finite >= 1.0 - 1e-9)) if finite.size else float('nan'),
+                'final_max': float(np.nanmax(new_values)),
+                'residual_mean_error': float(np.nanmean(new_values) - float(obs_value)),
+                'mean_unreachable': False,
+            }
+        diagnostics[col] = diag
+
+    df_scaled.attrs['calibration_diagnostics'] = diagnostics
     return df_scaled
 
 
@@ -1953,6 +2604,49 @@ def build_run_metrics(
                 'n_points': len(df_source[column_name]),
             })
 
+    # Calibration diagnostics — one row per (column, diagnostic_field) so they
+    # land in the same CSV alongside the calibration RMSE rows above. These are
+    # informational rather than error metrics; the 'rmse' / 'nrmse' columns
+    # carry the diagnostic value, and 'normalization_basis' identifies what
+    # the value represents.
+    cal_diag = getattr(cf_scaled, 'attrs', {}).get('calibration_diagnostics', {})
+    diagnostic_fields = (
+        'mode',
+        'initial_multiplier',
+        'iterations',
+        'fraction_at_cap',
+        'final_max',
+        'residual_mean_error',
+        'mean_unreachable',
+    )
+    for column_name, diag in cal_diag.items():
+        for field in diagnostic_fields:
+            if field not in diag:
+                continue
+            value = diag[field]
+            # Coerce non-numeric (mode, mean_unreachable) into a numeric-safe
+            # form so the metrics CSV stays one consistent dtype.
+            if isinstance(value, bool):
+                numeric = float(value)
+            elif isinstance(value, str):
+                numeric = float('nan')
+            else:
+                try:
+                    numeric = float(value)
+                except (TypeError, ValueError):
+                    numeric = float('nan')
+            metrics.append({
+                'country': country,
+                'year': year,
+                'metric_group': 'capacity_factor_calibration',
+                'series': column_name,
+                'stage': field if not isinstance(value, str) else f'{field}={value}',
+                'rmse': numeric,
+                'nrmse': float('nan'),
+                'normalization_basis': 'calibration_diagnostic',
+                'n_points': int(len(cf_scaled[column_name])) if column_name in cf_scaled.columns else 0,
+            })
+
     return pd.DataFrame(metrics)
 
 
@@ -2081,6 +2775,321 @@ def write_metrics_reports(metrics_df: pd.DataFrame, output_path: Optional[str]) 
     combined.to_csv(GLOBAL_METRICS_SUMMARY_CSV, index=False)
 
 
+def make_cluster_diagnostic_plots(
+    df: pd.DataFrame,
+    labels: pd.Series,
+    timeslice_metadata: pd.DataFrame,
+    representative_dates: Dict[int, pd.Timestamp],
+    output_dir: str,
+    country: str = '',
+) -> "list[str]":
+    """
+    Write per-cluster diagnostic PNG plots for visual inspection of how
+    clustering grouped the year.
+
+    For each of the 6 timeslices, four plots are written:
+
+        <Label>_net_load.png        — net load (MW)
+        <Label>_solar_cf.png        — solar capacity factor (0–1)
+        <Label>_wind_cf.png         — wind capacity factor (0–1)
+        <Label>_normalized_load.png — total load / annual total load
+                                       (unitless; sums to 1 across the year)
+
+    Every plot shows:
+        * one thin grey line per day in the cluster (low alpha)
+        * a shaded band between the 25th and 75th percentiles, by hour
+        * a dashed steelblue line for the cluster mean profile
+
+    On the ``net_load`` plot only, an additional thick red line marks
+    the cluster's representative day — the same date the rest of the
+    pipeline uses as a stand-in for the whole timeslice when populating
+    SHELF/SYSHECF. For pinned timeslices, the rep day is the literal
+    summer/winter peak day rather than a centroid-nearest day, and the
+    legend says so.
+
+    The function imports matplotlib lazily so a missing install just
+    skips the plotting step with a warning instead of crashing the run.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Hourly DataFrame with columns ``net_load``, ``load``, ``solar_cf``,
+        ``wind_cf``. Index must be hourly (any timezone, but typically the
+        country's local TZ after the pipeline's tz_convert step).
+    labels : pandas.Series
+        Per-hour timeslice ID, same length and order as ``df``.
+    timeslice_metadata : pandas.DataFrame
+        Output of ``build_timeslice_metadata`` — must contain
+        ``is_pinned_summer`` and ``is_pinned_winter`` columns indexed by
+        the same timeslice IDs used in ``labels``.
+    representative_dates : dict[int, pandas.Timestamp]
+        Mapping from timeslice ID to the representative day's date.
+    output_dir : str
+        Directory to write the PNG files into. Created if missing.
+    country : str, optional
+        Country / region label inserted into each plot's title.
+
+    Returns
+    -------
+    list of str
+        Absolute paths of the PNG files written. Empty if matplotlib is
+        not available or the inputs are empty.
+    """
+    # Lazy import so a missing install isn't a hard fail.
+    try:
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
+    except ImportError:
+        import warnings
+        warnings.warn(
+            "matplotlib is not installed; cluster diagnostic plots will be "
+            "skipped. Install with `pip install matplotlib`."
+        )
+        return []
+
+    if df is None or df.empty or labels is None or len(labels) == 0:
+        return []
+
+    required_cols = ['net_load', 'load', 'solar_cf', 'wind_cf']
+    if any(col not in df.columns for col in required_cols):
+        return []
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Build a tidy work frame: date + hour + variable values + label.
+    work = df[required_cols].copy()
+    annual_total_load = float(pd.to_numeric(work['load'], errors='coerce').sum())
+    if annual_total_load > 0:
+        work['load_normalized'] = work['load'] / annual_total_load
+    else:
+        work['load_normalized'] = work['load']
+    work['__date'] = pd.to_datetime(work.index).floor('D')
+    work['__hour'] = pd.to_datetime(work.index).hour
+    work['__label'] = labels.values
+
+    # Pretty cluster labels (e.g. 'Summer Peak') and pinned-flag lookup.
+    try:
+        eps_label_map = build_eps_timeslice_label_map(timeslice_metadata)
+    except Exception:
+        # Fall back to numeric labels if EPS labeling cannot be built.
+        eps_label_map = pd.Series({i: f'Timeslice_{int(i)}' for i in pd.unique(labels)})
+
+    def _is_pinned(ts_id: int) -> bool:
+        if timeslice_metadata is None or timeslice_metadata.empty:
+            return False
+        if ts_id not in timeslice_metadata.index:
+            return False
+        return bool(
+            timeslice_metadata.loc[ts_id].get('is_pinned_summer', False)
+            or timeslice_metadata.loc[ts_id].get('is_pinned_winter', False)
+        )
+
+    # Variable spec: (column, y-axis label, filename suffix)
+    variables = [
+        ('net_load',         'Net load (MW)',                                  'net_load'),
+        ('solar_cf',         'Solar capacity factor',                          'solar_cf'),
+        ('wind_cf',          'Wind capacity factor',                           'wind_cf'),
+        ('load_normalized',  'Normalized hourly load (fraction of annual)',    'normalized_load'),
+    ]
+
+    paths_written: "list[str]" = []
+
+    for ts_id in sorted(pd.unique(labels.dropna())):
+        ts_id = int(ts_id)
+        ts_rows = work[work['__label'] == ts_id]
+        if ts_rows.empty:
+            continue
+        ts_label = str(eps_label_map.get(ts_id, f'Timeslice_{ts_id}'))
+        ts_label_safe = ts_label.replace(' ', '_').replace('/', '_')
+        n_days = ts_rows['__date'].nunique()
+        is_pinned = _is_pinned(ts_id)
+        rep_date = None
+        if representative_dates and ts_id in representative_dates:
+            rep_date = pd.Timestamp(representative_dates[ts_id]).floor('D')
+
+        for col, ylabel, suffix in variables:
+            if col not in ts_rows.columns:
+                continue
+            pivot = ts_rows.pivot_table(
+                index='__date', columns='__hour', values=col, aggfunc='first',
+            ).reindex(columns=range(24))
+            if pivot.empty:
+                continue
+
+            fig, ax = plt.subplots(figsize=(8.0, 4.5))
+
+            # Per-day curves (low alpha) — every day in the cluster as a thin grey line.
+            for _, day_row in pivot.iterrows():
+                ax.plot(
+                    range(24), day_row.values,
+                    color='0.55', linewidth=0.6, alpha=0.35,
+                )
+
+            # 25–75th percentile shaded band.
+            p25 = pivot.quantile(0.25, axis=0)
+            p75 = pivot.quantile(0.75, axis=0)
+            ax.fill_between(
+                range(24), p25.values, p75.values,
+                color='steelblue', alpha=0.18, label='25–75th pct',
+            )
+
+            # Cluster mean (dashed).
+            cluster_mean = pivot.mean(axis=0)
+            ax.plot(
+                range(24), cluster_mean.values,
+                color='steelblue', linestyle='--', linewidth=1.5, label='cluster mean',
+            )
+
+            # Rep-day overlay (red) — only on net_load.
+            if col == 'net_load' and rep_date is not None and rep_date in pivot.index:
+                rep_values = pivot.loc[rep_date].values
+                rep_label_parts = [f"rep day {rep_date.date()}"]
+                if is_pinned:
+                    rep_label_parts.append("(pinned)")
+                else:
+                    rep_label_parts.append("(centroid-nearest)")
+                ax.plot(
+                    range(24), rep_values,
+                    color='firebrick', linewidth=2.0,
+                    label=" ".join(rep_label_parts),
+                )
+
+            country_suffix = f" — {country}" if country else ""
+            ax.set_title(f"{ts_label} ({n_days} days){country_suffix}\n{ylabel}")
+            ax.set_xlabel('Hour of day (local)')
+            ax.set_ylabel(ylabel)
+            ax.set_xlim(0, 23)
+            ax.set_xticks(range(0, 24, 2))
+            ax.grid(True, alpha=0.3)
+            ax.legend(loc='best', fontsize='small', framealpha=0.85)
+            fig.tight_layout()
+
+            out_path = os.path.join(output_dir, f'{ts_label_safe}_{suffix}.png')
+            fig.savefig(out_path, dpi=110)
+            plt.close(fig)
+            paths_written.append(out_path)
+
+    return paths_written
+
+
+def make_calibration_overview_plot(
+    df_calibrated: pd.DataFrame,
+    real_demand: pd.Series,
+    output_path: str,
+    country: str = '',
+) -> Optional[str]:
+    """
+    One full-year overview plot showing the calibration result at daily-mean
+    resolution:
+
+      * **Stacked area** of the four sector totals (residential, service,
+        industry, transport) in the calibrated synthetic year — this is
+        what the rest of the pipeline consumes.
+      * **Line** for observed DemandCast demand, day-of-year-averaged
+        across the calibration window so a single curve overlays cleanly
+        on top of the stacked area.
+      * **Line** for total calibrated load (= top of the stacked area).
+        Slightly offset visually so it remains distinguishable; if it
+        diverges from the stack top there's a sum bug somewhere.
+
+    Returns the path written, or ``None`` if matplotlib is unavailable
+    or the inputs are insufficient.
+    """
+    try:
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
+    except ImportError:
+        import warnings
+        warnings.warn(
+            "matplotlib is not installed; calibration overview plot will be "
+            "skipped. Install with `pip install matplotlib`."
+        )
+        return None
+
+    if df_calibrated is None or df_calibrated.empty:
+        return None
+
+    sector_cols = [
+        col for col in (
+            'residential_total', 'service_total', 'industry_total', 'transport_total',
+        ) if col in df_calibrated.columns
+    ]
+    if not sector_cols:
+        return None
+
+    # Daily means for the synthetic year (one point per day of year).
+    syn_daily = df_calibrated[sector_cols + (['load'] if 'load' in df_calibrated.columns else [])].copy()
+    syn_daily['_doy'] = pd.to_datetime(syn_daily.index).dayofyear
+    syn_daily = syn_daily.groupby('_doy').mean()
+
+    # DemandCast: day-of-year mean across calibration years (gives one curve
+    # to compare against the synthetic single-year shape).
+    if real_demand is None or len(real_demand) == 0:
+        dc_daily = None
+    else:
+        real = pd.Series(real_demand).copy()
+        real_doy = pd.to_datetime(real.index).dayofyear
+        dc_daily = real.groupby(real_doy).mean()
+
+    os.makedirs(os.path.dirname(output_path) or '.', exist_ok=True)
+
+    fig, ax = plt.subplots(figsize=(11, 4.8))
+
+    # Stacked area of sector totals (calibrated).
+    sector_colors = {
+        'residential_total': '#4c72b0',
+        'service_total':     '#dd8452',
+        'industry_total':    '#55a868',
+        'transport_total':   '#c44e52',
+    }
+    sector_labels = {
+        'residential_total': 'Residential',
+        'service_total':     'Service / Commercial',
+        'industry_total':    'Industry',
+        'transport_total':   'Transport',
+    }
+    stack_arrays = [syn_daily[col].values for col in sector_cols]
+    stack_colors = [sector_colors.get(col, None) for col in sector_cols]
+    stack_labels = [sector_labels.get(col, col) for col in sector_cols]
+    ax.stackplot(
+        syn_daily.index, *stack_arrays,
+        labels=stack_labels, colors=stack_colors, alpha=0.75,
+    )
+
+    # Calibrated total-load line (top of stack — sanity check).
+    if 'load' in syn_daily.columns:
+        ax.plot(
+            syn_daily.index, syn_daily['load'].values,
+            color='black', linewidth=1.2, linestyle='--',
+            label='Calibrated load (synth sum)',
+        )
+
+    # DemandCast observed line.
+    if dc_daily is not None and not dc_daily.empty:
+        ax.plot(
+            dc_daily.index, dc_daily.values,
+            color='crimson', linewidth=1.6, label='DemandCast observed (DOY mean)',
+        )
+
+    country_suffix = f" — {country}" if country else ""
+    ax.set_title(
+        f"Calibration overview{country_suffix}\n"
+        "Stacked end-uses = calibrated synthetic year; lines = observed and synthetic totals"
+    )
+    ax.set_xlabel('Day of year')
+    ax.set_ylabel('Hourly demand (MW), daily-mean')
+    ax.set_xlim(1, max(syn_daily.index.max(), 365))
+    ax.grid(True, alpha=0.3)
+    ax.legend(loc='upper right', fontsize='small', framealpha=0.85, ncol=2)
+    fig.tight_layout()
+
+    fig.savefig(output_path, dpi=110)
+    plt.close(fig)
+    return output_path
+
+
 def print_metrics_summary(country: str, metrics_df: pd.DataFrame) -> None:
     """Print a short metrics summary for the current run."""
     if metrics_df is None or metrics_df.empty:
@@ -2155,6 +3164,17 @@ def generate_full_pipeline_for_country(
     mendeley_dataset_url: str = MENDELEY_DATASET_URL,
     mendeley_headers: Optional[Dict[str, str]] = None,
     weather_headers: Optional[Dict[str, str]] = None,
+    use_cache: bool = False,
+    cache_dir: Optional[str] = None,
+    country_timezone: Optional[str] = None,
+    cf_calibration_mode: str = 'cap_redistribute',
+    make_plots: bool = True,
+    compare_pinned_unpinned: bool = False,
+    calibration_only: bool = False,
+    latitude_deg: Optional[float] = None,
+    calibration_method: str = 'level_seasonal',
+    eps_prior_path: Optional[str] = None,
+    lambda_ridge: float = 1.0,
     **kwargs,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series]:
     """
@@ -2273,10 +3293,22 @@ def generate_full_pipeline_for_country(
 
     mendeley_region_name = mendeley_region_name or region_name
     ember_country_name = ember_country_name or region_name
+    # ---- [setup] preset details (visible at the start of the run) -------
+    cal_start_year_preview = year - last_n_years + 1
+    _status(
+        'setup',
+        f"iso2={country_iso2}  timezone={country_timezone or 'UTC (no preset tz)'}  "
+        f"demand-shape source={demand_shape_source}  "
+        f"calibration window={cal_start_year_preview}–{year}  "
+        f"cf calibration mode={cf_calibration_mode}",
+    )
+
     # Step 1: Load synthetic end‑use demand for the selected year
+    _t = time.perf_counter()
     if demand_shape_source == 'efs':
         if not efs_dir:
             raise ValueError("efs_dir is required when demand_shape_source='efs'.")
+        _status('demand', f"loading EFS shapes ({efs_electrification} / {efs_technology_advancement} / nearest-to-{year})...")
         efs_zip_path = ensure_efs_dataset(efs_dir, dataset_url=EFS_DATASET_URL, headers=mendeley_headers)
         df_synthetic = load_enduse_data_efs_us(
             efs_zip_path=efs_zip_path,
@@ -2287,16 +3319,34 @@ def generate_full_pipeline_for_country(
             split_template_root=mendeley_root,
             split_template_region=mendeley_region_name,
             split_template_scenario=scenario,
+            use_cache=use_cache,
+            cache_dir=cache_dir,
         )
     elif demand_shape_source == 'mendeley':
-        df_synthetic = load_enduse_data_mendeley(mendeley_root, mendeley_region_name, year, scenario)
+        _status('demand', f"loading Mendeley shapes for region {mendeley_region_name!r}, year {year}...")
+        df_synthetic = load_enduse_data_mendeley(
+            mendeley_root, mendeley_region_name, year, scenario,
+            use_cache=use_cache, cache_dir=cache_dir,
+        )
     else:
         raise ValueError(
             f"Unsupported demand_shape_source '{demand_shape_source}'. Expected 'mendeley' or 'efs'."
         )
+    _status(
+        'demand',
+        f"loaded {len(df_synthetic):,} hours × {df_synthetic.shape[1]} end-use columns",
+        t=_t,
+    )
+
     # Step 2: Fetch real demand over the most recent N years and compute average
     calibration_start_year = year - last_n_years + 1
     calibration_end_year = year
+    _t = time.perf_counter()
+    _status(
+        'calibrate-load',
+        f"fetching real {demand_country_code} demand "
+        f"{calibration_start_year}–{calibration_end_year} via DemandCast...",
+    )
     real_demand = fetch_demand_data_demandcast(
         demand_country_code,
         start_year=calibration_start_year,
@@ -2306,20 +3356,277 @@ def generate_full_pipeline_for_country(
     cal_start_year = year - last_n_years + 1
     cal_end_year = year
     real_demand_filtered = real_demand[(real_demand.index.year >= cal_start_year) & (real_demand.index.year <= cal_end_year)]
-    # Calibrate synthetic load to match average real demand over the selected years
-    df_scaled = calibrate_synthetic_load(df_synthetic, real_demand_filtered, load_col='load')
-    df_calibrated = df_scaled
-    if seasonal_calibration:
-        df_calibrated = calibrate_seasonal_enduse_load(
-            df_scaled,
-            real_demand_filtered,
-            load_col='load',
+    _status(
+        'calibrate-load',
+        f"fetched {len(real_demand_filtered):,} hours of observed demand "
+        f"(mean {float(real_demand_filtered.mean()):,.0f} MW)",
+        t=_t,
+    )
+    # Calibrate synthetic load to match observed demand. Two methods supported:
+    #   'level_seasonal' (default, legacy) — multiplicative annual scaling then
+    #       per-month/per-peak adjustments. Implemented in calibrate_synthetic_load
+    #       + calibrate_seasonal_enduse_load.
+    #   'zapata_nnls' — regenerate the 4 climate-sensitive end-uses from weather
+    #       + occupancy + Forsythe daylength via Zapata 2022 stylized functions,
+    #       then solve monthly NNLS for end-use weights to fit observed totals.
+    #       Substantially better hourly NRMSE in standalone tests; see
+    #       zapata_implementation_readme.md for methodology and result comparison.
+    _synth_load_mean = float(pd.to_numeric(df_synthetic['load'], errors='coerce').mean())
+    _real_load_mean = float(pd.to_numeric(real_demand_filtered, errors='coerce').mean())
+    _level_multiplier = (_real_load_mean / _synth_load_mean) if _synth_load_mean else float('nan')
+    _status('calibrate-load', f"method: {calibration_method}")
+
+    if calibration_method == 'zapata_nnls':
+        if latitude_deg is None:
+            raise ValueError(
+                "calibration_method='zapata_nnls' requires latitude_deg, but none "
+                "was supplied. Add a 'latitude_deg' field to the country preset, "
+                "or pass it directly to generate_full_pipeline_for_country."
+            )
+        # Load weather early for shape regeneration. Single target year — the
+        # Zapata stylized functions need country-specific weather covering the
+        # synthetic year only. The CF computation later re-uses the cache (via
+        # load_weather_data) for the calibration window of years.
+        _t_zw = time.perf_counter()
+        _status('calibrate-load', f"loading target-year weather for Zapata shape regeneration (lat {latitude_deg}°)")
+        _zapata_weather = load_weather_data(
+            weather_dir,
+            country_iso2,
+            ['temperature', 'irradiance_surface'],
+            weight,
+            dataset,
+            use_cache=use_cache,
+            cache_dir=cache_dir,
         )
+        # Localize to country TZ, strip tz, filter to the synthetic year so
+        # the index aligns with df_synthetic (naive local time).
+        if country_timezone:
+            if _zapata_weather.index.tz is None:
+                _zapata_weather.index = _zapata_weather.index.tz_localize('UTC')
+            _zapata_weather.index = _zapata_weather.index.tz_convert(country_timezone)
+        if _zapata_weather.index.tz is not None:
+            _zapata_weather.index = _zapata_weather.index.tz_localize(None)
+        _zapata_weather = _zapata_weather[_zapata_weather.index.year == year]
+        if _zapata_weather.empty:
+            raise ValueError(
+                f"No weather rows for {country_iso2} year {year}; cannot build Zapata basis. "
+                "Verify data/weather/ninja-weather-country-{ISO2}-*.csv covers the target year."
+            )
+        _status(
+            'calibrate-load',
+            f"building Zapata hybrid basis  ({len(_zapata_weather):,} hours × stylized funcs)",
+        )
+        _df_basis = build_zapata_hybrid_basis(
+            df_synthetic, _zapata_weather, latitude_deg=latitude_deg,
+        )
+        _zapata_end_use_cols = [
+            'residential_cooling', 'residential_heating', 'residential_lighting',
+            'residential_waterheating', 'residential_other',
+            'service_cooling', 'service_heating', 'service_waterheating',
+            'service_other', 'industry', 'transport',
+        ]
+        _status('calibrate-load', "solving monthly NNLS against observed totals")
+        df_calibrated, _zapata_weights = calibrate_via_monthly_nnls(
+            _df_basis, real_demand_filtered,
+            end_use_cols=[c for c in _zapata_end_use_cols if c in _df_basis.columns],
+        )
+        df_scaled = df_calibrated  # alias for downstream metric code referencing df_scaled
+        _status(
+            'calibrate-load',
+            f"Zapata-NNLS calibrated load: mean {df_calibrated['load'].mean():,.0f} MW  "
+            f"peak {df_calibrated['load'].max():,.0f} MW",
+            t=_t_zw,
+        )
+    elif calibration_method == 'zapata_ridge_nnls':
+        # Path B: regenerate climate-sensitive shapes, align all columns to
+        # country-specific EPS BAU magnitudes, then solve ridge-regularized
+        # monthly NNLS. Anchors weights to the EPS prior (w=1 ≡ EPS share
+        # is correct), preventing the basis-collinearity zero-flips that
+        # plague plain NNLS. See "Path B" comment block before
+        # load_eps_magnitude_prior for the rationale and EPS.mdl context.
+        if latitude_deg is None:
+            raise ValueError(
+                "calibration_method='zapata_ridge_nnls' requires latitude_deg, but none "
+                "was supplied. Add a 'latitude_deg' field to the country preset, "
+                "or pass it directly to generate_full_pipeline_for_country."
+            )
+        if eps_prior_path is None:
+            raise ValueError(
+                "calibration_method='zapata_ridge_nnls' requires eps_prior_path. "
+                "Add an 'eps_prior_path' field to the country preset pointing to "
+                "data/eps_priors/eps_prior_<ISO2>.csv (extracted via "
+                "data/eps_priors/parse_eps_extract.py)."
+            )
+        _t_zw = time.perf_counter()
+        _status('calibrate-load', f"loading target-year weather for Zapata shape regeneration (lat {latitude_deg}°)")
+        _zapata_weather = load_weather_data(
+            weather_dir,
+            country_iso2,
+            ['temperature', 'irradiance_surface'],
+            weight,
+            dataset,
+            use_cache=use_cache,
+            cache_dir=cache_dir,
+        )
+        if country_timezone:
+            if _zapata_weather.index.tz is None:
+                _zapata_weather.index = _zapata_weather.index.tz_localize('UTC')
+            _zapata_weather.index = _zapata_weather.index.tz_convert(country_timezone)
+        if _zapata_weather.index.tz is not None:
+            _zapata_weather.index = _zapata_weather.index.tz_localize(None)
+        _zapata_weather = _zapata_weather[_zapata_weather.index.year == year]
+        if _zapata_weather.empty:
+            raise ValueError(
+                f"No weather rows for {country_iso2} year {year}; cannot build Zapata basis."
+            )
+        _status('calibrate-load',
+                f"building Zapata hybrid basis  ({len(_zapata_weather):,} hours × stylized funcs)")
+        _df_basis_raw = build_zapata_hybrid_basis(
+            df_synthetic, _zapata_weather, latitude_deg=latitude_deg,
+        )
+        _zapata_end_use_cols = [
+            'residential_cooling', 'residential_heating', 'residential_lighting',
+            'residential_waterheating', 'residential_other',
+            'service_cooling', 'service_heating', 'service_waterheating',
+            'service_other', 'industry', 'transport',
+        ]
+        _zapata_cols_present = [c for c in _zapata_end_use_cols if c in _df_basis_raw.columns]
+
+        _status('calibrate-load', f"loading EPS magnitude prior from {eps_prior_path}")
+        eps_prior = load_eps_magnitude_prior(eps_prior_path, target_year=year)
+        _status(
+            'calibrate-load',
+            f"EPS prior: {len(eps_prior)} end-uses covering "
+            f"{sum(eps_prior.values()):,.0f} MWh/yr",
+        )
+        _df_basis, _scales = align_basis_to_prior(
+            _df_basis_raw, eps_prior, end_use_cols=_zapata_cols_present, verbose=True,
+        )
+        _status(
+            'calibrate-load',
+            f"solving monthly RIDGE NNLS (lambda={lambda_ridge}) against observed totals",
+        )
+        df_calibrated, _ridge_weights = calibrate_via_monthly_ridge_nnls(
+            _df_basis, real_demand_filtered,
+            end_use_cols=_zapata_cols_present,
+            lambda_ridge=lambda_ridge,
+        )
+        df_scaled = df_calibrated
+        _status(
+            'calibrate-load',
+            f"Zapata-Ridge calibrated load: mean {df_calibrated['load'].mean():,.0f} MW  "
+            f"peak {df_calibrated['load'].max():,.0f} MW",
+            t=_t_zw,
+        )
+    elif calibration_method == 'level_seasonal':
+        _status(
+            'calibrate-load',
+            f"level scaling: synthetic mean {_synth_load_mean:,.0f} MW × "
+            f"{_level_multiplier:.2f} → {_real_load_mean:,.0f} MW",
+        )
+        df_scaled = calibrate_synthetic_load(df_synthetic, real_demand_filtered, load_col='load')
+        df_calibrated = df_scaled
+        if seasonal_calibration:
+            df_calibrated = calibrate_seasonal_enduse_load(
+                df_scaled,
+                real_demand_filtered,
+                load_col='load',
+            )
+            _status('calibrate-load', "seasonal calibration applied (monthly-mean RMSE → ~0)")
+        else:
+            _status('calibrate-load', "seasonal calibration skipped (using level-scaled only)")
+    else:
+        raise ValueError(
+            f"Unknown calibration_method={calibration_method!r}; expected "
+            "'level_seasonal', 'zapata_nnls', or 'zapata_ridge_nnls'."
+        )
+
+    # ---- Calibration-overview plot (optional, can also short-circuit the run) ----
+    # We resolve the output path early so the calibration plot has somewhere
+    # to land before the heavy clustering work begins. If CALIBRATION_ONLY=True
+    # the rest of the pipeline is skipped entirely — useful for quickly
+    # iterating on calibration choices without paying for clustering/EPS export.
+    resolved_output_path_early = resolve_output_path(output_path, country=region_name)
+    if make_plots and resolved_output_path_early:
+        _plots_dir = os.path.splitext(resolved_output_path_early)[0] + '_plots'
+        _cal_plot_path = make_calibration_overview_plot(
+            df_calibrated=df_calibrated,
+            real_demand=real_demand_filtered,
+            output_path=os.path.join(_plots_dir, 'calibration_overview.png'),
+            country=region_name,
+        )
+        if _cal_plot_path:
+            _status('plots', f"wrote calibration overview → {_cal_plot_path}")
+    if calibration_only:
+        _status(
+            'done',
+            "CALIBRATION_ONLY=True — exiting before weather / clustering / EPS export",
+        )
+        # Return empty results in the same shape callers expect.
+        return pd.DataFrame(), pd.DataFrame(), pd.Series(dtype='float64')
     # Step 3: Load weather data and compute capacity factors
-    weather_df = load_weather_data(weather_dir, country_iso2, ['irradiance_surface', 'temperature', 'wind_speed'], weight, dataset)
-    # Filter weather to the selected year
+    _t = time.perf_counter()
+    _status(
+        'weather',
+        f"loading {country_iso2} weather (irradiance, temperature, wind_speed)...",
+    )
+    weather_df = load_weather_data(
+        weather_dir,
+        country_iso2,
+        ['irradiance_surface', 'temperature', 'wind_speed'],
+        weight,
+        dataset,
+        use_cache=use_cache,
+        cache_dir=cache_dir,
+    )
+    _status(
+        'weather',
+        f"loaded {len(weather_df):,} hours UTC, 3 variables",
+        t=_t,
+    )
+    # ----- Timezone localization -------------------------------------------
+    # Renewables.ninja files are timestamped in UTC. EPS expects the SHELF
+    # and SYSHECF outputs to be in local time so that, e.g., Hour0 means
+    # midnight local. Without this conversion, weather-derived capacity
+    # factors get grouped by UTC hour-of-day while the demand shapes get
+    # grouped by local hour-of-day, and the two are out of sync by the
+    # country's UTC offset (9 hours for KST, 8 for CST China, etc.).
+    #
+    # tz_convert keeps each instant the same (no data shift); it only
+    # changes the index labels. Subsequent .dayofyear / .hour calls then
+    # reflect the local-time view, which is what we want for clustering
+    # and EPS export.
+    #
+    # If country_timezone is None (e.g. an unverified preset that hasn't
+    # had a timezone assigned yet) we leave the index in UTC and emit a
+    # warning, so the failure mode is loud rather than silently producing
+    # mis-aligned outputs.
+    if country_timezone:
+        if weather_df.index.tz is None:
+            weather_df.index = weather_df.index.tz_localize('UTC')
+        weather_df.index = weather_df.index.tz_convert(country_timezone)
+    else:
+        import warnings
+        warnings.warn(
+            f"No country_timezone provided for {region_name!r}; weather data "
+            "will remain in UTC. This will mis-align the SYSHECF output "
+            "(UTC hour-of-day) with the SHELF output (local hour-of-day) "
+            "by the country's UTC offset. Add a 'timezone' field to the "
+            "country preset to fix.",
+            stacklevel=2,
+        )
+    # Filter weather to the selected year (now in local time, if localized)
     weather_year = weather_df[(weather_df.index.year >= cal_start_year) & (weather_df.index.year <= cal_end_year)]
+    if country_timezone:
+        _status(
+            'weather',
+            f"localized to {country_timezone}; "
+            f"filtered to calibration window: {len(weather_year):,} hours",
+        )
+    else:
+        _status('weather', f"filtered to calibration window: {len(weather_year):,} hours (UTC, no localization)")
     # Compute capacity factors
+    _t = time.perf_counter()
     cf_df = compute_capacity_factors_from_weather(
         weather_year,
         pv_irradiance_col='irradiance_surface',
@@ -2328,15 +3635,56 @@ def generate_full_pipeline_for_country(
         orientation_factor=orientation_factor,
         roughness_length=roughness_length,
     )
+    _solar_raw_mean = float(pd.to_numeric(cf_df['solar_cf'], errors='coerce').mean())
+    _wind_raw_mean = float(pd.to_numeric(cf_df['wind_cf'], errors='coerce').mean())
+    _status(
+        'cf',
+        f"computed solar PV (orient×{orientation_factor}) and wind (hub 100m, z0={roughness_length}) CFs  "
+        f"raw annual means: solar={_solar_raw_mean:.4f}  wind={_wind_raw_mean:.4f}",
+        t=_t,
+    )
+
     # Step 4: Calibrate capacity factors using Ember statistics
     capacities, observed_cf = load_ember_annual_capacity_factors(
         ember_csv_path, country=ember_country_name, variables=['Solar', 'Wind'], last_n_years=last_n_years
     )
-    cf_scaled = calibrate_capacity_factors(cf_df, observed_cf, rename_map={'Solar': 'solar_cf', 'Wind': 'wind_cf'})
+    _solar_target = observed_cf.get('Solar', float('nan'))
+    _wind_target = observed_cf.get('Wind', float('nan'))
+    _status(
+        'cf',
+        f"Ember targets for {country_iso2}: solar={_solar_target:.4f}  wind={_wind_target:.4f}  "
+        f"(calibration mode = {cf_calibration_mode})",
+    )
+    cf_scaled = calibrate_capacity_factors(
+        cf_df,
+        observed_cf,
+        rename_map={'Solar': 'solar_cf', 'Wind': 'wind_cf'},
+        mode=cf_calibration_mode,
+    )
+    # Surface the per-column calibration diagnostics inline so the user
+    # sees the multiplier and the fraction-at-cap at the moment they
+    # matter, without having to open the metrics CSV.
+    for _col, _diag in cf_scaled.attrs.get('calibration_diagnostics', {}).items():
+        _mult = _diag.get('initial_multiplier', float('nan'))
+        _frac = _diag.get('fraction_at_cap', float('nan'))
+        _max = _diag.get('final_max', float('nan'))
+        _resid = _diag.get('residual_mean_error', float('nan'))
+        _unreach = _diag.get('mean_unreachable', False)
+        _status(
+            'cf',
+            f"  {_col}: multiplier={_mult:.2f}×  frac_at_cap={_frac*100:.1f}%  "
+            f"max={_max:.4f}  residual={_resid:+.4f}"
+            + ("  (target unreachable — synthetic too saturated)" if _unreach else ""),
+        )
     # Step 5: Compute generation (MW) from capacity factors using average installed capacity
     # Convert installed capacity from GW to MW
     solar_cap = capacities.get('Solar', 0.0) * 1000.0
     wind_cap = capacities.get('Wind', 0.0) * 1000.0
+    _status(
+        'gen',
+        f"installed capacity (Ember avg over {last_n_years}y): "
+        f"solar={solar_cap/1000:.1f} GW  wind={wind_cap/1000:.1f} GW",
+    )
     gen_df = pd.DataFrame(index=cf_scaled.index)
     gen_df['solar_cf'] = cf_scaled['solar_cf']
     gen_df['wind_cf'] = cf_scaled['wind_cf']
@@ -2362,6 +3710,13 @@ def generate_full_pipeline_for_country(
     df_with_gen['wind_gen'] = gen_interp['wind_gen'].values
     # Step 6: Compute net load by subtracting generation
     df_with_gen['net_load'] = df_with_gen['load'] - df_with_gen['solar_gen'] - df_with_gen['wind_gen']
+    _nl = pd.to_numeric(df_with_gen['net_load'], errors='coerce')
+    _status(
+        'gen',
+        f"net load = load − solar_gen − wind_gen  → "
+        f"annual mean {float(_nl.mean()):,.0f} MW  "
+        f"(range {float(_nl.min()):,.0f}–{float(_nl.max()):,.0f})",
+    )
     # Use net load for clustering; pass generation columns for subtraction in run_pipeline
     gen_cols = ['solar_gen', 'wind_gen']
     cf_cols = ['solar_cf', 'wind_cf']
@@ -2400,6 +3755,17 @@ def generate_full_pipeline_for_country(
     cf_results = run_details['capacity_factors']
     lf_results = run_details['load_factors']
     labels = run_details['labels']
+
+    # Days-per-timeslice summary so the user can sanity-check the cluster
+    # composition at a glance.
+    _ts_metadata = run_details.get('timeslice_metadata')
+    if _ts_metadata is not None and 'timeslice_name' in _ts_metadata.columns and 'days_represented' in _ts_metadata.columns:
+        _days_summary = '  '.join(
+            f"{name}={int(days)}"
+            for name, days in zip(_ts_metadata['timeslice_name'], _ts_metadata['days_represented'])
+        )
+        _status('cluster', f"days per timeslice: {_days_summary}")
+
     metrics_df = build_run_metrics(
         country=region_name,
         year=year,
@@ -2429,19 +3795,107 @@ def generate_full_pipeline_for_country(
         columns=clustering_columns,
         representative_dates=run_details.get('representative_dates'),
     )
-    comparison_metrics = compare_pinned_unpinned_clustering(
-        country=region_name,
-        year=year,
-        df=df_with_gen,
-        load_col='net_load',
-        gen_cols=[],
-        n_clusters=n_clusters,
-        feature_weight_mode=kwargs.get('feature_weight_mode', 'netload_focus'),
-        search_seeds=kwargs.get('search_seeds'),
-    )
+    # The pinned-vs-unpinned comparison is opt-in because it re-runs the
+    # full clustering pipeline twice (~2× the clustering cost). The
+    # production answer is the pinned variant, which has already been
+    # computed above; the comparison only adds the unpinned baseline plus
+    # a redundant pinned re-run for symmetry. Worth enabling occasionally
+    # to verify the pinning trade-off on a new country; not worth the
+    # time on every routine run once the trade-off is understood.
+    if compare_pinned_unpinned:
+        _status(
+            'cluster',
+            "running pinned-vs-unpinned reconstruction comparison "
+            "(re-clusters once with and once without pinning)...",
+        )
+        _t_compare = time.perf_counter()
+        comparison_metrics = compare_pinned_unpinned_clustering(
+            country=region_name,
+            year=year,
+            df=df_with_gen,
+            load_col='net_load',
+            gen_cols=[],
+            n_clusters=n_clusters,
+            feature_weight_mode=kwargs.get('feature_weight_mode', 'netload_focus'),
+            search_seeds=kwargs.get('search_seeds'),
+        )
+        _status('cluster', "comparison complete", t=_t_compare)
+    else:
+        comparison_metrics = pd.DataFrame()
+        _status(
+            'cluster',
+            "skipping pinned-vs-unpinned comparison "
+            "(set COMPARE_PINNED_UNPINNED=True in run_pipeline.py to enable)",
+            level='verbose',
+        )
+
     metrics_df = pd.concat([metrics_df, clustering_metrics, comparison_metrics], ignore_index=True)
+    _status(
+        'metrics',
+        f"writing per-run metrics ({len(metrics_df)} rows) + appending to global summary",
+    )
     write_metrics_reports(metrics_df, resolved_output_path)
+
+    # Single-line output / eps summaries (file lists deliberately suppressed
+    # so they don't clutter the log; the directory contents tell that story).
+    if resolved_output_path:
+        _status(
+            'output',
+            f"generic outputs written → {resolved_output_path} (+ companion CSVs)",
+        )
+        _eps_dir = os.path.splitext(resolved_output_path)[0] + '_EPS'
+        if os.path.isdir(_eps_dir):
+            try:
+                _shelf_count = len([
+                    f for f in os.listdir(os.path.join(_eps_dir, 'SHELF'))
+                    if f.endswith('.csv')
+                ]) if os.path.isdir(os.path.join(_eps_dir, 'SHELF')) else 0
+                _syshecf_count = len([
+                    f for f in os.listdir(os.path.join(_eps_dir, 'SYSHECF'))
+                    if f.endswith('.csv')
+                ]) if os.path.isdir(os.path.join(_eps_dir, 'SYSHECF')) else 0
+            except OSError:
+                _shelf_count = _syshecf_count = 0
+            _status(
+                'eps',
+                f"EPS files written → {_eps_dir}/  "
+                f"(SHELF: {_shelf_count}, SYSHECF: {_syshecf_count})",
+            )
+
     print_metrics_summary(region_name, metrics_df)
+
+    # ---- Diagnostic plots (per-cluster, four variables each) ----
+    # Optional. Produces 24 PNG files (6 timeslices × 4 variables) under
+    # <output_root>_plots/. Skipped if `make_plots=False` or if matplotlib
+    # is not importable.
+    if make_plots and resolved_output_path:
+        _t_plots = time.perf_counter()
+        plots_dir = os.path.splitext(resolved_output_path)[0] + '_plots'
+        _ts_metadata_for_plots = run_details.get('timeslice_metadata')
+        plot_paths = make_cluster_diagnostic_plots(
+            df=df_with_gen,
+            labels=labels,
+            timeslice_metadata=_ts_metadata_for_plots,
+            representative_dates=run_details.get('representative_dates') or {},
+            output_dir=plots_dir,
+            country=region_name,
+        )
+        if plot_paths:
+            _status(
+                'plots',
+                f"wrote {len(plot_paths)} cluster diagnostic plots → {plots_dir}/",
+                t=_t_plots,
+            )
+        else:
+            _status(
+                'plots',
+                "diagnostic plots skipped (matplotlib unavailable or no data)",
+                level='verbose',
+            )
+
+        # The calibration-overview plot is now generated earlier (right after
+        # the calibration step). No re-emit here.
+
     return cf_results, lf_results, labels
 
 ###############################################################################
@@ -2782,6 +4236,8 @@ def load_enduse_data_mendeley(
     region: str,
     year: int,
     scenario: str = 'SSP2',
+    use_cache: bool = False,
+    cache_dir: Optional[str] = None,
 ) -> pd.DataFrame:
     """Load hourly end‑use electricity demand from the Mendeley dataset.
 
@@ -2824,6 +4280,54 @@ def load_enduse_data_mendeley(
         the sum of sector totals.
     """
     region = region.strip()
+
+    # ------------------------------------------------------------------
+    # Cache short-circuit. Mendeley parsing reads ~22 ~9 MB CSVs; the
+    # cached parquet is tiny (one year × ~15 columns) and reads in ~1 s.
+    # ------------------------------------------------------------------
+    if use_cache:
+        cache_name = (
+            f"mendeley_{_safe_filename_part(region)}_"
+            f"{_safe_filename_part(year)}_{_safe_filename_part(scenario)}.parquet"
+        )
+        cache_path = os.path.join(_resolve_cache_dir(data_dir, cache_dir), cache_name)
+        # Source paths: the broad set of Mendeley CSVs this loader touches.
+        # If any of them changed, we rebuild.
+        _mendeley_sources = [
+            os.path.join(data_dir, name)
+            for name in (
+                f'Residential_total_weekday_{scenario}.csv',
+                f'Residential_total_weekend_{scenario}.csv',
+                f'Service_total_weekday_{scenario}.csv',
+                f'Service_total_weekend_{scenario}.csv',
+                f'Industry_total_weekday_{scenario}.csv',
+                f'Industry_total_weekend_{scenario}.csv',
+                'Transport_total_weekday.csv',
+                'Transport_total_weekend.csv',
+                'Residential_cooling_weekday.csv',
+                'Residential_cooling_weekend.csv',
+                'Residential_heating_weekday.csv',
+                'Residential_heating_weekend.csv',
+                'Residential_lighting_weekday.csv',
+                'Residential_lighting_weekend.csv',
+                'Residential_waterheating_weekday.csv',
+                'Residential_waterheating_weekend.csv',
+                'Service_cooling_weekday.csv',
+                'Service_cooling_weekend.csv',
+                'Service_heating_weekday.csv',
+                'Service_heating_weekend.csv',
+                'Service_waterheating_weekday.csv',
+                'Service_waterheating_weekend.csv',
+            )
+        ]
+
+        def _build():
+            return load_enduse_data_mendeley(
+                data_dir, region, year, scenario,
+                use_cache=False, cache_dir=None,
+            )
+        return _read_or_build_cached_parquet(cache_path, _mendeley_sources, _build)
+
     # Helper to form file names for aggregated sector totals
     def tot_path(sector: str, day_type: str) -> str:
         if sector.lower() in {'residential', 'service', 'industry'}:
@@ -2894,6 +4398,7 @@ def fetch_demand_data_demandcast(
     country_code: str,
     start_year: Optional[int] = None,
     end_year: Optional[int] = None,
+    data_dir: Optional[str] = None,
 ) -> pd.Series:
     """Fetch historical hourly electricity demand using DemandCast.
 
@@ -2967,6 +4472,18 @@ def fetch_demand_data_demandcast(
             "to enable automatic demand retrieval."
         ) from inner_e
 
+    # Mirror manually-staged demand files from the canonical
+    # data/manual_downloads/ folder into the DemandCast clone, so users only
+    # need to maintain one copy. Best-effort: any failure (missing folder,
+    # permission denied, etc.) is silently ignored so that DemandCast can
+    # raise its own clearer "file not found" error if it actually needs them.
+    try:
+        _sync_manual_downloads_to_demandcast(
+            data_dir or DEFAULT_DATA_DIR, demandcast_root,
+        )
+    except Exception:
+        pass
+
     # Identify available data sources for the given code
     sources = _find_demandcast_sources_containing_code(demandcast_root, code)
     if not sources:
@@ -3003,6 +4520,639 @@ def fetch_demand_data_demandcast(
             series = series[series.index <= end]
 
     return series
+
+
+###############################################################################
+# Zapata-based calibration  (Zapata et al., Energy 258 (2022) 124741)
+#
+# Implementation notes:
+#   * The four "climate-sensitive" end-uses (residential cooling, residential
+#     heating, residential lighting, service cooling) are REGENERATED from
+#     country-specific weather + occupancy + Forsythe daylength using the
+#     verbatim closed-form equations from the paper's online supplementary.
+#   * The other seven Mendeley end-uses keep their empirical hourly patterns;
+#     the paper says their HOURLY variation is empirical-not-stylized.
+#   * Calibration to observed totals is done via monthly non-negative least
+#     squares (NNLS) on the hybrid basis.
+#
+# See ``zapata_implementation_readme.md`` for the full methodology write-up,
+# equation references, and result comparison. Treat the constants below
+# (×7, /17.9, /12.43, etc.) as Zapata-fit against European/USA empirical
+# data; applying them unchanged to any new country inherits that bias.
+###############################################################################
+
+# Reference temperature for cooling- and heating-degree-hours.
+ZAPATA_REF_TEMP_C = 18.0
+
+# Climate-sensitive end-uses with stylized hourly functions per Zapata.
+ZAPATA_CLIMATE_SENSITIVE_COLS = (
+    'residential_cooling',
+    'residential_heating',
+    'residential_lighting',
+    'service_cooling',
+)
+
+# HETUS-style hourly occupancy profiles (hand-tuned approximations of paper
+# Fig. 3). Four profiles per sector: active/total × weekday/weekend.
+ZAPATA_RES_ACTIVE_WEEKDAY = np.array([
+    0.03, 0.02, 0.02, 0.02, 0.03, 0.10,
+    0.35, 0.55, 0.50, 0.40, 0.32, 0.30,
+    0.32, 0.30, 0.28, 0.30, 0.45, 0.65,
+    0.80, 0.88, 0.85, 0.65, 0.35, 0.10,
+])
+ZAPATA_RES_ACTIVE_WEEKEND = np.array([
+    0.05, 0.03, 0.03, 0.03, 0.04, 0.07,
+    0.18, 0.40, 0.60, 0.70, 0.72, 0.72,
+    0.68, 0.65, 0.62, 0.65, 0.70, 0.78,
+    0.85, 0.88, 0.85, 0.70, 0.45, 0.20,
+])
+ZAPATA_RES_TOTAL_WEEKDAY = np.array([
+    0.97, 0.98, 0.99, 0.99, 0.99, 0.97,
+    0.90, 0.78, 0.55, 0.40, 0.30, 0.28,
+    0.32, 0.30, 0.28, 0.30, 0.45, 0.65,
+    0.85, 0.93, 0.96, 0.97, 0.97, 0.97,
+])
+ZAPATA_RES_TOTAL_WEEKEND = np.array([
+    0.97, 0.98, 0.98, 0.98, 0.98, 0.97,
+    0.92, 0.85, 0.75, 0.80, 0.82, 0.82,
+    0.80, 0.78, 0.78, 0.80, 0.82, 0.85,
+    0.92, 0.95, 0.96, 0.97, 0.96, 0.96,
+])
+ZAPATA_SVC_WEEKDAY = np.array([
+    0.05, 0.05, 0.05, 0.05, 0.05, 0.10,
+    0.30, 0.60, 0.85, 0.95, 0.98, 0.95,
+    0.85, 0.90, 0.95, 0.93, 0.85, 0.65,
+    0.40, 0.20, 0.10, 0.08, 0.05, 0.05,
+])
+ZAPATA_SVC_WEEKEND = np.array([
+    0.03, 0.03, 0.03, 0.03, 0.03, 0.05,
+    0.10, 0.18, 0.25, 0.32, 0.38, 0.40,
+    0.40, 0.38, 0.35, 0.30, 0.25, 0.18,
+    0.12, 0.08, 0.05, 0.04, 0.03, 0.03,
+])
+
+
+def _zapata_forsythe_daylength_hours(latitude_deg: float, day_of_year: int) -> float:
+    """Forsythe et al. (1995) daylength formula (paper ref [59])."""
+    import math as _math
+    lat_rad = _math.radians(latitude_deg)
+    P = _math.asin(
+        0.39795 * _math.cos(
+            0.2163108 + 2 * _math.atan(0.9671396 * _math.tan(0.00860 * (day_of_year - 186)))
+        )
+    )
+    arg = (
+        (_math.sin(_math.radians(0.8333)) + _math.sin(lat_rad) * _math.sin(P))
+        / (_math.cos(lat_rad) * _math.cos(P))
+    )
+    if arg > 1.0:
+        return 0.0
+    if arg < -1.0:
+        return 24.0
+    return 24.0 - (24.0 / _math.pi) * _math.acos(arg)
+
+
+def _zapata_forsythe_irradiance_pattern_24h(
+    latitude_deg: float, day_of_year: int,
+) -> np.ndarray:
+    """Synthetic 24h irradiance pattern: half-sinus from sunrise to sunset,
+    centred at 12:30 local. Per paper Section 2.1.2 (p. 5), used as BP for
+    residential lighting instead of measured irradiance."""
+    import math as _math
+    D = _zapata_forsythe_daylength_hours(latitude_deg, day_of_year)
+    if D <= 0:
+        return np.zeros(24)
+    if D >= 24:
+        return np.ones(24)
+    sunrise = 12.5 - D / 2.0
+    sunset = 12.5 + D / 2.0
+    pattern = np.zeros(24)
+    for h in range(24):
+        h_mid = h + 0.5
+        if sunrise < h_mid < sunset:
+            pattern[h] = _math.sin(_math.pi * (h_mid - sunrise) / D)
+    return pattern
+
+
+# ---------- Stylized functions f_e (Zapata 2022 supplementary, verbatim) ----------
+
+def _zapata_residential_lighting(
+    occ_active: np.ndarray, irr_pattern: np.ndarray,
+) -> np.ndarray:
+    """Eq. 3 (supplementary):
+        Lighting = (AO + 0.15) / min(1, max(0.3, I/0.4))
+    """
+    denom = np.minimum(1.0, np.maximum(0.3, irr_pattern / 0.4))
+    return (occ_active + 0.15) / denom
+
+
+def _zapata_residential_heating(
+    occ_active: np.ndarray, hdh: np.ndarray,
+    hours: np.ndarray, is_weekend: np.ndarray,
+) -> np.ndarray:
+    """Eqs. 4 (supplementary), weekday and weekend variants with morning-peak window."""
+    weekday_morning = (~is_weekend) & (hours >= 5) & (hours <= 10)
+    weekend_morning = is_weekend & (hours >= 5) & (hours <= 12)
+    morning = weekday_morning | weekend_morning
+    ao_term = np.where(
+        morning,
+        np.maximum(0.01, occ_active + 0.4),
+        np.maximum(0.01, occ_active),
+    )
+    weekend_offpeak = is_weekend & ~weekend_morning
+    hdh_scaled = np.where(weekend_offpeak, 1.1 * hdh / 17.9, hdh / 17.9)
+    hdh_term = np.maximum(0.6, hdh_scaled)
+    return ao_term + hdh_term
+
+
+def _zapata_residential_cooling(
+    occ_total: np.ndarray, cdh: np.ndarray,
+) -> np.ndarray:
+    """Residential AC (supplementary, unnumbered):  HO × max(0.01, CDH × 7)."""
+    return occ_total * np.maximum(0.01, cdh * 7.0)
+
+
+def _zapata_service_cooling(
+    occ_svc: np.ndarray, cdh: np.ndarray, is_weekend: np.ndarray,
+) -> np.ndarray:
+    """Eqs. 8 & 9 (supplementary):
+        Weekday: CDH/12.43 + 0.5 + 0.6 × OCC
+        Weekend: CDH/12.43 + 0.5 + 0.2 × OCC
+    """
+    occ_scale = np.where(is_weekend, 0.2, 0.6)
+    return cdh / 12.43 + 0.5 + occ_scale * occ_svc
+
+
+def _zapata_broadcast_occupancy(
+    profile_weekday: np.ndarray, profile_weekend: np.ndarray,
+    hours: np.ndarray, is_weekend: np.ndarray,
+) -> np.ndarray:
+    """Pick the right HETUS profile per hour based on day-of-week."""
+    return np.where(is_weekend, profile_weekend[hours], profile_weekday[hours])
+
+
+def build_zapata_hybrid_basis(
+    mendeley_df: pd.DataFrame,
+    weather_df: pd.DataFrame,
+    latitude_deg: float,
+) -> pd.DataFrame:
+    """Assemble the Zapata hybrid basis: 4 climate-sensitive columns
+    regenerated from weather + occupancy + Forsythe daylength, plus the
+    other 7 Mendeley end-uses kept as empirical patterns.
+
+    Both inputs must be on the SAME naive (local-time) hourly index. Returns
+    a DataFrame indexed identically with all 11 end-use columns plus a
+    ``load`` column = sum across end-uses.
+
+    Parameters
+    ----------
+    mendeley_df : DataFrame
+        Output of ``load_enduse_data_mendeley`` for the target year and
+        region (naive hourly index, local time).
+    weather_df : DataFrame
+        Hourly weather DataFrame with at least a ``temperature`` column
+        (°C). Index must align with ``mendeley_df.index`` after stripping
+        timezone information.
+    latitude_deg : float
+        Latitude used for the Forsythe daylength term (degrees, +N).
+    """
+    if 'temperature' not in weather_df.columns:
+        raise KeyError(
+            "build_zapata_hybrid_basis requires weather_df['temperature']; "
+            f"got columns {list(weather_df.columns)}."
+        )
+
+    # Align weather to Mendeley index (drop tz if present). Both should be
+    # the same local-time naive hourly grid by the caller's contract.
+    w = weather_df.copy()
+    if getattr(w.index, 'tz', None) is not None:
+        w.index = w.index.tz_localize(None)
+    w = w.reindex(mendeley_df.index)
+    if w['temperature'].isna().any():
+        raise ValueError(
+            "weather_df cannot be aligned to mendeley_df index without NaN "
+            "after reindex — caller must ensure both cover the same year "
+            "and use matching naive local-time hour-beginning indices."
+        )
+
+    idx = mendeley_df.index
+    temp_C = w['temperature'].to_numpy(dtype=float)
+    hours = (idx.hour.to_numpy() if hasattr(idx.hour, 'to_numpy')
+             else np.asarray(idx.hour))
+    days = (idx.dayofyear.to_numpy() if hasattr(idx.dayofyear, 'to_numpy')
+            else np.asarray(idx.dayofyear))
+    is_weekend = idx.dayofweek.to_numpy() >= 5
+
+    occ_res_total = _zapata_broadcast_occupancy(
+        ZAPATA_RES_TOTAL_WEEKDAY, ZAPATA_RES_TOTAL_WEEKEND, hours, is_weekend,
+    )
+    occ_res_active = _zapata_broadcast_occupancy(
+        ZAPATA_RES_ACTIVE_WEEKDAY, ZAPATA_RES_ACTIVE_WEEKEND, hours, is_weekend,
+    )
+    occ_svc = _zapata_broadcast_occupancy(
+        ZAPATA_SVC_WEEKDAY, ZAPATA_SVC_WEEKEND, hours, is_weekend,
+    )
+
+    CDH = np.maximum(temp_C - ZAPATA_REF_TEMP_C, 0.0)
+    HDH = np.maximum(ZAPATA_REF_TEMP_C - temp_C, 0.0)
+
+    # Forsythe irradiance pattern, cached by day-of-year.
+    pattern_by_doy = {
+        int(d): _zapata_forsythe_irradiance_pattern_24h(latitude_deg, int(d))
+        for d in np.unique(days)
+    }
+    irr_pattern_hourly = np.asarray([
+        pattern_by_doy[int(d)][int(h)] for d, h in zip(days, hours)
+    ], dtype=float)
+
+    basis = mendeley_df.copy()
+    basis['residential_cooling'] = _zapata_residential_cooling(occ_res_total, CDH)
+    basis['residential_heating'] = _zapata_residential_heating(
+        occ_res_active, HDH, hours, is_weekend,
+    )
+    basis['residential_lighting'] = _zapata_residential_lighting(
+        occ_res_active, irr_pattern_hourly,
+    )
+    basis['service_cooling'] = _zapata_service_cooling(occ_svc, CDH, is_weekend)
+
+    # Recompute totals and load = sum of end-use components.
+    basis = _recompute_enduse_totals(basis)
+    return basis
+
+
+def calibrate_via_monthly_nnls(
+    basis_df: pd.DataFrame,
+    real_series: pd.Series,
+    end_use_cols: Iterable[str],
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Solve monthly NNLS to find non-negative end-use weights that best
+    fit observed totals. Returns:
+
+      * a calibrated DataFrame with the same end-use columns as ``basis_df``,
+        each scaled by its NNLS weight for that hour's month; plus a
+        recomputed ``load`` column = sum of calibrated components.
+      * a weights DataFrame with columns 'month', 'hours_in_month',
+        'residual_norm_mw', and one column per end-use.
+
+    The function expects ``basis_df.index`` to be naive local-time hourly
+    and ``real_series`` to cover the same period (caller should align
+    them first; the function does an inner-join on indices for safety).
+    """
+    from scipy.optimize import nnls as _nnls
+
+    end_use_cols = list(end_use_cols)
+    missing = [c for c in end_use_cols if c not in basis_df.columns]
+    if missing:
+        raise KeyError(f"basis_df missing end-use columns: {missing}")
+
+    # Align: strip tz info on the real series if present, then inner-join
+    # on index.
+    rs = real_series.copy()
+    if getattr(rs.index, 'tz', None) is not None:
+        rs.index = rs.index.tz_localize(None)
+    rs = rs.groupby(rs.index).mean().sort_index()
+
+    common = basis_df.index.intersection(rs.index)
+    if len(common) == 0:
+        raise ValueError(
+            "No overlapping timestamps between basis_df and real_series for NNLS."
+        )
+
+    X_full = basis_df.loc[common, end_use_cols].astype(float)
+    y_full = rs.loc[common].astype(float)
+    months = pd.Series(common, index=common).dt.month
+
+    weights_rows: list[Dict[str, Any]] = []
+    monthly_weights: Dict[int, np.ndarray] = {}
+    for month, idx_in_month in months.groupby(months).groups.items():
+        X = X_full.loc[idx_in_month].to_numpy()
+        y = y_full.loc[idx_in_month].to_numpy()
+        if X.size == 0 or y.size == 0:
+            continue
+        w, residual_norm = _nnls(X, y)
+        monthly_weights[int(month)] = w
+        weights_rows.append({
+            'month': int(month),
+            'hours_in_month': int(len(idx_in_month)),
+            'residual_norm_mw': float(residual_norm),
+            **{col: float(w_i) for col, w_i in zip(end_use_cols, w)},
+        })
+    weights_df = pd.DataFrame(weights_rows)
+
+    # Apply weights to the FULL basis_df. For each (month, end-use) pair,
+    # multiply the basis_df column by the NNLS weight for that month. Hours
+    # in a month with no NNLS solve (real_series didn't cover it) get 0.0;
+    # caller should warn in that case rather than fabricating values.
+    #
+    # IMPORTANT: do NOT fall back to the raw basis_df value when the NNLS
+    # weight is zero — NNLS can legitimately produce a zero weight, and
+    # falling back to the unscaled basis (which may be in Mendeley raw
+    # units ~1e8) would massively inflate the output. The correct
+    # interpretation of a zero weight is "this end-use contributes nothing
+    # this month," and the calibrated column should reflect that.
+    calibrated = basis_df.copy()
+    basis_months = pd.Series(basis_df.index, index=basis_df.index).dt.month.values
+    for col_idx, col in enumerate(end_use_cols):
+        # Map each hour's month → weight (0.0 if month not in monthly_weights)
+        weight_for_hour = np.asarray([
+            monthly_weights.get(int(m), np.zeros(len(end_use_cols)))[col_idx]
+            for m in basis_months
+        ], dtype=float)
+        calibrated[col] = basis_df[col].astype(float).to_numpy() * weight_for_hour
+
+    calibrated = _recompute_enduse_totals(calibrated)
+    return calibrated, weights_df
+
+
+# ============================================================================
+# Path B — EPS-anchored ridge NNLS calibration
+# ----------------------------------------------------------------------------
+# Background: the production zapata_nnls method (Path A) suffers from
+# basis-collinearity zero-flips. NNLS picks one column as a "flat baseload"
+# stand-in and zeros others in some months, producing NaN/0 cells in the
+# SHELF output (e.g. industry shape goes to 0 in winter/spring for China,
+# which then propagates as zero industrial hourly demand in those timeslices
+# when EPS consumes the SHELF).
+#
+# Ridge regularization fixes this by adding a soft prior that each end-use's
+# weight should stay close to 1.0 (in aligned-column units). The prior comes
+# from a country-specific EPS BAU sectoral demand extract — see
+# data/eps_priors/ for the extraction methodology. Because EPS itself
+# provides the magnitudes that get multiplied by SHELF shapes downstream,
+# anchoring our basis to EPS's own per-end-use magnitudes makes the entire
+# pipeline self-consistent with how its output will be consumed.
+#
+# Key insight (verified by reading EPS.mdl line 12716-12749): SHELF files
+# in EPS are SHAPE ONLY — header reads "Unit: dimensionless (ratio of
+# electricity demand in this hour to annual demand)". EPS multiplies them
+# by BAU [Sector] Electricity Demand internally. So the role of the
+# magnitude alignment is purely to make NNLS well-conditioned, not to
+# ensure correct magnitudes in the final output (those come from EPS).
+# ============================================================================
+
+def load_eps_magnitude_prior(
+    prior_csv_path: str,
+    target_year: int,
+) -> Dict[str, float]:
+    """Load per-end-use MWh/year magnitudes from an EPS BAU prior CSV.
+
+    The CSV must have columns ``end_use``, ``year``, ``eps_mwh_per_year``
+    (long format). Produced by ``data/eps_priors/parse_eps_extract.py``
+    against the country's EPS Vensim run.
+
+    Parameters
+    ----------
+    prior_csv_path : str
+        Path to the EPS prior CSV (per-country, e.g.
+        ``data/eps_priors/eps_prior_CN.csv``).
+    target_year : int
+        Calibration year. If the EPS run does not cover this year, the
+        nearest available year is used (with a printed warning).
+
+    Returns
+    -------
+    Dict[str, float]
+        Mapping {end_use_name: MWh_per_year_for_target_year}.
+    """
+    if not os.path.exists(prior_csv_path):
+        raise FileNotFoundError(
+            f"EPS prior CSV not found: {prior_csv_path}. Run "
+            "data/eps_priors/parse_eps_extract.py against the country's "
+            "EPS Vensim output first."
+        )
+    df = pd.read_csv(prior_csv_path)
+    required = {'end_use', 'year', 'eps_mwh_per_year'}
+    missing = required - set(df.columns)
+    if missing:
+        raise ValueError(
+            f"EPS prior CSV {prior_csv_path} missing columns: {missing}"
+        )
+    available_years = sorted(df['year'].unique())
+    if target_year in available_years:
+        used_year = target_year
+    else:
+        used_year = min(available_years, key=lambda y: abs(y - target_year))
+        print(
+            f"[eps-prior] WARNING: target year {target_year} not in EPS prior "
+            f"(available {min(available_years)}-{max(available_years)}); "
+            f"using nearest year {used_year}"
+        )
+    yr_df = df[df['year'] == used_year]
+    return {row['end_use']: float(row['eps_mwh_per_year']) for _, row in yr_df.iterrows()}
+
+
+def align_basis_to_prior(
+    basis_df: pd.DataFrame,
+    prior: Dict[str, float],
+    end_use_cols: Iterable[str],
+    verbose: bool = True,
+) -> Tuple[pd.DataFrame, Dict[str, float]]:
+    """Per-column rescale ``basis_df`` so each end-use's annual MEAN matches
+    the EPS prior MWh/year converted to MW (MWh/yr ÷ 8760).
+
+    After alignment, every aligned column has mean ≈ target_mean_MW, so a
+    ridge-prior weight of 1.0 on each column is meaningful: w=1 reproduces
+    the EPS prior's relative share, w!=1 means NNLS overrode the prior.
+
+    End-uses present in ``end_use_cols`` but not in ``prior`` are left
+    unscaled (with a warning).
+
+    Returns
+    -------
+    aligned_df : DataFrame
+        Copy of basis_df with the end-use columns rescaled.
+    scale_factors : Dict[str, float]
+        The per-column multiplier applied (target_mean / current_mean).
+    """
+    hours_per_year = 8760.0
+    end_use_cols = list(end_use_cols)
+    aligned = basis_df.copy()
+    scale_factors: Dict[str, float] = {}
+
+    # Fallback magnitude for columns NOT in the EPS prior (e.g. waterheating,
+    # which EPS folds into 'appliances' or 'other component' and doesn't track
+    # separately). Use the median of the priored targets — keeps the column
+    # at a comparable magnitude so ridge NNLS treats it on the same footing
+    # as the other end-uses rather than letting its raw Mendeley magnitude
+    # (which can be 10⁸×) dominate the basis.
+    prior_means_mw = [v / hours_per_year for v in prior.values() if v > 0]
+    fallback_target_mw = float(np.median(prior_means_mw)) if prior_means_mw else 1.0
+
+    if verbose:
+        print(f"[eps-prior] aligning {len(end_use_cols)} basis columns to EPS magnitudes:")
+        print(f"[eps-prior]   fallback magnitude for no-prior columns: "
+              f"{fallback_target_mw:,.4g} MW (median of priored targets)")
+        print(f"  {'end_use':<26} {'current_mean':>14} {'target_mean_MW':>16} {'scale':>14}")
+
+    for col in end_use_cols:
+        if col not in basis_df.columns:
+            continue
+        current_mean = float(pd.to_numeric(basis_df[col], errors='coerce').mean())
+        if col not in prior:
+            # No EPS prior: scale to the fallback magnitude so this column
+            # doesn't dominate the basis with its raw Mendeley units.
+            target_mean_mw = fallback_target_mw
+            label = '<fallback>'
+        else:
+            target_mean_mw = prior[col] / hours_per_year
+            label = None
+        if current_mean <= 0:
+            if verbose:
+                print(f"  {col:<26} {current_mean:>14.4g} {target_mean_mw:>16.4g} "
+                      f"{'<degenerate>':>14}")
+            scale_factors[col] = 1.0
+            continue
+        s = target_mean_mw / current_mean
+        aligned[col] = basis_df[col].astype(float) * s
+        scale_factors[col] = s
+        if verbose:
+            scale_str = label if label else f"{s:.4g}"
+            print(f"  {col:<26} {current_mean:>14.4g} {target_mean_mw:>16.4g} {scale_str:>14}")
+
+    aligned = _recompute_enduse_totals(aligned)
+    return aligned, scale_factors
+
+
+def calibrate_via_monthly_ridge_nnls(
+    basis_df: pd.DataFrame,
+    real_series: pd.Series,
+    end_use_cols: Iterable[str],
+    lambda_ridge: float = 1.0,
+    prior_weights: Optional[Dict[str, float]] = None,
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Solve monthly RIDGE NNLS with a per-end-use prior anchor.
+
+    Mathematically: for each month, solve
+
+        min  ||X·w - y||² + lambda * ||w - w_prior||²    s.t.  w >= 0
+
+    via stacked NNLS on
+
+        X' = [X; sqrt(lambda) * I]
+        y' = [y; sqrt(lambda) * w_prior]
+
+    where I is the identity and w_prior is the per-end-use prior weight
+    vector (defaults to 1.0 for every column, which assumes basis_df has
+    been pre-aligned to a magnitude prior via ``align_basis_to_prior``).
+
+    Parameters
+    ----------
+    basis_df : DataFrame
+        Hourly basis matrix (T × n_end_uses). Should be pre-aligned to a
+        magnitude prior so that w=1 is a meaningful anchor.
+    real_series : Series
+        Observed total electricity demand (MW), naive local time index.
+    end_use_cols : iterable of str
+        Column names in basis_df to use as the end-use basis.
+    lambda_ridge : float, default 1.0
+        Ridge strength. 0.0 reduces to plain NNLS; larger values pull
+        weights more strongly toward ``prior_weights``.
+    prior_weights : Dict[str, float] or None
+        Per-end-use prior weight (default 1.0 for all).
+
+    Returns
+    -------
+    calibrated_df : DataFrame
+        basis_df with each end-use column scaled by its (month, end-use)
+        ridge-NNLS weight, plus recomputed ``load`` = sum of end-uses.
+    weights_df : DataFrame
+        Per-month diagnostic: monthly residual norm, prior deviation,
+        and one column per end-use weight.
+    """
+    from scipy.optimize import nnls as _nnls
+
+    end_use_cols = list(end_use_cols)
+    missing = [c for c in end_use_cols if c not in basis_df.columns]
+    if missing:
+        raise KeyError(f"basis_df missing end-use columns: {missing}")
+
+    if prior_weights is None:
+        prior_weights = {col: 1.0 for col in end_use_cols}
+    w_prior = np.asarray(
+        [float(prior_weights.get(col, 1.0)) for col in end_use_cols], dtype=float,
+    )
+
+    # Align real series to basis index (strip tz if present)
+    rs = real_series.copy()
+    if getattr(rs.index, 'tz', None) is not None:
+        rs.index = rs.index.tz_localize(None)
+    rs = rs.groupby(rs.index).mean().sort_index()
+    common = basis_df.index.intersection(rs.index)
+    if len(common) == 0:
+        raise ValueError(
+            "No overlapping timestamps between basis_df and real_series for ridge NNLS."
+        )
+
+    X_full = basis_df.loc[common, end_use_cols].astype(float)
+    y_full = rs.loc[common].astype(float)
+    months = pd.Series(common, index=common).dt.month
+
+    n_e = len(end_use_cols)
+
+    # Per-month per-column effective lambda. ``lambda_ridge`` is dimensionless
+    # ("how much do I trust the EPS prior vs the data fit?"). 1.0 means "equal
+    # weight per residual entry"; >1 = trust prior more; <1 = trust data more.
+    #
+    # Without scaling, the data block has T_month ≈ 720 residual entries in
+    # MW² while the ridge block has n_e ≈ 11 in dimensionless w-space — that's
+    # an automatic 65× advantage for the data plus the magnitude mismatch
+    # between MW residuals and unit-scale prior deviations. To make
+    # `lambda_ridge=1` actually mean "equal weight," we scale each ridge row
+    # by `sigma_y * sqrt(T_month / n_e)` so each prior-residual entry has the
+    # same expected squared magnitude as a data-residual entry.
+
+    weights_rows: list[Dict[str, Any]] = []
+    monthly_weights: Dict[int, np.ndarray] = {}
+    for month, idx_in_month in months.groupby(months).groups.items():
+        X = X_full.loc[idx_in_month].to_numpy()
+        y = y_full.loc[idx_in_month].to_numpy()
+        if X.size == 0 or y.size == 0:
+            continue
+        if lambda_ridge > 0:
+            t_month = X.shape[0]
+            # Use std of y to set the natural scale of a single residual MW
+            # entry. clip to avoid division by zero in pathological cases.
+            sigma_y = float(np.std(y))
+            sigma_y = max(sigma_y, 1e-6)
+            # Effective per-entry ridge scale that makes one prior-residual
+            # entry have the same expected squared magnitude as one data
+            # residual entry.
+            effective_scale = sigma_y * float(np.sqrt(max(1.0, t_month / max(1, n_e))))
+            sqrt_lambda = float(np.sqrt(lambda_ridge)) * effective_scale
+            ridge_block_X = sqrt_lambda * np.eye(n_e)
+            ridge_block_y = sqrt_lambda * w_prior
+            X_aug = np.vstack([X, ridge_block_X])
+            y_aug = np.concatenate([y, ridge_block_y])
+            w, residual_norm = _nnls(X_aug, y_aug)
+        else:
+            w, residual_norm = _nnls(X, y)
+        # Diagnostics: how close did the solver stay to the prior?
+        prior_deviation = float(np.linalg.norm(w - w_prior))
+        # Data-only fit residual (excluding the ridge block)
+        data_residual = float(np.linalg.norm(X @ w - y))
+        monthly_weights[int(month)] = w
+        weights_rows.append({
+            'month': int(month),
+            'hours_in_month': int(len(idx_in_month)),
+            'data_residual_mw': data_residual,
+            'prior_deviation': prior_deviation,
+            'augmented_residual': float(residual_norm),
+            **{col: float(w_i) for col, w_i in zip(end_use_cols, w)},
+        })
+    weights_df = pd.DataFrame(weights_rows)
+
+    # Apply weights to the FULL basis_df (zero for months not solved).
+    calibrated = basis_df.copy()
+    basis_months = pd.Series(basis_df.index, index=basis_df.index).dt.month.values
+    for col_idx, col in enumerate(end_use_cols):
+        weight_for_hour = np.asarray([
+            monthly_weights.get(int(m), np.zeros(n_e))[col_idx]
+            for m in basis_months
+        ], dtype=float)
+        calibrated[col] = basis_df[col].astype(float).to_numpy() * weight_for_hour
+
+    calibrated = _recompute_enduse_totals(calibrated)
+    return calibrated, weights_df
 
 
 def calibrate_synthetic_load(
@@ -3704,11 +5854,22 @@ def _cluster_timeslices_legacy_impl(
         summer_candidates = daily_peaks[day_months.isin(list(summer_months))]
         winter_candidates = daily_peaks[day_months.isin(list(winter_months))]
         if not summer_candidates.empty:
-            pinned_dates.append(summer_candidates.idxmax())
+            _summer_pin = summer_candidates.idxmax()
+            pinned_dates.append(_summer_pin)
+            _status(
+                'cluster',
+                f"pinning summer peak day = {pd.Timestamp(_summer_pin).date()}  "
+                f"(net-load peak {float(summer_candidates.loc[_summer_pin]):,.0f} MW)",
+            )
         if not winter_candidates.empty:
             winter_peak_date = winter_candidates.idxmax()
             if winter_peak_date not in pinned_dates:
                 pinned_dates.append(winter_peak_date)
+                _status(
+                    'cluster',
+                    f"pinning winter peak day = {pd.Timestamp(winter_peak_date).date()}  "
+                    f"(net-load peak {float(winter_candidates.loc[winter_peak_date]):,.0f} MW)",
+                )
 
     remaining_dates = X.index.difference(pd.Index(pinned_dates))
     remaining_clusters = n_clusters - len(pinned_dates)
@@ -3824,8 +5985,14 @@ def _cluster_timeslices_legacy_impl(
     best_model = None
     best_mapping = None
     best_representative_dates = None
+    _t_cluster = time.perf_counter()
+    _status(
+        'cluster',
+        f"k-means search across {len(seen_seeds)} random seeds "
+        f"({remaining_clusters} free clusters + {len(pinned_dates)} pinned)",
+    )
 
-    for seed in seen_seeds:
+    for _seed_idx, seed in enumerate(seen_seeds, start=1):
         model = KMeans(n_clusters=remaining_clusters, random_state=seed, n_init=n_init)
         raw_labels = model.fit_predict(scaled_features.loc[remaining_dates])
         centers = model.cluster_centers_[:, scaled_features.columns.get_loc('net_p95')]
@@ -3837,15 +6004,29 @@ def _cluster_timeslices_legacy_impl(
         daily_labels = daily_labels.sort_index()
         representative_dates = _select_representative_dates(daily_labels)
         daily_labels, representative_dates, score = _improve_pinned_assignments(daily_labels, representative_dates)
-        if score < best_score:
+        improved = score < best_score
+        if improved:
             best_score = score
             best_labels = daily_labels
             best_model = model
             best_mapping = mapping
             best_representative_dates = representative_dates
+        # Per-seed details only when verbose, otherwise just the summary
+        # is printed after the loop completes.
+        _status(
+            'cluster',
+            f"  seed {seed} ({_seed_idx}/{len(seen_seeds)}): score={score:.4f}"
+            + ("  (new best)" if improved else ""),
+            level='verbose',
+        )
 
     if best_labels is None or best_model is None or best_mapping is None or best_representative_dates is None:
         raise RuntimeError("Failed to identify a valid timeslice clustering solution.")
+    _status(
+        'cluster',
+        f"selected best clustering (score={best_score:.4f}) across {len(seen_seeds)} seeds",
+        t=_t_cluster,
+    )
 
     ordered_labels = daily['date'].map(best_labels)
     ordered_labels.index = net_load.index
@@ -4912,84 +7093,17 @@ def run_pipeline(
 
 
 if __name__ == '__main__':  # pragma: no cover
-    # Set the country name here for direct script runs.
-    RUN_CONFIG = {
-        'country': 'South Korea',
-        'year': None,
-        'n_clusters': 6,
-        'output_path': None,
-        'last_n_years': None,
-        'use_example_data': False,
-    }
-
-    if RUN_CONFIG.get('use_example_data'):
-        import datetime as dt  # noqa: F401
-
-        # Generate a year of hourly timestamps
-        timestamps = pd.date_range(start='2025-01-01', end='2025-12-31 23:00', freq='h')
-    else:
-        print("Available country presets:")
-        print(list_country_presets().to_string(index=False))
-        generate_full_pipeline_for_preset(
-            country=RUN_CONFIG['country'],
-            year=RUN_CONFIG.get('year'),
-            n_clusters=RUN_CONFIG['n_clusters'],
-            output_path=RUN_CONFIG['output_path'],
-            last_n_years=RUN_CONFIG.get('last_n_years'),
-        )
-        raise SystemExit(0)
-    n = len(timestamps)
-    # Create synthetic load data with seasonal patterns and random noise
-    np.random.seed(42)
-    base_load = 5000 + 1000 * np.sin(2 * np.pi * timestamps.dayofyear / 365)
-    hourly_variation = 300 * np.sin(2 * np.pi * timestamps.hour / 24)
-    noise = 500 * np.random.randn(n)
-    load = base_load + hourly_variation + noise
-    # Synthetic renewable generation (solar and wind) capacity factors
-    solar_cf = np.clip(0.5 * np.sin(2 * np.pi * timestamps.hour / 24 - np.pi/2), 0, 1)
-    wind_cf = np.clip(0.3 + 0.2 * np.sin(2 * np.pi * timestamps.hour / 24 + np.pi/4), 0, 1)
-    # Assume installed capacities (MW) for solar and wind
-    solar_capacity = 2000
-    wind_capacity = 3000
-    solar_gen = solar_cf * solar_capacity
-    wind_gen = wind_cf * wind_capacity
-    # End‑use loads: residential and industrial (synthetic)
-    residential = 0.4 * load + 100 * np.random.randn(n)
-    industrial = 0.6 * load + 200 * np.random.randn(n)
-    # Assemble DataFrame
-    df = pd.DataFrame({
-        'timestamp': timestamps,
-        'load': load,
-        'solar_gen': solar_gen,
-        'wind_gen': wind_gen,
-        'solar_cf': solar_cf,
-        'wind_cf': wind_cf,
-        'residential': residential,
-        'industrial': industrial,
-    })
-    # Run the pipeline
-    results = run_pipeline(
-        df,
-        load_col='load',
-        gen_cols=['solar_gen', 'wind_gen'],
-        cf_cols=['solar_cf', 'wind_cf'],
-        load_cols=['residential', 'industrial'],
-        n_clusters=RUN_CONFIG['n_clusters'],
-        output_path=RUN_CONFIG['output_path'],
-        country=RUN_CONFIG['country'],
-        return_details=True,
+    # All run-time settings (country, year, clustering, etc.) live in
+    # run_pipeline.py. This module is library code — please launch via:
+    #
+    #     python run_pipeline.py
+    #
+    # That file holds every setting you should normally need to edit, with
+    # inline documentation. Calling this script directly does nothing useful.
+    import sys
+    sys.stderr.write(
+        "energy_timeslice_pipeline.py is a library module.\n"
+        "Run the pipeline via:  python run_pipeline.py\n"
+        "(All editable settings live there, with inline documentation.)\n"
     )
-    cf_df = results['capacity_factors']
-    lf_df = results['load_factors']
-    hourly_lf_df = results['hourly_load_factors']
-    timeslice_metadata = results['timeslice_metadata']
-    # Display summary statistics
-    print("Capacity factors by timeslice:")
-    print(cf_df)
-    print("\nRepresentative-day shares by timeslice:")
-    print(lf_df.head())
-    print("\nPinned and labeled timeslices:")
-    print(timeslice_metadata[['timeslice_name', 'is_pinned_summer', 'is_pinned_winter']])
-    print("\nHourly sector-service annual shares by timeslice (first 12 rows):")
-    hourly_cols = [c for c in hourly_lf_df.columns if c.endswith('_load_factor')]
-    print(hourly_lf_df[hourly_cols].head(12))
+    sys.exit(2)

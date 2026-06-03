@@ -1,0 +1,2996 @@
+
+
+========== PAGE 1 ==========
+nature energy
+https://doi.org/10.1038/s41560-023-01341-5
+Article
+A global model of hourly space heating and 
+cooling demand at multiple spatial scales
+In the format provided by the 
+authors and unedited
+
+
+========== PAGE 2 ==========
+1 
+Contents 
+Supplementary Note 1 Physical models p. 2 
+Supplementary Note 2 Statistical models p. 3 
+Supplementary Note 3 Surrogate models p. 4 
+Supplementary Note 4 Degree-day models p. 5 
+Supplementary Note 5 Previous works p. 7 
+Supplementary Note 6 Model simplifications p. 9 
+Supplementary Note 7 Validation for other models  p. 11 
+Supplementary Note 8 Model calibration p. 12 
+   
+Supplementary Table 1 Classes of building energy model p. 14 
+Supplementary Table 2 National datasets used for validation p. 15 
+Supplementary Table 3 Building datasets used for validation p. 16 
+Supplementary Table 4 Optimal parameters for Demand.ninja p. 17 
+Supplementary Table 5 Model quality compared to Hotmaps p. 18 
+Supplementary Table 6 Model quality compared to When2Heat p. 19 
+Supplementary Table 7 Model quality compared to NREL p. 20 
+Supplementary Table 8 Model quality in other world regions p. 21 
+Supplementary Table 9 Regional demand for cooling p. 22 
+   
+Supplementary Figures 1–42  Visualisation of BAIT, HDD/CDD, demand p. 23 
+Supplementary Figures 43–44 Optimal Demand.ninja parameters p. 65 
+Supplementary Figure 45 Impact of model features on quality p. 67 
+Supplementary Figures 46–88 Quality of modelling national demand p. 68 
+Supplementary Figures 89–99 Quality of modelling building demand p. 83 
+Supplementary Figures 100–153 Time-series plots of national validation p. 89 
+Supplementary Figures 154–164 Time-series plots of building validation p. 118 
+Supplementary Figures 165–166 Time-series plots of monthly gas validation p. 129 
+Supplementary Figure 167 Examples of excluded building demand data  p. 131 
+Supplementary Figure 168 Relationship between BAIT and temperature  p. 132 
+Supplementary Figure 169 Data used to create BAIT counterfactuals p. 133 
+Supplementary Figures 170–206 Hourly diurnal profiles for electricity demand p. 134 
+Supplementary Figure 207 Hourly diurnal profiles for heating / cooling p. 153 
+   
+Supplementary References  p. 154 
+   
+
+========== PAGE 3 ==========
+2 
+Supplementary Notes 
+Supplementary Note 1: Physical models 
+Physical models are based on theories of heat transfer and thermal diffusion and use energy 
+balance equations to simulate a building’s energy demand. They vary in complexity from 
+simplified resistance-capacitance models [1,2] to highly detailed models implemented in a 
+variety of purpose -built software (e.g. EnergyPlus [3]). The sheer variation in the built 
+environment and users’ interactions with it means that many inputs must be specified (10s 
+to 100s) to simulate heating and cooling loads using physical models [4]. These inputs 
+include physical parameters (e.g. envelope characteristics and HVAC equipment), user 
+behaviours (e.g. occupancy patterns) and local meteorological conditions (e.g. air 
+temperature and solar irradiance) [4–6].  
+ 
+Physical models are ubiquitous in the building industry, particularly in the conceptual design 
+stages where building design is most flexible, because their detailed parametric approach 
+allows the user to customise a very wide range of input parameters to create bespoke 
+estimates of the energy consumption of different building designs. However, such a detailed 
+approach limits the sphere of application of physical models.  Where a detailed description 
+of an entire stock of buildings is non -existent, the distribution of building characteristics 
+must be assumed based on the available data [7]. While these generic inputs may effectively 
+describe the building stock in a single neighbourhood or city, they could not be used to 
+describe the stock of another city. As parameters are manually defined and simulation run-
+times ar e long, each simulation is also very time -consuming [4]. Consequently, physical 
+models are typically applied only to individual buildings, neighbourhoods or (if sufficiently 
+generalised) cities [4,5,8]. While there are many studies that validate the outputs of physical 
+models against measured energy consumption, there is growing body of evidence that 
+shows significant discrepancies between simulated and measured energy consumption due 
+to mis -calibration [9–14]. The causes of such deviations include in accurate assumptions 
+regarding building design, user behaviours and occupancy patterns [12,15–17].  
+  
+
+========== PAGE 4 ==========
+3 
+Supplementary Note 2: Statistical models 
+Statistical models extract mathematical relationships between measurements of energy 
+consumption and other variables, which are then applied to predict energy consumption in 
+the unknown future or in new types of building. A wide variety of statistical methods are 
+available which can be broadly categorised as regression models [18,19] and machine 
+learning models [20,21]. The variables or ‘features’ that are used to predict demand in the 
+model are selected based on their predictive power for energy consumption, although 
+feature selection is ultimately limited by availability of data and processing time [22–24]. 
+The number of features included varies substantially between models, but is typically less 
+than 10 [24]. While some use only temperature to predict energy consumption, others 
+include additional meteorological variables (e.g. solar irradiance, wind speed and humidity) 
+and physical building characteristics (e.g. insulation, glazed area, type of roofing) [24,25]. A 
+key advantage of statistical models is that, where suitable data exist, models can give fast 
+predictions of energy consumption in known buildings, and because the models are derived 
+from measured energy data, they are effectively self-validating – at least within their 
+sample data.  
+ 
+The drawback with statistical models is that it is hard to use their results to inform modelling 
+in new contexts. The high cost of data collection means statistical models are often derived 
+from small underlying datasets, which has two important implications: 1) models based on 
+small samples are often less accurate when predicting out-of-sample (i.e. in new buildings), 
+and 2) in models with many predictors there is a risk of overfitting and producing misleading 
+results [23]. As is manifested in physical models, building energy consumption is influenced 
+by tens or even hundreds of possible features and interactions, which vary by region, culture 
+and so on [5]. As a result, it is difficult to generalise any one statistical model to fit another 
+geographical location or customise it to understand a new context. Even if it were 
+appropriate to generalise or customise statistical models, the model could only be applied 
+to contexts where corresponding data exist. 
+  
+
+========== PAGE 5 ==========
+4 
+Supplementary Note 3: Surrogate models 
+Surrogate models are used to emulate building simulation software (e.g. EnergyPlus) by 
+training a statistical model on simu lation input (i.e. weather files and building descriptors) 
+and output data (e.g. heating and cooling demand) [26]. Once trained, evaluating the 
+surrogate model is many orders of magnitude faster than running detailed physical 
+simulations, thereby reducin g the computational barrier to building energy simulation 
+[26,27]. Because their training sample is derived using building simulation software, they do 
+not require measured data to derive a statistical model – this is particularly useful when 
+comparing c onceptual building designs and for optimising design features [26]. Most 
+surrogates have been trained for specific building projects [28–30] or specific climate zones 
+[31–33], but some surrogates have been trained to cater for a variety of building t ypes 
+across multiple climate zones (e.g. for all climate zones in Morocco [34], Brazil [35] and 
+Canada [36]). The later study [36] is of particular interest as it demonstrates that surrogates 
+can be used to simulate hourly energy demand – as opposed to annual energy demand – 
+albeit with greater error.  
+ 
+With a sufficiently large and generalised training set, a single surrogate model could in 
+theory (though not yet in practice) be used to simulate temporally-resolved energy demand 
+across an exhaustive array of building designs and climate zones [26,36]. Such a model 
+would be both generalisable and customisable. Depending on the setup  (i.e. whether it 
+requires a comprehensive or more generic description of the building design), the model 
+could also be applied with widely available (or entirely conceptual) data. The key problem 
+with surrogate models is that they are trained using buildi ng simulations, so they are only 
+accurate within the limitations of the simulation program and the input data that are used 
+[26]. While surrogate models often show a high -degree of accuracy in emulating physical 
+models, evidence suggests that the outputs of physical models can deviate significantly from 
+measured data [9–14]. For example, Catalina et al. [31] find that their surrogate model’s 
+predictions are within 1% of simulated demand, but are nearly 40% higher than measured 
+demand (before applying a building specific adjustment factor).  
+  
+
+========== PAGE 6 ==========
+5 
+Supplementary Note 4: Degree-day models 
+In contrast to other approaches, degree -day methods are designed to spatially and 
+temporally resolve widely -available but highly aggregated measurements of energy 
+demand in buildings, such as annual or monthly measurements of national energy demand 
+[37]. Space heating and cooling demand represent a major share of total energy demand in 
+buildings and are strongly correlated with outdoor temperatures, which are measured at 
+high spatiotemporal resolution (e.g. 0.5 grid cells and hourly recordings). Temperature data 
+can be used to calculate heating and cooling degree days (HDDs and CDDs), which measure 
+how much (in C) and for how long (in days) the outdoor air temperature was higher or lower 
+than a given threshold temperature. HDDs and CDDs can then be used to derive a synthetic 
+load profile for each location at any given time (e.g. all grid cells in the UK for each day of 
+the year). These synthetic load profiles can then be we ighted according to the population 
+contained in each cell, to account for the higher demand experienced in more populous 
+regions, and scaled according to aggregate energy demand (e.g. annual UK building energy 
+demand).  
+ 
+The advantage of the degree -day method, compared with other methods, is that it can be 
+applied in almost any region using only widely available data, thus satisfying our first and 
+second criteria. Berger and Worlitschek [38] derive daily residential heating profiles for 
+Switzerland using 30-year average temperature data. Sachs et al. [39] derive hourly heating 
+and cooling profiles for four seasonally-representative days (i.e. 96 time-slices) across 165 
+countries using hourly temperature data. The Hot Maps Project [40] estimate daily heating 
+and cooling profiles for residential and tertiary consumers in all NUTS2 regions of the 
+European Union using daily temperature data. When2Heat [41] estimate daily heating 
+profiles for 16 European countries using temperature data and wind speeds. Despite several 
+advances, a recent study shows that the model in [41] performs only marginally better than 
+basic degree-day models when validated against UK gas demand [42]. In both [40] and [41], 
+daily profiles are resolved further to hourly profile s using hourly demand factors derived 
+from the German standard load profile [43]. Degree-day models are also used by industry. 
+For example, the National Grid use this approach to forecast gas demand in the UK [44]. As 
+with [41], their composite weather variable is derived from outdoor temperatures and wind 
+speeds.  
+ 
+Despite their broad applications, degree -day models generally fall short on our third and 
+fourth criteria, as their results are can only be customised in limited ways (e.g. by varying 
+threshold temperatures) and they are not extensively validated. Both physical and statistical 
+models show that the physical properties of buildings, occupant dynamics and other 
+meteorological variables can have a significant impact on energy consumption, yet t hese 
+factors are rarely considered when deriving synthetic load profiles [5,24]. As a result, 
+simulated load profiles typically show low geographical variation, which is compounded by 
+the smoothing effect incurred when aggregating large numbers of buildi ngs [40,45,46]. In 
+
+========== PAGE 7 ==========
+6 
+[40] and [41] the authors apply different parameters to differentiate between building types, 
+but they do not account for country -specific building dynamics or activity patterns as all 
+hourly profiles are derived from German standard load profiles. In [41] and [44] the authors 
+incorporate the effects of wind speeds into their profiles, but exclude other potentially 
+influential meteorological variables (i.e. humidity and solar irradiance). The exclusion of 
+these physical, behavioural, and meteorological factors precludes a customisable approach 
+to modelling heating and cooling loads, in which a user can change input parameters to 
+reflect the dynamics of an individual building or occupant. More importantly, existing studies 
+make little attempt to validate their results against measured data relative to the physical 
+and statistical models described previously. In [38] and [39] profiles are not validated against 
+any temporally-resolved measurements. In [40] simulated profiles are validated only for 
+several of the 16 countries, though results of this validation and the countries included are 
+not documented. In [41] outputs are validated for the UK and Germany and, given its scope 
+and application, outputs from [44] are validated extensively, but only for the UK. 
+  
+
+========== PAGE 8 ==========
+7 
+Supplementary Note 5: Previous works 
+Supplementary Table 1 summarises the advantages and disadvantages of each class of 
+model discussed above. We present the Demand.ninja model which builds upon degree-day 
+modelling, incorporating elements of physical and statistical modelling. D egree-day 
+modelling is used as the foundation as it meets the two most important criteria for a 
+universal model of heating and cooling demand: 1) it requires only limited and widely 
+available data, and 2) it can be generalised to any geographical location.  We incorporate 
+aspects of physical and statistical modelling to allow the user to customise or optimise 
+simulations without ballooning the number of inputs. We then put extensive effort into 
+validating our profiles against real -world data at the national,  regional, and individual -
+building level; and develop representative parameters to allow for generalised use in any 
+context. In the following paragraphs, we discuss the ways in which our approach builds on 
+existing degree-day studies.  
+ 
+HDDs and CDDs are the foundation of degree-day models. They have been estimated in many 
+different studies, with resources range from academic studies [47–50] and databases [51–
+53] to online calculators [54,55], with varied spatial and temporal resolution and coverage. 
+One commonality among resources is that HDDs and CDDs are typically calculated using 
+raw temperature data and fixed (often arbitrary) threshold temperatures. This simplistic 
+approach runs contrary to evidence from statistical models that suggests that the inclusion 
+of a range of meteorological variables can improve the accuracy of predictions, and that the 
+heating and cooling requirements of occupants vary depending on geographical, cultural, 
+economic and personal contexts, alongside the physical properties of buildings [5,19,23,24].  
+ 
+In a recent study, Atalla, Gualdi and Lanza [51] produced a global database of HDDs and 
+CDDs using three thermal indices (the Environmental Stress Index [56], Heat Index [57] and 
+Humidex [58]) and three threshold temperatures (15.6, 18.3 and 21.1 °C). While their work 
+represents a notable step forw ard, the database has three key limitations: 1) the indices 
+used do not capture the effect of wind chill (only humidity and/or solar irradiance), 2) the 
+threshold temperatures chosen are not tailored to specific contexts, and 3) their 
+calculations do not account for the thermal inertia of buildings by smoothing temperatures 
+such as in [41,44,59]. 
+ 
+Thermal indices are used by meteorological agencies to better reflect the temperature that 
+it ‘feels like’ to people. These indices can be applied as a proxy fo r the effects of solar 
+irradiance, wind speed and/or humidity on heating and cooling demand. For example, a 
+building will require more heating on days with lower solar radiation (due to reduced solar 
+gains) or higher wind speeds (due to more air changes pe r hour). These cases would be 
+represented by a lower value in the temperature index, if all else is held constant [44,51]. 
+While there are many thermal indices, few include all potentially influential meteorological 
+variables. For example, the Environmental Stress Index [56] accounts for just humidity and 
+
+========== PAGE 9 ==========
+8 
+solar irradiance, while the Heat Index [57] and Humidex [58] account only for humidity. 
+National Grid ESO developed the composite weather variable [44], used to forecast gas 
+demand, which account s for the effects of temperature and wind speed. This is a better 
+predictor of gas demand than raw temperature, but the omission of solar irradiance means 
+that bespoke correction factors are required for spring and autumn. In a recent study, 
+Copernicus [60] produced a state-of-the-art bioclimatology database (ERA5-HEAT), which 
+includes the effects of solar irradiance, humidity and wind speeds. Their Universal Thermal 
+Climate Index is defined as “the air temperature of a reference outdoor environment that 
+would elicit in the human body the same physiological model’s response … as the actual 
+environment”. We derive a similar index – the Building-Adjusted Internal Temperature (BAIT) 
+– which accounts for the same factors but is optimised to the response of buildings (in terms 
+of energy consumption), rather than human bodies (in terms of perception). This 
+optimisation is pivotal in tailoring our index to the built environment, as meteorological 
+conditions modify the perceived temperature differe ntly indoors (e.g. through solar gains, 
+insulation and ventilation) than they do outdoors. 
+ 
+Dynamic temperature smoothing and threshold temperatures can be used as proxies for the 
+physical and behavioural factors that influence heating and cooling demand. Temperature 
+smoothing (i.e. taking a weighted average over previous days) is designed to capture the 
+thermal inertia of buildings, with smoother temperatures representing buildings with better 
+insulation (i.e. slower heat transfer between the indoor and ou tdoor environment). This 
+approach is widely employed in the gas industry as it was found to improve the correlation 
+between degree days and measured gas consumption [44,61], and has more recently been 
+applied in academic studies [41,59]. Similarly, thr eshold temperatures can be used to 
+capture highly individual preferences in users’ demand for heating and cooling. For example, 
+a higher threshold temperature for heating would be used to represent occupants with 
+reduced tolerance to feeling cold, which may occur for economic reasons (greater affluence 
+or lower energy costs), health reasons (e.g. a hospital or care home) and so on. A recent 
+study [62] found that the average threshold temperature varies substantially across 
+European countries. Allowing smo othing factors and threshold temperatures to be 
+customised or optimised to fit a building or occupant helps to address the smoothing effect 
+inherent when aggregating the heating and cooling profiles of many buildings.  
+  
+
+========== PAGE 10 ==========
+9 
+Supplementary Note 6: Model simplifications 
+The approach described in ‘Calculating degree days’  relies on four simplifications. First, 
+outdoor temperatures vary throughout the day, but diurnal variations are not explicitly 
+accounted for because HDDs and CDDs are calculated using daily avera ge, rather than 
+hourly temperatures. For example, in temperate climates the daily average outdoor 
+temperature may be higher than the threshold temperature, hence the model computes zero 
+HDDs for that day, even though outdoor temperature falls below the threshold temperature 
+for at least some portion of the night. The thermal inertia of buildings (represented in 
+Equation 3 of the Methods) tends to an average of around 0.50, implying that past 
+meteorological conditions are influential with a half-life of 24 hours. Small, short excursions 
+below the heating threshold temperature overnight would therefore not reduce internal 
+temperatures sufficiently to require heating. Hence despite this simplification, we find that 
+the Demand.ninja performs comparably across al l climates and seasons (see Figure 4, 
+Supplementary Figures 46–99). 
+ 
+Second, with the metered energy demand data that are available it is not possible to isolate 
+the energy consumed for space hea ting and cooling demand from other end uses. For 
+example, domestic refrigerators will consume more electricity in summer in regions without 
+air conditioning as internal room temperatures are higher, and this will be captured within 
+our estimates of demand for space cooling. Isolating such effects would require more 
+disaggregated smart-metering data than is currently available; however, from the datasets 
+which do give appliance - or circuit-level granularity, we conclude that space heating and 
+cooling are by far the largest sources of temperature-dependent demand in buildings. 
+ 
+Third, when creating national and regional aggregated profiles, weighting the grid cells 
+within a region based on population density implies that people only demand heating and 
+cooling where they live and does not account for non -residential buildings, or people’s 
+movements throughout the day. For example, facilities such as supermarkets and data 
+centres have substantial cooling demand concentrated in specific areas that may not be 
+highly populated, but will be attributed to the location of households in this approach. 
+Similarly, the number of people in suburbs may decrease during working hours and the 
+number in city centres may increase. This could be improved upon if granular data on 
+industry locations with global scope, and time -varying global gridded data on human 
+locations became openly available. 
+ 
+Finally, the approach to aggregation assumes that all people within a country or region have 
+the same desire for heating and cooling (and so if they experienced the same weather 
+conditions, they would demand the same amount of energy). To improve upon this, t he 
+population density in each grid cell was raised to the power of 0.8 to account for households 
+typically having a smaller floor area in high-density cities [39]. 
+ 
+
+========== PAGE 11 ==========
+10 
+The approach described in ‘Resolving profiles to hourly resolution’  relies on two 
+simplifications. First, we assume that the diurnal profile for heating and cooling remain 
+constant throughout the year, unlike the profile for baseline demand which is specific to the 
+season and working vs. non -working days. For example, in New South Wales 
+(Supplementary Figure 170) it can be seen that heating demand takes a similar shape during 
+weekdays and weekends in winter and shoulder months, but takes a different shape during 
+summer months. However, this is reasonably inconsequential as the coldest days in the 
+Australian summer require little heating. 
+ 
+Secondly, we assume that the diurnal profiles for heating and cooling are consistent around 
+the world.  This is not a perfect approximation, but it holds for countries with a materially -
+significant demand for heating and/or cooling. For example, the diurnal profiles for cooling 
+across the Australian states, Japan and regions of the US (Supplementary Figure 207) follow 
+a characteristic shape, with a peak around 3 PM and a nadir between 4 -6 AM. Cooling 
+profiles in southern European countries (Spain, Italy and Greece) are similar, but with less 
+pronounced variation, as these countries are not as h ot; but profiles in northern European 
+countries (Germany, Britain) take a flatter shape. As their demand for cooling is an order of 
+magnitude lower, this different shape has limited impact on the global weighted average. 
+The heating demand profiles are ele vated during daytime hours with a small evening peak 
+across many European nations and Australian states, but in Japan and the US regions they 
+take a stronger diurnal profile that is flattened during peak sunlight hours (inverse to 
+cooling). 
+ 
+  
+
+========== PAGE 12 ==========
+11 
+Supplementary Note 7: Validation for other models 
+In Figure 4, the Demand.ninja model is compared to three other models from the literature, 
+as shown in Supplementary Figures 100–153. The estimates for space heating and cooling 
+demand from these models were substituted into Equation 11 from Methods in place of HDD 
+and CDD, and a linear regression against metered demand was used to find the intercept 
+(baseline of temperature independent demand), scale factors for heating and  cooling 
+demand (analogous to the power coefficients), and time -varying terms for non -working 
+days and long -term trends. The coefficients for scaling each dataset are given in 
+Supplementary Tables 5–7. 
+ 
+For When2Heat [63], demand was estimated from the ‘heat_demand_total’ variable. As this 
+model only provides heat demand, the validation was limited to those countries in Europe 
+with limited demand for cooling (fewer than 5% as many CDD as HDD), and individual days 
+with more than 1 CDD were removed from the comparison.  
+ 
+For HotMaps [40], demand was estimated from the ‘load profile residential shw and heating 
+yearlong 2010’ and ‘load profile residential cooling yearlong 2010’ datasets.  
+ 
+NREL’s ResStock and ComStock models [64] provide estimates of total electricity demand, 
+including thermal and non -thermal components. These demand estimates were still run 
+through the regression described above for the sake of fairness, as this could only improve 
+the potential goodness of fit. F or each model, energy demand is simulated using specific 
+weather years rather than Typical Meteorological Years, ensuring a fair comparison across 
+models. 
+  
+
+========== PAGE 13 ==========
+12 
+Supplementary Note 8: Model calibration 
+In total we calibrate the model in 43 regions and 4,773 individual buildings across the world 
+using daily energy demand data, and 78 regions using monthly energy demand data.  The 
+spread of results ( summarised in Supplementary Table 4 and Supplementary Figures 43 –
+44) reflects the diversity of building types, living standards and occupant behaviours. 
+ 
+Averaged a cross the sample of regions and years that we consider, 7.5% of electricity 
+demand is attributed to heating and 6.3% to cooling. Daily electricity demand increases by 
+2.6% for every degree that temperature falls below a country’s heating threshold, and by 
+3.7% for every degree above the coolin g threshold. Japan is reasonably central among 
+countries; its average electricity demand is 69 GW, and this increases by 2.0 GW for each 
+degree that the BAIT falls below 11.5°C, and increases by 2.5 GW for every degree above 
+20.1°C. After accounting for di fferences in population and climate, the US consumes the 
+greatest amounts of electricity for both heating and cooling, while European countries 
+consume considerably less. On average, US states also consume considerably more gas for 
+heating than European co untries. Across regions, heating thresholds range from 9.7 to 
+15.2°C, which is similar to the average thresholds derived for Europe in [62] (i.e. 13.4 and 
+15.0°C for electric and gas heating respectively). Cooling thresholds derived in this study 
+vary by just 1.6°C (from 18.8 to 20.4°C), which is similar to that reported in [19] (i.e. 19.1 ± 
+3.9°C).  
+ 
+Across individual buildings we find an optimal smoothing factor of around 0.50. This is the 
+same as the smoothing factor used in [41], except that temperatures are smoothed over the 
+three previous days rather than the two days considered here. Elexon (a British electricity 
+market operator) use a smoothing factor of 0.57, with temperatures smoothed over the 
+previous two days [61]. The smoothing factor do es, however, vary considerably across 
+building datasets. For example, buildings in New Zealand have a low smoothing factor, 
+suggesting they are less-well insulated or more frequently ventilated. Many houses in New 
+Zealand are built from wood which has poor  insulating properties thereby supporting this 
+inference. In Great Britain, the smoothing factor is many times higher owing to brick -built 
+construction being ubiquitous, and highest in electrically-heated buildings, which are more 
+likely to be flats (where  apartments that are adjacent, above or beneath will provide 
+additional thermal moderation) and built according to more recent and stringent building 
+standards (due to changes in construction demographics).  
+ 
+The solar, wind and humidity coefficients all v ary considerably both within and across 
+building datasets. Buildings with higher solar coefficients experience greater solar gains. 
+Solar gains increase with the amount of sunlight that reaches the inside of the building, 
+which in turn depends on the propo rtion of the building that is covered in windows, the 
+orientation of the house and the shading of the house (e.g. by trees or other buildings). The 
+wind coefficient becomes more negative as buildings become draughtier and more 
+
+========== PAGE 14 ==========
+13 
+ventilated, which in turn dep ends on the exposure of the building, the airtightness of the 
+envelope and occupant behaviour (keeping windows open during cold weather). The 
+humidity coefficient increases as buildings are more exposed to humid air outside of the 
+building, which again dep ends on the airtightness of the building envelope. Buildings are 
+heterogenous, in terms of their age, style, orientation, fabric efficiency, heating system, 
+users, and so forth, and so it is not possible to characterise the right parameters for a given 
+‘type’ of dwelling (e.g. brick-built terraces in the UK or timber detached houses in the US). 
+Even for individual buildings it is not possible to concretely determine the key driver of 
+variation in solar, wind and humidity coefficients, because the building d atasets that are 
+available to us provide insufficient metadata (in most cases nothing beyond the building’s 
+approximate location) due to the costs and confidentiality issues of gathering more detailed 
+data. In the absence of more detailed datasets for cali bration, users can use the generic 
+parameters of the model, which have been shown to accurately simulate out -of-sample 
+demand, or subjectively consider the range of parameters we found across large 
+populations of diverse buildings to select the parameters that best fit the building they seek 
+to simulate. For example, a higher solar coefficient could be used to model a building with 
+a larger glazed area and a lower smoothing coefficient could be used to model a poorly 
+insulated building. 
+  
+
+========== PAGE 15 ==========
+14 
+Supplementary Tables 
+Supplementary Table 1: Classes of building heating and cooling models, compared against 
+four criteria that we believe are desirable for the energy modelling community.  While other 
+models meet only one or two of these criteria, the Demand.ninja model meets all four.  
+ 
+Model class 
+Uses widely 
+available data 
+Can be generalised 
+geographically 
+Can be customised 
+by users 
+Validated against 
+real-world data 
+Physical No 
+ 
+No 
+ 
+Yes, but very time 
+consuming 
+Yes but can 
+perform poorly 
+Statistical No 
+ 
+No 
+ 
+No Self-validating but 
+limited to sample 
+Surrogate No  Yes (with very broad 
+training data) 
+Yes Rarely and can 
+perform poorly 
+Degree-day Yes Yes No Limited to a few 
+countries 
+Demand.ninja Yes Yes Yes Yes 
+ 
+  
+
+========== PAGE 16 ==========
+15 
+Supplementary Table 2: Details of the seven national and regional scale data sets used for 
+calibrating and validating national and regional demand.  
+ 
+Location 
+Years 
+covered 
+Time 
+resolution 
+Gas / 
+Electricity 
+No. of 
+countries or 
+regions 
+Spatial 
+resolution Ref. 
+UK 2015-19 Hourly/daily Gas 1 National [65] 
+Europe Various a Hourly/daily Electricity 25 National [66] 
+US 2016-19 b Hourly/daily Electricity 13 ISO regions [67] 
+Australia 2017-19 Hourly/daily Electricity 4 States [68] 
+Japan 2016-19 Hourly/daily Electricity 1 National [66] 
+Europe 2013-19 Monthly Gas 29 National [69] 
+US 2010-19 Monthly Gas 51 States [70] 
+a 2012-19 for DE GB, 2015-19 for BE FI FR LV PT AT DK EE GR LT NL NO RO ES SE IE, 2016-19 for IT CH, 2017-19 for BG SK 
+CZ HU, 2018-19 for PL 
+b 2012-19 for ERCOT, 2017-19 for MISO 
+  
+
+========== PAGE 17 ==========
+16 
+Supplementary Table 3: Details of the ten smart metering data sets used for validating building 
+level demand.  Metered demand in all datasets is aggregated from hourly/sub -hourly to daily 
+resolution. 
+ 
+Name Location Years covered 
+Domestic / 
+Commercial 
+Gas / 
+Electricity 
+No. buildings 
+included Ref. 
+BRE UK 1988-91 Domestic Both 46 [71] 
+Energy Demand 
+Research Project UK 2007-10 Domestic Both 2,314 [72] 
+Customer Led 
+Network Revolution UK 2014-18 Both Electricity 90 [73] 
+New Zealand Green 
+Grid NZ 2014-16 Domestic Electricity 43 [74] 
+Elergone Energia PT 2011-14 Domestic Electricity 103 [75] 
+Home Energy 
+Metering Study US 2018-22 Domestic Electricity 93 [76] 
+Residential Building 
+Stock Assessment US 2011-13 Domestic Electricity 41 [77] 
+Pecan Street US 2014-19 Domestic Electricity 88 [78] 
+Building Data 
+Genome Project 2 US/EU 2016-17 Commercial Electricity 448 [79] 
+Smart-Grid Smart-
+City AUS 2010-14 Domestic Electricity 1,507 [80] 
+  
+
+========== PAGE 18 ==========
+17 
+Supplementary Table 4: Optimal parameters and measures of model fit across all regional 
+and building-level datasets. For each dataset, the table gives the number of profiles modelled, n, 
+the eight input parameters used by the Demand.ninja  model (heating and cooling thresholds, 
+heating and cooling power coefficients and BAIT coefficients),  the normalised root mean square 
+error (NRMSE) relative to maximum demand, and R2 value of the fit between modelled and actual 
+demand. For national and re gional datasets, the heating and cooling power coefficients are 
+measured in W/(°C · capita) and for building datasets they are measured in W/(°C · building). BAIT 
+parameters are not calculated for datasets with monthly resolution, as these were modelled us ing 
+the generic parameters (given in Modelling global heating and cooling demand) which are the average 
+across all other datasets. The central value and spread for each type of dataset is given as the 
+demand-weighted mean and standard deviation across all datasets within a given type/fuel/region 
+grouping. The standard deviation can be greater than the mean even for parameters that only take 
+positive values due to the non-normality of distributions.  
+ 
+Type Fuel Regions n 
+Heating 
+threshold 
+[°C] 
+Cooling 
+threshold 
+[°C] 
+Heating 
+power 
+[W/(°C · p)] 
+Cooling 
+power 
+[W/(°C · p)] 
+Smooth 
+coef. 
+[day-1] 
+Solar 
+coef. 
+[°C/(Wm-2)] 
+Wind 
+coef. 
+[°C/(ms-1)] 
+Humidity 
+coef. 
+[°C/(gkg-1)] NRMSE R2 
+Regional/ 
+national 
+Daily 
+electricity 
+APAC 5 11.9 ± 1.0 20.4 ± 0.9 29 ± 13 52 ± 30 0.73 ± 0.06 0.014 ± 
+0.003 
+-0.12 ± 
+0.05 
+0.036 ± 
+0.006 
+3.4 ± 0.5% 91.2 ± 1.1% 
+  Europe 24 12.7 ± 1.1 20.4 ± 1.0 18 ± 28 16 ± 6 0.62 ± 0.20 0.019 ± 
+0.010 
+-0.13 ± 
+0.25 
+0.032 ± 
+0.027 
+3.3 ± 0.8% 93.6 ± 4.8% 
+  US 13 9.7 ± 1.4 18.8 ± 1.3 31 ± 16 59 ± 18 0.35 ± 0.22 0.011 ± 
+0.007 
+-0.10 ± 
+0.11 
+0.022 ± 
+0.025 
+2.9 ± 0.6% 95.0 ± 2.1% 
+ Daily gas GB 1 13.3 — 98 — 0.42 0.010 -0.18 0.051 2.1% 99.0% 
+ Monthly 
+gas 
+Europe 28 14.7 ± 1.4 — 89 ± 37 — — — — — 3.6 ± 1.4% 95.6 ± 4.2% 
+ US 50 15.2 ± 1.5 — 126 ± 35 — — — — — 3.1 ± 0.9% 97.2 ± 2.9% 
+Residential 
+buildings 
+Daily gas GB  
+(BRE) 
+46 13.8 ± 1.7 — 192 ± 95 — 0.43 ± 0.17 0.005 ± 
+0.005 
+-0.46 ± 
+0.13 
+0.150 ± 
+0.108 
+8.0 ± 1.1% 87.9 ± 3.7% 
+  GB 
+(EDRP) 
+2,062 13.1 ± 1.8 — 288 ± 116 — 0.44 ± 0.20 0.013 ± 
+0.006 
+-0.18 ± 
+0.10 
+0.071 ± 
+0.084 
+6.2 ± 2.6% 89.9 ± 3.9% 
+ Daily 
+electricity 
+GB 
+(EDRP) 
+252 12.1 ± 2.2 — 100 ± 60 — 0.69 ± 0.31 0.013 ± 
+0.011 
+-0.16 ± 
+0.13 
+0.105 ± 
+0.116 
+8.1 ± 1.7% 86.7 ± 6.4% 
+  GB 
+(CLNR) 
+90 11.8 ± 2.7 — 31 ± 24 — 0.60 ± 0.25 0.014 ± 
+0.012 
+-0.23 ± 
+0.14 
+0.046 ± 
+0.128 
+8.7 ± 1.7% 79.5 ± 8.1% 
+  Australia 1,507 16.7 ± 1.6 21.2 ± 1.8 80 ± 50 107 ± 96 0.51 ± 0.23 0.014 ± 
+0.007 
+-0.09 ± 
+0.14 
+0.028 ± 
+0.034 
+8.9 ± 1.7% 73.4 ± 9.2% 
+  New 
+Zealand 
+43 12.3 ± 1.4 20.1 ± 2.5 74 ± 42 183 ± 127 0.09 ± 0.12 0.017 ± 
+0.007 
+-0.09 ± 
+0.11 
+0.031 ± 
+0.068 
+9.5 ± 1.5% 70.8 ± 9.5% 
+  US 
+(RBSA) 
+41 12.0 ± 3.7 20.0 ± 2.5 49 ± 26 100 ± 70 0.32 ± 0.26 0.007 ± 
+0.008 
+-0.39 ± 
+0.28 
+0.033 ± 
+0.046 
+7.4 ± 1.3% 83.8 ± 9.1% 
+  US 
+(Pecan) 
+88 14.6 ± 3.2 20.6 ± 2.6 33 ± 31 99 ± 65 0.46 ± 0.27 0.010 ± 
+0.010 
+-0.34 ± 
+0.32 
+0.038 ± 
+0.026 
+8.5 ± 2.5% 87.4 ± 6.1% 
+  US 
+(HEMS) 
+93 13.2 ± 2.9 18.2 ± 3.2 146 ± 80 290 ± 91 0.63 ± 0.26 0.005 ± 
+0.008 
+-0.19 ± 
+0.31 
+0.014 ± 
+0.035 
+8.0 ± 1.3% 80.9 ± 8.4% 
+Commercial 
+buildings 
+Daily 
+electricity 
+Portugal 103 13.8 ± 2.5 18.0 ± 1.3 6884 ± 
+7480 
+56129 ± 
+176977 
+0.78 ± 0.25 0.012 ± 
+0.011 
+-0.12 ± 
+0.19 
+0.052 ± 
+0.065 
+4.1 ± 0.9% 84.4 ± 7.1% 
+  Global 
+(Genome) 
+448 13.0 ± 3.3 18.2 ± 3.6 1937 ± 
+2083 
+3927 ± 
+6145 
+0.37 ± 0.31 0.007 ± 
+0.012 
+-0.49 ± 
+0.18 
+0.042 ± 
+0.055 
+6.8 ± 3.2% 76.5 ± 
+13.3% 
+
+========== PAGE 19 ==========
+18 
+Supplementary Table 5: Comparison of model quality between Demand.ninja and the 
+Hotmaps model [40] when simulating daily electricity demand during 2010. The normalised 
+root mean squared error (NRMSE) is given relative to maximum demand in each region (as plotted 
+in the main paper Figure 4e) and the adjusted -R2 of modelled demand compared to measured 
+demand on working days from the sources listed in Supplementary Table 2. Weekends and national 
+holidays are excluded due to non-weather influences. The bottom rows give a summary of the mean 
+and standard deviation across all countries, weighted by the mean demand in each country. For 
+each country, the equation used to scale the Hotmaps data to national demand is given, where Ptotal 
+is total demand, H and C is the model’s variable for total heating and cooling demand (as detailed 
+in ‘Translating degree days into energy demand’  within Methods), and the error term gives the 
+standard deviation of residuals. European countries are represented by their ISO2 code. 
+ 
+  Demand.ninja HotMaps Equation for scaling HotMaps 
+  NRMSE R2 NRMSE R2 variables to national demand 
+European Electricity FR 1.54% 98.7% 3.42% 93.6% Ptotal = 46.897 + 5.514 · H + 0.111 · C ± 3.003 GW  
+DE 1.85% 89.0% 2.29% 83.3% Ptotal = 54.783 + 1.132 · H + 0.025 · C ± 1.626 GW 
+GB 1.51% 97.7% 3.05% 90.7% Ptotal = 32.950 + 1.388 · H + 0.009 · C ± 1.502 GW 
+IT 1.61% 89.3% 2.20% 79.9% Ptotal = 36.748 + 0.904 · H + 0.547 · C ± 1.053 GW 
+ES 1.85% 90.8% 2.75% 79.6% Ptotal = 27.939 + 1.435 · H + 0.442 · C ± 1.026 GW 
+SE 1.64% 98.6% 2.88% 95.6% Ptotal = 12.743 + 5.080 · H + 0.020 · C ± 0.702 GW 
+PL 1.53% 94.9% 2.26% 88.7% Ptotal = 15.523 + 0.874 · H + 0.012 · C ± 0.463 GW 
+NL 1.35% 92.0% 2.24% 77.9% Ptotal = 12.433 + 0.599 · H + 0.028 · C ± 0.337 GW 
+BE 1.58% 93.5% 2.13% 88.2% Ptotal = 9.990 + 0.709 · H + 0.007 · C ± 0.270 GW 
+FI 1.93% 97.3% 2.99% 93.5% Ptotal = 8.246 + 3.606 · H + 0.000 · C ± 0.412 GW 
+CZ 1.61% 96.9% 2.50% 92.2% Ptotal = 6.629 + 1.120 · H + 0.005 · C ± 0.241 GW 
+AT 1.44% 95.8% 2.19% 90.3% Ptotal = 6.287 + 0.805 · H + 0.019 · C ± 0.188 GW 
+PT 2.16% 88.4% 3.55% 68.4% Ptotal = 5.728 + 0.850 · H + 0.138 · C ± 0.270 GW 
+CH 1.44% 95.8% 2.62% 86.0% Ptotal = 5.699 + 0.653 · H + 0.023 · C ± 0.312 GW 
+RO 1.79% 92.5% 2.45% 85.8% Ptotal = 5.693 + 0.524 · H + 0.035 · C ± 0.270 GW 
+GR 2.19% 94.0% 3.98% 80.2% Ptotal = 5.407 + 0.354 · H + 0.489 · C ± 0.324 GW 
+HU 1.71% 87.6% 2.33% 77.0% Ptotal = 4.332 + 0.332 · H + 0.044 · C ± 0.120 GW 
+DK 1.84% 95.0% 2.62% 89.8% Ptotal = 3.730 + 1.001 · H + 0.017 · C ± 0.136 GW 
+BG 1.74% 97.4% 3.16% 91.5% Ptotal = 3.532 + 0.989 · H + 0.067 · C ± 0.201 GW 
+SK 1.22% 96.8% 2.07% 90.9% Ptotal = 2.985 + 0.685 · H + 0.013 · C ± 0.082 GW 
+IE 1.79% 95.6% 3.20% 86.1% Ptotal = 2.681 + 1.944 · H + 0.000 · C ± 0.127 GW 
+LT 1.99% 93.6% 2.73% 88.0% Ptotal = 1.014 + 1.118 · H + 0.039 · C ± 0.040 GW 
+EE 1.65% 98.4% 3.34% 93.5% Ptotal = 0.753 + 1.900 · H + 0.000 · C ± 0.047 GW 
+LV 1.48% 97.9% 2.64% 93.4% Ptotal = 0.694 + 1.195 · H + 0.029 · C ± 0.030 GW 
+ Mean 1.66% 93.9% 2.72% 86.6%  
+ S.D. 0.19% 4.1% 0.51% 6.4%  
+
+========== PAGE 20 ==========
+19 
+Supplementary Table 6: Comparison of model quality between Demand.ninja and the 
+When2Heat model [63] when simulating daily electricity demand during 2016 -19. The 
+normalised root mean squared error (NRMSE) is given relative to maximum demand in each 
+region (as plotted in the main paper Figure 4e) and the adjusted-R2 of modelled demand compared 
+to measured demand on working days from the sources listed in Supplementary Table 2. Weekends 
+and national holidays are excluded due to non -weather influences. The bottom rows give a 
+summary of the mean and standard deviation across all countries, weighted by the mean demand 
+in each country. For each country, the equation used to scale the When2Heat to national demand 
+are given, where Ptotal is total demand, H is the model’s variable for total heating demand (as 
+detailed in ‘Translating degree days into energy demand’  within Methods), and the error term gives 
+the standard deviati on of residuals. European countries are represented by their ISO2 code . The 
+When2Heat dataset only covers heating demand, so five countries which had more than 5% as 
+many CDD as HDD were excluded from the comparison (RO 6%, PT 13%, IT 37%, ES 44%, GR 
+66%). For all remaining countries, any days with more than 1 CDD were removed, to give the 
+fairest comparison. 
+ 
+  Demand.ninja When2Heat Equation for scaling When2Heat 
+  NRMSE R2 NRMSE R2 variable to national demand 
+Gas GB 2.00% 99.1% 4.33% 95.6% Ptotal = 1.306 + 1.22 · H ± 6.207 GW  
+European Electricity FR 1.29% 98.8% 3.07% 93.0% Ptotal = 41.145 + 0.349 · H ± 2.709 GW 
+DE 2.13% 81.1% 2.80% 67.4% Ptotal = 55.988 + 0.060 · H ± 2.235 GW 
+GB 1.54% 96.5% 2.68% 89.4% Ptotal = 28.882 + 0.143 · H ± 1.183 GW 
+PL 1.53% 91.0% 2.03% 84.5% Ptotal = 18.993 + 0.082 · H ± 0.476 GW 
+BE 1.69% 91.0% 2.48% 80.7% Ptotal = 9.361 + 0.105 · H ± 0.305 GW 
+CZ 1.74% 94.0% 1.84% 93.2% Ptotal = 7.048 + 0.143 · H ± 0.190 GW 
+AT 1.79% 93.9% 2.59% 87.1% Ptotal = 6.726 + 0.148 · H ± 0.246 GW 
+HU 1.96% 87.3% 2.44% 81.7% Ptotal = 4.671 + 0.068 · H ± 0.145 GW 
+SK 1.74% 92.6% 1.76% 92.5% Ptotal = 3.206 + 0.129 · H ± 0.074 GW 
+IE 1.50% 94.7% 2.84% 80.3% Ptotal = 2.939 + 0.145 · H ± 0.113 GW 
+SE 1.41% 98.6% 2.40% 95.7% Ptotal = 11.786 + 0.498 · H ± 0.581 GW 
+NL 1.92% 83.6% 3.15% 58.2% Ptotal = 12.728 + 0.075 · H ± 0.495 GW 
+CH 2.76% 86.3% 3.60% 74.6% Ptotal = 6.147 + 0.067 · H ± 0.325 GW 
+DK 1.96% 91.0% 2.95% 79.7% Ptotal = 3.507 + 0.097 · H ± 0.143 GW 
+FI 1.68% 97.2% 2.51% 93.4% Ptotal = 7.596 + 0.307 · H ± 0.360 GW 
+LV 1.66% 94.5% 2.59% 85.5% Ptotal = 0.754 + 0.079 · H ± 0.029 GW 
+EE 1.82% 96.6% 3.25% 85.9% Ptotal = 0.824 + 0.178 · H ± 0.044 GW 
+LT 1.89% 92.3% 2.64% 85.5% Ptotal = 1.237 + 0.118 · H ± 0.045 GW 
+ Mean 1.75% 92.7% 2.98% 84.7%  
+ S.D. 0.35% 7.15% 0.70% 12.0%  
+  
+
+========== PAGE 21 ==========
+20 
+Supplementary Table 7: Comparison of model quality between Demand.ninja and the NREL 
+ResStock/ComStock model [64] when simulating daily electricity demand during 2018.  The 
+normalised root mean squared error (NRMSE) is given relative to maximum demand in each 
+region (as plotted in the main paper Figure 4e) and the adjusted-R2 of modelled demand compared 
+to measured demand on working days from the sources listed in Supplementary Table 2. Weekends 
+and national holidays are exclu ded due to non -weather influences. The bottom rows give a 
+summary of the mean and standard deviation across all regions, weighted by the mean demand in 
+each region. For each region, the equation used to scale the NREL demand values to national 
+demand are g iven, where Ptotal is total demand, R and C are the total demand variables from 
+ResStock and ComStock respectively. T he US is divided into power market s represented by their 
+names or acronyms. 
+ 
+  Demand.ninja NREL Equation for scaling NREL 
+  NRMSE R2 NRMSE R2 variables to national demand 
+American Electricity CAISO 2.66% 92.6% 4.05% 82.9% Ptotal = 4.547 + 5.529 · R + 12.032 · C ± 1.830 GW  
+Carolinas 1.90% 96.4% 4.48% 80.1% Ptotal = 0.960 + 2.368 · R + 3.933 · C ± 3.003 GW  
+Central 1.67% 97.2% 4.07% 83.4% Ptotal = 2.871 + 1.946 · R + 22.416 · C ± 1.686 GW  
+ERCOT 1.61% 98.3% 1.82% 97.8% Ptotal = 1.324 + 0.787 · R + 3.064 · C ± 0.266 GW  
+Florida 2.05% 96.9% 2.20% 96.4% Ptotal = 1.310 + 3.544 · R + 9.200 · C ± 0.779 GW  
+ISONE 1.74% 96.7% 3.51% 86.6% Ptotal = 2.647 + 1.746 · R + 14.027 · C ± 0.758 GW  
+MISO 2.16% 92.6% 2.68% 88.7% Ptotal = 2.004 + 1.972 · R + 19.452 · C ± 2.586 GW  
+NYISO 1.18% 98.5% 2.50% 93.1% Ptotal = 0.349 + 2.832 · R + 8.868 · C ± 0.678 GW  
+PJM 1.21% 98.0% 2.17% 93.5% Ptotal = 4.052 + 2.528 · R + 15.145 · C ± 2.771 GW  
+Tennessee 1.58% 97.0% 2.99% 89.4% Ptotal = 0.236 + 2.545 · R + 30.490 · C ± 0.870 GW  
+ Mean 1.76% 96.0% 2.91% 89.4%  
+ S.D. 0.50% 2.40% 0.88% 5.3%  
+ 
+  
+
+========== PAGE 22 ==========
+21 
+Supplementary Table 8: Model quality of the Demand.ninja when simulating daily electricity 
+demand in countries and regions not considered by the other models shown in 
+Supplementary Tables 5–7. The normalised root mean squared error (NRMSE) is given relative 
+to maximum demand in each region (as plotted in the main paper Figure 4e) and the adjusted-R2 
+of modelled demand compared to measured demand on working days  from the sources listed in 
+Supplementary Table 2 . Weekends and national holidays are excluded due to non -weather 
+influences. The US is divided into power markets and Australia into states, with each group ordered 
+from highest to lowest annual energy demand. 
+ 
+  Demand.ninja 
+  NRMSE R2 
+US Elec Northwest 1.65% 94.2% 
+Southeast 1.91% 96.5% 
+Southwest 2.43% 96.7% 
+Elec Japan 1.80% 94.5% 
+Australian 
+Electricity NSW 1.94% 89.4% 
+QLD 1.60% 92.7% 
+VIC 2.29% 86.5% 
+SA 3.22% 84.5% 
+ 
+  
+
+========== PAGE 23 ==========
+22 
+Supplementary Table 9: Cooling degree days, model coefficients, and electricity required for 
+cooling across all studied regions. Current average CDDs refers to the estimated value for 2022 
+based on linear regression of annual CDDs from 1980 –2022. This represents the average 
+expectation, free from inter-annual weather variability. Increase per decade is based on the slope of 
+this regression. Cooling th reshold and power coefficients are those reported in Supplementary 
+Figures 1–41. Annual cooling demand is calculated from the combination of CDDs and Pcool. 
+ 
+Region 
+Cooling Degree Days Cooling 
+threshold 
+(Tcool, °C) 
+Cooling 
+power 
+(Pcool, GW/°C) 
+Annual cooling demand (TWh) 
+Current 
+average 
+Increase  
+per decade 
+Current 
+average  
+Increase  
+per decade 
+Australia NSW 393 22.1 21.6 0.5 4.69 0.26 
+Australia QLD 1020 35.5 23.1 0.38 9.19 0.32 
+Australia SA 301 22.2 21.5 0.1 0.7 0.05 
+Australia VIC 159 11.4 20.4 0.34 1.3 0.09 
+Austria 107 16.2 24.8 0.30 0.78 0.12 
+Belgium 49 7.4 24.6 0.43 0.51 0.08 
+Bulgaria 312 39.1 21.6 0.10 0.79 0.10 
+Czechia 104 19.1 25.9 0 0 0 
+Denmark 17 2.8 22.7 0.21 0.09 0.01 
+Estonia 41 9.7 25.1 0 0 0 
+Finland 27 6.3 24.4 0 0 0 
+France 138 16.1 22.7 1.59 5.25 0.61 
+Great Britain 11 2.1 20.9 1.36 0.36 0.07 
+Germany 83 14.3 23.1 0.55 1.09 0.19 
+Greece 655 50.9 22.6 0.35 5.58 0.43 
+Hungary 305 40.9 24.6 0.35 2.58 0.35 
+Ireland 1 0.1 21.5 0.16 0 0 
+Italy 451 39.9 20.6 1.46 15.85 1.40 
+Japan 553 32.3 20.9 3.00 39.84 2.32 
+Latvia 46 10.4 23.8 0.11 0.12 0.03 
+Lithuania 56 11.6 25.0 0.18 0.25 0.05 
+Netherlands 41 6.8 25.0 0.24 0.24 0.04 
+Norway 7 1 22.7 0 0 0 
+Poland 112 20.0 23.9 0.83 2.22 0.40 
+Portugal 197 2.3 21.7 0.34 1.59 0.02 
+Romania 366 43.1 22.2 0.20 1.76 0.21 
+Slovakia 153 24.4 24.9 0.08 0.28 0.05 
+Spain 414 26.8 19.8 0.88 8.74 0.57 
+Sweden 26 5.1 21.8 0 0 0 
+Switzerland 65 10.7 25.8 0.16 0.25 0.04 
+US CAISO 373 17.0 17.7 1.36 12.20 0.56 
+US ERCOT 1239 45.0 20.7 0.55 16.32 0.59 
+US MISO 449 23.3 19.3 4.66 50.24 2.61 
+US NYISO 298 31.6 17.6 1.07 7.61 0.81 
+US PJM 453 33.1 18.5 4.93 53.62 3.91 
+US Carolinas 786 36.1 19.6 1.27 23.94 1.10 
+US Central 678 28.1 19.1 1.56 25.39 1.05 
+US Florida 1584 63.5 21.1 1.65 62.86 2.52 
+US New England 245 28.3 17.9 0.90 5.32 0.61 
+US Northwest 213 18.9 15.2 1.38 7.09 0.63 
+US Southeast 904 36.1 19.5 1.35 29.26 1.17 
+US Southwest 831 33.2 19.1 0.69 13.77 0.55 
+US Tennessee 677 25.7 18.9 0.83 13.43 0.51 
+
+========== PAGE 24 ==========
+23 
+Supplementary Figures 
+ 
+ 
+Supplementary Figure 1: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in New South Wales, Australia. Figure follows 
+the same design as Figure 2 in the main manuscript and see the caption there for more detail. 
+  
+
+
+========== PAGE 25 ==========
+24 
+ 
+Supplementary Figure 2: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in Queensland, Australia. Figure follows the 
+same design as Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 26 ==========
+25 
+ 
+Supplementary Figure 3: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in Southern Australia. Figure follows the same 
+design as Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 27 ==========
+26 
+ 
+Supplementary Figure 4: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in Victoria, Australia. Figure follows the same 
+design as Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 28 ==========
+27 
+ 
+Supplementary Figure 5: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in Austria.  Figure follows the same design as 
+Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 29 ==========
+28 
+ 
+Supplementary Figure 6: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in Belgium. Figure follows the same design as 
+Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 30 ==========
+29 
+ 
+Supplementary Figure 7: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in Bulgaria. Figure follows the same design as 
+Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 31 ==========
+30 
+ 
+Supplementary Figure 8: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in Czechia. Figure follows the same design as 
+Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 32 ==========
+31 
+ 
+Supplementary Figure 9: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in Denmark.  Figure follows the same design 
+as Figure 2 in the main manuscript; see the caption there for more detail. 
+
+
+========== PAGE 33 ==========
+32 
+ 
+Supplementary Figure 10: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in Estonia.  Figure follows the same design as 
+Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 34 ==========
+33 
+ 
+Supplementary Figure 11: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in Finland. Figure follows the same design as 
+Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 35 ==========
+34 
+ 
+Supplementary Figure 12: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in France.  Figure follows the same design as 
+Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 36 ==========
+35 
+ 
+Supplementary Figure 13: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CD D to energy consumption in Great Britain.  Figure follows the same 
+design as Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 37 ==========
+36 
+ 
+Supplementary Figure 14: Visualisation of the process of converti ng from temperature to 
+BAIT to HDD and CDD to energy consumption in Germany.  Figure follows the same design 
+as Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 38 ==========
+37 
+ 
+Supplementary Figure 15: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in Greece.  Figure follows the same design as 
+Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 39 ==========
+38 
+ 
+Supplementary Figure 16: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in Hungary. Figure follows the same design as 
+Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 40 ==========
+39 
+ 
+Supplementary Figure 17: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in Ireland.  Figure follows the same design as 
+Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 41 ==========
+40 
+ 
+Supplementary Figure 18: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in Italy. Figure follows the same design as 
+Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 42 ==========
+41 
+ 
+Supplementary Figure 19: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in Japan.  Figure follows the same design as 
+Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 43 ==========
+42 
+ 
+Supplementary Figure 20: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in Lithuania. Figure follows the same design 
+as Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 44 ==========
+43 
+ 
+Supplementary Figure 21: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in the Netherlands.  Figure follows the same 
+design as Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 45 ==========
+44 
+ 
+Supplementary Figure 22: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in Norway. Figure follows the same design as 
+Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 46 ==========
+45 
+ 
+Supplementary Figure 23: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in Poland.  Figure follows the same design as 
+Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 47 ==========
+46 
+ 
+Supplementary Figure 24: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in Portugal. Figure follows the same design as 
+Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 48 ==========
+47 
+ 
+Supplementary Figure 25: Visualisation of the process of converting fr om temperature to 
+BAIT to HDD and CDD to energy consumption in Romania. Figure follows the same design as 
+Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 49 ==========
+48 
+ 
+Supplementary Figure 26: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in Slovakia. Figure follows the same design as 
+Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 50 ==========
+49 
+ 
+Supplementary Figure 27: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in Spain.  Figure follows the same design as 
+Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 51 ==========
+50 
+ 
+Supplementary Figure 28: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in Sweden. Figure follows the same design as 
+Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 52 ==========
+51 
+ 
+Supplementary Figure 29: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in Switzerland. Figure follows the same design 
+as Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 53 ==========
+52 
+ 
+Supplementary Figure 30: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in the CAISO power market, US.  Figure 
+follows the same design as Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 54 ==========
+53 
+ 
+Supplementary Figure 31: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in the Carolinas power market, US.  Figure 
+follows the same design as Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 55 ==========
+54 
+ 
+Supplementary Figure 32: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in the Central power market, US.  Figure 
+follows the same design as Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 56 ==========
+55 
+ 
+Supplementary Figure 33: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in the ERCOT power market, US.  Figure 
+follows the same design as Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 57 ==========
+56 
+ 
+Supplementary Figure 34: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in the Florida power market, US.  Figure 
+follows the same design as Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 58 ==========
+57 
+ 
+Supplementary Figure 35: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in the MISO power market, US. Figure follows 
+the same design as Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 59 ==========
+58 
+ 
+Supplementary Figure 36: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in the ISONE power market, US.  Figure 
+follows the same design as Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 60 ==========
+59 
+ 
+Supplementary Figure 37: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in the Northwest power market, US. Figure 
+follows the same design as Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 61 ==========
+60 
+ 
+Supplementary Figure 38: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in the NYISO power market, US.  Figure 
+follows the same design as Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 62 ==========
+61 
+ 
+Supplementary Figure 39: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in the PJM power market, US. Figure follows 
+the same design as Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 63 ==========
+62 
+ 
+Supplementary Figure 40: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in the Southeast power market, US.  Figure 
+follows the same design as Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 64 ==========
+63 
+ 
+Supplementary Figure 41: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in the Southwest power market, US.  Figure 
+follows the same design as Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 65 ==========
+64 
+ 
+Supplementary Figure 42: Visualisation of the process of converting from temperature to 
+BAIT to HDD and CDD to energy consumption in the Tennessee power market, US.  Figure 
+follows the same design as Figure 2 in the main manuscript; see the caption there for more detail. 
+  
+
+
+========== PAGE 66 ==========
+65 
+ 
+Supplementary Figure 43: Bar charts of the optimal model parameters. Panel (a) shows heating 
+and cooling thresholds and panel (b) shows power coefficients across all regional and building level 
+datasets. Fo r national and regional datasets, the heating and cooling power coefficients are 
+measured in W/(°C · capita) and for building datasets they are measured in W/(°C · building). In all 
+cases, the central bar and error bars depict the demand -weighted mean and standard deviation 
+across all regions or buildings within the dataset. For regional and national datasets, all individual 
+values are shown as overlaid datapoints. See Supplementary Table 4 for more details. 
+ 
+
+
+========== PAGE 67 ==========
+66 
+ 
+Supplementary Figure 44: Bar charts showing the optimal BAIT coefficients across all 
+regional and building level datasets.  Panels show (a) optimal smoothing parame ter, (b) wind 
+coefficient, (c) solar coefficient, and (d) humidity coefficient. In all cases, the central bar and error 
+bars depict the demand -weighted mean and standard deviation across all regions or buildings 
+within the dataset. For regional and nationa l datasets, all individual values are shown as overlaid 
+datapoints. The non-normality of the data mean that standard deviations can exceed the feasible 
+range for each parameter (i.e. [0–1] for smoothing, <0 for wind, >0 for solar and humidity). Chart 
+axes are capped at these feasible ranges, but otherwise all data values are shown. See Supplementary 
+Table 4 for more details. 
+  
+
+
+========== PAGE 68 ==========
+67 
+ 
+Supplementary Figure 45: Summary of the improvement in the quality of modelling 
+electricity demand in four regional and national markets when adding each element of the 
+Demand.ninja process. Panels (a) to (d) show the change in RMSE (both absolute and normalised 
+against peak demand) for the four regions. The format of each panel is the same as in panel (h) of 
+Figure 3 in the main manuscript. The letters labelling each bar correspond to the following: (a) 
+shows a basic heating degree day model using the national average temperature; (b) shows basic 
+heating degree days calculated using gridded temperatures that have been population-weighted; (c) 
+shows the addition of smoothing temperatures over the preceding two days; (d) shows the addition 
+of wind chill (higher wind speeds reducing the temperature index); (e) shows the addition of 
+humidity effect (greater humidity reducing the temperature index when it is cold or increasing it 
+when it is hot – note that this has a more influential impact in hotter climates); (f) shows the 
+addition of solar gains (greater irradiance increasing the temperat ure index); and (g) shows the 
+superposition of multiple simulations with stochastically varied parameters to reflect the diversity 
+of building construction and occupant behaviour.  
+  
+
+
+========== PAGE 69 ==========
+68 
+ 
+Supplementary Figure 46: Quality of modelling daily energy demand in New South Wales, 
+Australia. Panels (a) and (b) summarise the error (Demand.ninja minus metered demand, 
+normalised by maximum demand within each region). Panel (a) gives the error over time, the 
+central line shows the me dian (P50) of all days in each month, the shaded area shows the 5 th and 
+95th percentile (P5–P95). Panel (b) summarises the error as a function of outdoor air temperature, 
+showing the same percentiles as in panel (a). Observations are grouped into 50 bins with an equal 
+number of observations, hence they have variable widths. Bins are coloured according to the 
+average number of heating (red) and cooling (blue) degree days in the observations they contain, 
+giving an indication of balance point temperatures.  Panel (c) shows observed against modelled 
+daily demand, highlighting the 10% of hottest and coldest days. 
+ 
+ 
+Supplementary Figure 47: Quality of modelling daily energy demand in Queensland, 
+Australia. Figure follows the same design as Supplementary Figure 46; see the caption there for 
+more detail. 
+  
+
+
+========== PAGE 70 ==========
+69 
+ 
+Supplementary Figure 48: Quality of modelling daily energy demand in Southern Australia. 
+Figure follows the same design as Supplementary Figure 46; see the caption there for more detail. 
+ 
+ 
+ 
+Supplementary Figure 49: Quality of modelling daily energy demand in Victoria, Australia . 
+Figure follows the same design as Supplementary Figure 46; see the caption there for more detail. 
+ 
+ 
+Supplementary Figure 50: Quality of modelling daily energy demand in Austria.  Figure 
+follows the same design as Supplementary Figure 46; see the caption there for more detail. 
+ 
+ 
+
+
+========== PAGE 71 ==========
+70 
+ 
+Supplementary Figure 51: Quality of modelling daily energy demand in Belgium.  Figure 
+follows the same design as Supplementary Figure 46; see the caption there for more detail. 
+ 
+ 
+Supplementary Figure 52: Quality of modelling daily energy demand in Bulgaria.  Figure 
+follows the same design as Supplementary Figure 46; see the caption there for more detail. 
+ 
+ 
+Supplementary Figure 53: Quality of modelling daily energy demand in Czechia.  Figure 
+follows the same design as Supplementary Figure 46; see the caption there for more detail. 
+ 
+ 
+
+
+========== PAGE 72 ==========
+71 
+ 
+Supplementary Figure 54: Quality of modelling daily energy demand in Denmark.  Figure 
+follows the same design as Supplementary Figure 46; see the caption there for more detail. 
+ 
+ 
+ 
+Supplementary Figure 55: Quality of  modelling daily energy demand in Estonia.  Figure 
+follows the same design as Supplementary Figure 46; see the caption there for more detail. 
+ 
+ 
+ 
+Supplementary Figure 56: Quality of modelling daily energy demand in Fin land. Figure 
+follows the same design as Supplementary Figure 46; see the caption there for more detail. 
+ 
+ 
+
+
+========== PAGE 73 ==========
+72 
+ 
+Supplementary Figure 57: Quality of modelling daily energy demand in France. Figure follows 
+the same design as Supplementary Figure 46; see the caption there for more detail. 
+ 
+ 
+ 
+Supplementary Figure 58: Quality of modelling daily energy demand in Great Britain. Figure 
+follows the same design as Supplementary Figure 46; see the caption there for more detail. 
+ 
+ 
+ 
+Supplementary Figure 59: Quality of modelling daily energy demand in Germany.  Figure 
+follows the same design as Supplementary Figure 46; see the caption there for more detail. 
+ 
+ 
+
+
+========== PAGE 74 ==========
+73 
+ 
+Supplementary Figure 60: Quality of modelling daily energy demand in Greece. Figure follows 
+the same design as Supplementary Figure 46; see the caption there for more detail. 
+ 
+ 
+ 
+Supplementary Figure 61: Quality of modelling daily energy demand in Hungary.  Figure 
+follows the same design as Supplementary Figure 46; see the caption there for more detail. 
+ 
+ 
+ 
+Supplementary Figure 62: Quality of modelling daily energy demand in Ireland.  Figure 
+follows the same design as Supplementary Figure 46; see the caption there for more detail. 
+ 
+ 
+
+
+========== PAGE 75 ==========
+74 
+ 
+Supplementary Figure 63: Quality of modelling daily energy demand in Italy. Figure follows 
+the same design as Supplementary Figure 46; see the caption there for more detail. 
+ 
+ 
+ 
+Supplementary Figure 64: Quality of modelling daily energy demand in Japan. Figure follows 
+the same design as Supplementary Figure 46; see the caption there for more detail. 
+ 
+ 
+ 
+Supplementary Figure 65: Quality of modelling daily energy demand in Latvia. Figure follows 
+the same design as Supplementary Figure 46; see the caption there for more detail. 
+ 
+ 
+
+
+========== PAGE 76 ==========
+75 
+ 
+Supplementary Figure 66: Quality of modelling daily energy demand in Lithuania.  Figure 
+follows the same design as Supplementary Figure 46; see the caption there for more detail. 
+ 
+ 
+ 
+Supplementary Figure 67: Quality of modelling daily energy demand in the Netherlands.  
+Figure follows the same design as Supplementary Figure 46; see the caption there for more detail. 
+ 
+ 
+ 
+Supplementary Figure 68: Quality of modelling daily energy demand in Norway.  Figure 
+follows the same design as Supplementary Figure 46; see the caption there for more detail. 
+ 
+ 
+
+
+========== PAGE 77 ==========
+76 
+ 
+Supplementary Figure 69: Quality of modelling daily energy demand in Poland.  Figure 
+follows the same design as Supplementary Figure 46; see the caption there for more detail. 
+ 
+ 
+ 
+Supplementary Figure 70: Quality of modelling daily energy  demand in Portugal.  Figure 
+follows the same design as Supplementary Figure 46; see the caption there for more detail. 
+ 
+ 
+ 
+Supplementary Figure 71: Quality of modelling daily energy demand in Romania . Figure 
+follows the same design as Supplementary Figure 46; see the caption there for more detail. 
+ 
+ 
+
+
+========== PAGE 78 ==========
+77 
+ 
+Supplementary Figure 72: Quality of modelling daily energy demand in Slovakia.  Figure 
+follows the same design as Supplementary Figure 46; see the caption there for more detail. 
+ 
+ 
+ 
+Supplementary Figure 73: Quality of modelling daily energy demand in Spain. Figure follows 
+the same design as Supplementary Figure 46; see the caption there for more detail. 
+ 
+ 
+ 
+Supplementary Figure 74: Quality of modelling daily energy demand in Sweden.  Figure 
+follows the same design as Supplementary Figure 46; see the caption there for more detail. 
+ 
+ 
+
+
+========== PAGE 79 ==========
+78 
+ 
+Supplementary Figure 75: Quality of modelling daily energy demand in Switzerland. Figure 
+follows the same design as Supplementary Figure 46; see the caption there for more detail. 
+ 
+ 
+ 
+Supplementary Figure 76: Quality of modelling daily energy demand in the CAISO power 
+market, US. Figure follows the same design as Supplementary Figure 46; see the caption there for 
+more detail. 
+ 
+ 
+ 
+Supplementary Figure 77: Quality of modelling daily energy demand in the Carolinas power 
+market, US. Figure follows the same design as Supplementary Figure 46; see the caption there for 
+more detail. 
+ 
+
+
+========== PAGE 80 ==========
+79 
+ 
+ 
+Supplementary Figure 78: Quality of modelling daily energy demand in the Central power 
+market, US. Figure follows the same design as Supplementary Figure 46; see the caption there for 
+more detail. 
+ 
+ 
+ 
+Supplementary Figure 79: Quality of modelling daily energy demand in the ERCOT power 
+market, US. Figure follows the same design as Supplementary Figure 46; see the caption there for 
+more detail. 
+ 
+ 
+ 
+Supplementary Figure 80: Quality of modelling daily energy demand in the Florida power 
+market, US. Figure follows the same design as Supplementary Figure 46; see the caption there for 
+more detail. 
+ 
+
+
+========== PAGE 81 ==========
+80 
+ 
+ 
+Supplementary Figure 81: Quality of modelling daily energy demand in the MISO power 
+market, US. Figure follows the same design as Supplementary Figure 46; see the caption there for 
+more detail. 
+ 
+ 
+ 
+Supplementary Figure 82: Quality of modelling daily  energy demand in the ISONE power 
+market, US. Figure follows the same design as Supplementary Figure 46; see the caption there for 
+more detail. 
+ 
+ 
+ 
+Supplementary Figure 83: Quality of modelling daily energy demand in the Northwest power 
+market, US. Figure follows the same design as Supplementary Figure 46; see the caption there for 
+more detail. 
+ 
+
+
+========== PAGE 82 ==========
+81 
+ 
+ 
+Supplementary Figure 84: Quality of modelling daily energy demand in the NYISO power 
+market, US. Figure follows the same design as Supplementary Figure 46; see the caption there for 
+more detail. 
+ 
+ 
+ 
+Supplementary Figure 85: Quality of modelling daily energy demand in the PJM power 
+market, US. Figure follows the same design as Supplementary Figure 46; see the caption there for 
+more detail. 
+ 
+ 
+ 
+Supplementary Figure 86: Quality of modelling daily energy demand in the Southeast power 
+market, US. Figure follows the same design as Supplementary Figure 46; see the caption there for 
+more detail. 
+ 
+
+
+========== PAGE 83 ==========
+82 
+ 
+ 
+Supplementary Figure 87: Quality of modelling daily energy demand in the Southwest power 
+market, US. Figure follows the same design as Supplementary Figure 46; see the caption there for 
+more detail. 
+ 
+ 
+ 
+Supplementary Figure 88: Quality of modelling daily energy demand in the Tennessee power 
+market, US. Figure follows the same design as Supplementary Figure 46; see the caption there for 
+more detail. 
+ 
+ 
+  
+
+
+========== PAGE 84 ==========
+83 
+ 
+Supplementary Figure 89: Quality of modelling daily electricity demand from 1,507 
+individual residential buildings in the Smart -Grid Smart-City dataset (Australia). Panels (a) 
+and (b) summarise the error (Demand.ninja minus metered demand, normalised by maximum 
+demand within each building) across all buildings within the dataset. Panel (a) gives the error over 
+time, the central line shows the median (P 50) of all days in each month across all buildings, the 
+shaded area shows the 5th and 95th percentile (P5–P95). Panel (b) summarises the error as a function 
+of outdoor air temperature, showing the same percentiles as in panel (a). Observations are grouped 
+into 50 bins with an equal number of observations, hence they have variable widths. Bins are 
+coloured according to the average number of heating (red) and cooling (blue) degree days in the 
+observations they contain, giv ing an indication of balance point temperatures.  Panel (c) shows 
+observed against modelled daily demand across all buildings, highlighting the 10% of hottest and 
+coldest days. 
+ 
+ 
+ 
+Supplementary Figure 90: Quality of modelling daily electricity demand from 448 individual 
+commercial buildings in the Building Data Genome Project 2 dataset (global). Figure follows 
+the same design as Supplementary Figure 89; see the caption there for more detail. 
+ 
+ 
+ 
+
+
+========== PAGE 85 ==========
+84 
+ 
+Supplementary Figure 91: Quality of modelling daily electricity demand from 43 individual 
+residential buildings in the Green Grid dataset (New Zealand). Figure follows the same design 
+as Supplementary Figure 89; see the caption there for more detail. 
+ 
+ 
+ 
+ 
+ 
+ 
+Supplementary Figure 92: Quality of modelling daily electricity demand from 103 individual 
+commercial buildings in the El ergone Energia dataset (Portugal).  Figure follows the same 
+design as Supplementary Figure 89; see the caption there for more detail. 
+  
+
+
+========== PAGE 86 ==========
+85 
+ 
+ 
+Supplementary Figure 93: Quality of modelling daily natural gas demand from 46 individual 
+residential buildings in the BRE dataset (UK). Figure follows the same design as Supplementary 
+Figure 89; see the caption there for more detail. 
+ 
+ 
+ 
+ 
+ 
+ 
+Supplementary Figure 94: Quality of modelling daily electricity demand from 90 
+individual residential buildings in the Customer Led Network Revolution dataset (UK).  
+Figure follows the same design as Supplementary Figure 89; see the caption there for more detail. 
+
+
+========== PAGE 87 ==========
+86 
+ 
+Supplementary Figure 95: Quality of modelling daily natural gas demand from 252 
+individual residential buildings in the Customer Led Network Revolution dataset (UK).  
+Figure follows the same design as Supplementary Figure 89; see the caption there for more detail. 
+ 
+ 
+ 
+ 
+ 
+ 
+Supplementary Figure 96: Quality of modelling daily natural gas demand from 2,062 
+individual residential buildings in the Energy Demand Research Project dataset (UK). Figure 
+follows the same design as Supplementary Figure 89; see the caption there for more detail. 
+ 
+ 
+ 
+
+
+========== PAGE 88 ==========
+87 
+ 
+Supplementary Figure 97: Quality of modelling daily electricity demand from 93 individual 
+residential buildings in Home Energy Metering Study dataset (US).  Figure follows the same 
+design as Supplementary Figure 89; see the caption there for more detail. 
+ 
+ 
+ 
+ 
+ 
+ 
+Supplementary Figure 98: Quality of modelling daily electricity demand from 88 individual 
+residential buildings in Pecan Street dataset (US).  Figure follows the same design as 
+Supplementary Figure 89; see the caption there for more detail. 
+
+
+========== PAGE 89 ==========
+88 
+ 
+Supplementary Figure 99: Quality of modelling daily electricity demand from 41 individual 
+residential buildings in Residential Building Stock Assessment dataset (US). Figure follows the 
+same design as Supplementary Figure 89; see the caption there for more detail. 
+ 
+  
+
+
+========== PAGE 90 ==========
+89 
+ 
+Supplementary Figure 100: Time-series plots of daily electricity demand in Austria. Panels (a) 
+and (b) show the Hotmaps model [40], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. 
+ 
+ 
+ 
+Supplementary Figure 101: Time-series plots of daily electricity demand in Belgium . Panels 
+(a) and (b) show the Hotmaps model [40], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. 
+ 
+ 
+
+
+========== PAGE 91 ==========
+90 
+ 
+Supplementary Figure 102: Time-series plots of daily electricity demand in Bulgaria . Panels 
+(a) and (b) show the Hotmaps mo del [40], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. 
+ 
+ 
+ 
+Supplementary Figure 103: Time-series plots of daily electricity demand in Czechia. Panels (a) 
+and (b) show the Hotmaps model [40], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. 
+ 
+ 
+
+
+========== PAGE 92 ==========
+91 
+ 
+Supplementary Figure 104: Time-series plots of daily electricity demand in Denmark. Panels 
+(a) and (b) show the Hotmaps model [40], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. 
+ 
+ 
+ 
+Supplementary Figure 105: Time-series plots of daily electricity demand in Estonia. Panels (a) 
+and (b) show the Hotmaps model [40], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. 
+ 
+ 
+
+
+========== PAGE 93 ==========
+92 
+ 
+Supplementary Figure 106: Time-series plots of daily electricity demand in Finland. Panels (a) 
+and (b) show the Hotmaps model [40], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. 
+ 
+ 
+ 
+Supplementary Figure 107: Time-series plots of daily electricity demand in France. Panels (a) 
+and (b) show the Hotmaps model [40], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. 
+ 
+ 
+
+
+========== PAGE 94 ==========
+93 
+ 
+Supplementary Figure 108: Time-series plots of daily electricity demand in Great Britain . 
+Panels (a) and (b) show the Hotmaps model [40], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. 
+ 
+ 
+ 
+Supplementary Figure 109: Time-series plots of daily electricity demand in Germany. Panels 
+(a) and (b) show the Hotmaps model [40], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. 
+ 
+ 
+
+
+========== PAGE 95 ==========
+94 
+ 
+Supplementary Figure 110: Time-series plots of daily electricity demand in Greece. Panels (a) 
+and (b) show the Hotmaps model [40], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. 
+ 
+ 
+ 
+Supplementary Figure 111: Time-series plots of daily electricity demand in Hungary . Panels 
+(a) and (b) show th e Hotmaps model [40], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. 
+ 
+ 
+
+
+========== PAGE 96 ==========
+95 
+ 
+Supplementary Figure 112: Time-series plots of daily electricity demand in Ireland. Panels (a) 
+and (b) show the Hotmaps model [40], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. 
+ 
+ 
+ 
+Supplementary Figure 113: Time-series plots of daily electricity demand in Italy . Panels (a) 
+and (b) show the Hotmaps model [40], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. 
+ 
+ 
+
+
+========== PAGE 97 ==========
+96 
+ 
+Supplementary Figure 114: Time-series plots of daily electricity demand in Latvia. Panels (a) 
+and (b) show the Hotmaps model [40], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. 
+ 
+ 
+ 
+Supplementary Figure 115: Time-series plots of daily electricity demand in Lithuania. Panels 
+(a) and (b) show the Hotmaps model [40], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. 
+ 
+ 
+
+
+========== PAGE 98 ==========
+97 
+ 
+Supplementary Figure 116: Time-series plots of daily electricity demand in the Netherlands. 
+Panels (a) and (b) show the Hotmaps model [40], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. 
+ 
+ 
+ 
+Supplementary Figure 117: Time-series plots of daily electricity demand in Poland. Panels (a) 
+and (b) show the Hotmaps model [40], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. 
+ 
+ 
+
+
+========== PAGE 99 ==========
+98 
+ 
+Supplementary Figure 118: Time-series plots of daily electricity demand in Portugal . Panels 
+(a) and (b) show the Hotmaps model [40], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. 
+ 
+ 
+ 
+Supplementary Figure 119: Time-series plots of daily electricity demand in Romania . Panels 
+(a) and (b) show the Hotmaps model [40], panels (c) and (d) show the Dem and.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. 
+ 
+ 
+
+
+========== PAGE 100 ==========
+99 
+ 
+Supplementary Figure 120: Time-series plots of daily electricity demand in Slovakia . Panels 
+(a) and (b) show the Hotmaps model [40], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. 
+ 
+ 
+ 
+Supplementary Figure 121: Time-series plots of daily electricity demand in Spain . Panels (a) 
+and (b) show the Hotmaps model [40], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. 
+ 
+ 
+
+
+========== PAGE 101 ==========
+100 
+ 
+Supplementary Figure 122: Time-series plots of daily electricity demand in Sweden. Panels (a) 
+and (b) show the Hotmaps model [40], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. 
+  
+
+
+========== PAGE 102 ==========
+101 
+ 
+Supplementary Figure 123: Time-series plots of daily electricity demand in Austria. Panels (a) 
+and (b) show the When2Heat model [63], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non -weather-related influences. Weekends 
+and national holidays are excluded due to non -weather-related influences. Pink shading indicates 
+the 0.4% of days t hat had >1 CDD and so were also removed, as the When2Heat model does not 
+provide estimates for cooling demand. Countries with large cooling demands are shown here for 
+completeness, but are excluded from the main comparisons (Figure 4e in the main text). 
+ 
+ 
+  
+
+
+========== PAGE 103 ==========
+102 
+ 
+Supplementary Figure 124: Time-series plots of daily electricity demand in Bulgaria . Panels 
+(a) and (b) show the When2Heat model [63], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. Pink shading 
+indicates the 19.3% of days that had >1 CDD and so were also removed; see Supplementary Figure 
+123 for further detail. 
+ 
+ 
+Supplementary Figure 125: Time-series plots of daily electricity demand in Czechia. Panels (a) 
+and (b) show the When2Heat model [63], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. No additional 
+days were removed for having >1 CDD; see Supplementary Figure 123 for further detail. 
+ 
+ 
+
+
+========== PAGE 104 ==========
+103 
+ 
+Supplementary Figure 126: Time-series plots of daily electricity demand in Denmark. Panels 
+(a) and (b) show the When2Heat model [63], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. Pink shading 
+indicates the 0.3% of days that had >1 CDD and so were also removed; see Supplementary Figure 
+123 for further detail. 
+ 
+ 
+Supplementary Figure 127: Time-series plots of daily electricity demand in Estonia. Panels (a) 
+and (b) show the When2Heat model [63], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. No additional 
+days were removed for having >1 CDD; see Supplementary Figure 123 for further detail. 
+ 
+ 
+
+
+========== PAGE 105 ==========
+104 
+ 
+Supplementary Figure 128: Time-series plots of daily electricity demand in Finland. Panels (a) 
+and (b) show the When2Heat model [63], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. Pink shading 
+indicates the 0.1% of days that had >1 CDD and so were also removed; see Supplementary Figure 
+123 for further detail. 
+ 
+ 
+Supplementary Figure 129: Time-series plots of daily electricity demand in France. Panels (a) 
+and (b) show the When2Heat model [63], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. Pink shading 
+indicates the 4.3% of days that had >1 CDD and so were also removed; see Supplementary Figure 
+123 for further detail. 
+ 
+
+
+========== PAGE 106 ==========
+105 
+ 
+Supplementary Figure 130: Time-series plots of daily electricity demand in Great Britain . 
+Panels (a) and (b) show the When2Heat model [63], panels (c) and (d) show the Demand.ninja 
+model. Weekends and national holidays are excluded due to non-weather-related influences. Pink 
+shading indicates the 0.8% of days that had >1 CDD and so were also removed; see Supplementary 
+Figure 123 for further detail. 
+ 
+ 
+Supplementary Figure 131: Time-series plots of daily natural gas demand  in Great Britain . 
+Panels (a) and (b) show the When2Heat model [63], panels (c) and (d) show the Demand.ninja 
+model. Weekends and national holidays are excluded due to non -weather-related influences. No 
+additional days were removed as gas is not used for  cooling; see Supplementary Figure 123 for 
+further detail. 
+ 
+
+
+========== PAGE 107 ==========
+106 
+ 
+Supplementary Figure 132: Time-series plots of daily electricity demand in Greece. Panels (a) 
+and (b) show the When2Heat model [63], panels (c) and (d) s how the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. Pink shading 
+indicates the 31.4% of days that had >1 CDD and so were also removed; see Supplementary Figure 
+123 for further detail. 
+ 
+ 
+Supplementary Figure 133: Time-series plots of daily electricity demand in Hungary . Panels 
+(a) and (b) show the When2Heat model [63], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. Pink shading 
+indicates the 1.5% of days that had >1 CDD and so were also removed; see Supplementary Figure 
+123 for further detail. 
+ 
+
+
+========== PAGE 108 ==========
+107 
+ 
+Supplementary Figure 134: Time-series plots of daily electricity demand in Ireland. Panels (a) 
+and (b) show the When2Heat model [63], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. No additional 
+days were removed for having >1 CDD; see Supplementary Figure 123 for further detail. 
+ 
+ 
+ 
+Supplementary Figure 135: Time-series plots of daily electricity demand in Italy . Panels (a) 
+and (b) show the When2Heat model [63], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. Pink shading 
+indicates the 29.8% of days that had >1 CDD and so were also removed; see Supplementary Figure 
+123 for further detail. 
+ 
+
+
+========== PAGE 109 ==========
+108 
+ 
+Supplementary Figure 136: Time-series plots of daily electricity demand in Latvia. Panels (a) 
+and (b) show the When2Heat model [63], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. No additional 
+days were removed for having >1 CDD; see Supplementary Figure 123 for further detail. 
+ 
+ 
+ 
+Supplementary Figure 137: Time-series plots of daily electricity demand in Lithuania. Panels 
+(a) and (b) show th e When2Heat model [63], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. No additional 
+days were removed for having >1 CDD; see Supplementary Figure 123 for further detail. 
+ 
+ 
+
+
+========== PAGE 110 ==========
+109 
+ 
+Supplementary Figure 138: Time-series plots of daily electricity demand in the Netherlands. 
+Panels (a) and (b) show the When2Heat model [63], panels (c) and (d) show the Demand.ninja 
+model. Weekends and national holidays are excluded due to non-weather-related influences. Pink 
+shading indicates the 0.5% of days that had >1 CDD and so were also removed; see Supplementary 
+Figure 123 for further detail. 
+ 
+ 
+Supplementary Figure 139: Time-series plots of daily electricity demand in Poland. Panels (a) 
+and (b) show the When2Heat model [63], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. Pink shading 
+indicates the 1.5% of days that had >1 CDD and so were also removed; see Supplementary Figure 
+123 for further detail. 
+ 
+
+
+========== PAGE 111 ==========
+110 
+ 
+Supplementary Figure 140: Time-series plots of daily el ectricity demand in Portugal. Panels 
+(a) and (b) show the When2Heat model [63], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. Pink shading 
+indicates the 10.7% of days that had >1 CDD and so were also removed; see Supplementary Figure 
+123 for further detail. 
+ 
+ 
+Supplementary Figure 141: Time-series plots of daily electricity demand in Romania . Panels 
+(a) and (b) show the When2Heat model [63], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. Pink shading 
+indicates the 16.1% of days that had >1 CDD and so were also removed; see Supplementary Figure 
+123 for further detail. 
+ 
+
+
+========== PAGE 112 ==========
+111 
+ 
+Supplementary Figure 142: Time-series plots of daily electricity demand in Slovakia. Panels 
+(a) and (b) show the When2Heat model [63], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. Pink shading 
+indicates the 0.1% of days that had >1 CDD and so were also removed; see Supplementary Figure 
+123 for further detail. 
+ 
+ 
+Supplementary Figure 143: Time-series plots of daily electricity demand in Spain . Panels (a) 
+and (b) show the When2Heat model [63], panels (c) a nd (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. Pink shading 
+indicates the 34.2% of days that had >1 CDD and so were also removed; see Supplementary Figure 
+123 for further detail. 
+ 
+
+
+========== PAGE 113 ==========
+112 
+ 
+Supplementary Figure 144: Time-series plots of daily electricity demand in Sweden. Panels (a) 
+and (b) show the When2Heat model [63], panels (c) and (d) show the Demand.ninja model. 
+Weekends and national holidays are excluded due to non-weather-related influences. Pink shading 
+indicates the 1.4% of days that had >1 CDD and so were also removed; see Supplementary Figure 
+123 for further detail. 
+ 
+  
+
+
+========== PAGE 114 ==========
+113 
+ 
+Supplementary Figure 145: Time-series plots of daily electricity demand in the CAISO power 
+market (US). Panels (a) and (b) show the ResStock and Comstock models [64], panels (c) and (d) 
+show the Demand.ninja model. Weekends and national holidays are excluded due to non-weather-
+related influences. 
+ 
+ 
+ 
+Supplementary Figure 146: Time-series plots of daily electricity demand in the Carolinas 
+power market (US). Panels (a) and (b) show the ResStock and Comstock models [64], panels (c) 
+and (d) show the Demand.ninja model. Weekends and national holidays are excluded due to non-
+weather-related influences. 
+ 
+
+
+========== PAGE 115 ==========
+114 
+ 
+Supplementary Figure 147: Time-series plots of daily electricity demand in the Central power 
+market (US). Panels (a) and (b) show the ResStock and Comstock models [64], panels (c) and (d) 
+show the Demand.ninja model. Weekends and national holidays are excluded due to non-weather-
+related influences. 
+ 
+ 
+ 
+Supplementary Figure 148: Time-series plots of daily electricity demand in the ERCOT power 
+market (US). Panels (a) and (b) show the ResStock and Comstock models [64], panels (c) and (d) 
+show the Demand.ninja model. Weekends and national holidays are excluded due to non-weather-
+related influences. 
+ 
+
+
+========== PAGE 116 ==========
+115 
+ 
+Supplementary Figure 149: Time-series plots of daily electricity demand in the Florida power 
+market (US). Panels (a) and (b) show the ResStock and Comstock models [64], panels (c) and (d) 
+show the Demand.ninja model. Weekends and national holidays are excluded due to non-weather-
+related influences. 
+ 
+ 
+ 
+Supplementary Figure 150: Time-series plots of daily electricity demand in the MISO power 
+market (US). Panels (a) and (b) show the ResStock and Comstock models [64], panels (c) and (d) 
+show the Demand.ninja model. Weekends and national holidays are excluded due to non-weather-
+related influences. 
+ 
+
+
+========== PAGE 117 ==========
+116 
+ 
+Supplementary Figure 151: Time-series plots of daily electricity demand in the ISONE power 
+market (US). Panels (a) and (b) show the ResStock and Comstock models [64], panels (c) and (d) 
+show the Demand.ninja model. Weekends and national holidays are excluded due to non-weather-
+related influences. 
+ 
+ 
+ 
+Supplementary Figure 152: Time-series plots of daily electricity demand in the NYISO power 
+market (US). Panels (a) and (b) show the ResStock and Comstock models [64], panels (c) and (d) 
+show the Demand.ninja model. Weekends and national holidays are excluded due to non-weather-
+related influences. 
+ 
+
+
+========== PAGE 118 ==========
+117 
+ 
+ 
+Supplementary Figure 153: Time-series plots of daily electricity demand in the Tennessee 
+power market (US). Panels (a) and (b) show the ResStock and Comstock models [64], panels (c) 
+and (d) show the Demand.ninja model. Weekends and national holidays are excluded due to non-
+weather-related influences. 
+  
+
+
+========== PAGE 119 ==========
+118 
+ 
+Supplementary Figure 154: Simulations of individual building demand from 10 randomly 
+selected buildings from the Smart-Grid Smart-City dataset (Australia). In all cases, the default 
+BAIT parameters and temperature thresholds were used, and the baseline power coefficient (Pbase) 
+was fixed at zero, giving an indication of how the model performs when given only the location of 
+a building and its annual energy  demand. Estimates of heating and cooling energy demand 
+estimates could be improved if bespoke temperature thresholds were used. 
+ 
+ 
+
+
+========== PAGE 120 ==========
+119 
+ 
+Supplementary Figure 155: Simulations of individual building demand from 10 randomly 
+selected buildings from the Building Data Genome Project 2 dataset (global). In all cases, the 
+default BAIT parameters and temperature thresholds were used, and the baseline power coefficient 
+(Pbase) was fixed at zero, giving an indication of how the model performs when given only the 
+location of a building and its annual energy  demand. Estimates of heating and cooling energy 
+demand estimates could be improved if bespoke temperature thresholds were used. 
+ 
+ 
+
+
+========== PAGE 121 ==========
+120 
+ 
+Supplementary Figure 156: Simulations of individual building demand from 10 randomly 
+selected buildings from the Green Grid dataset (New Zealand).  In all cases, t he default BAIT 
+parameters and temperature thresholds were used , and the baseline power coefficient (Pbase) was 
+fixed at zero, giving an indication of how the model performs when given only the location of a 
+building and its annual energy demand. Estimates of heating and cooling energy demand estimates 
+could be improved if bespoke temperature thresholds were used. 
+ 
+ 
+ 
+
+
+========== PAGE 122 ==========
+121 
+ 
+Supplementary Figure 157: Simulations of individual building demand from 10 randomly 
+selected buildings from the Elergone Energia dataset (Portugal). In all cases, the default BAIT 
+parameters and temperature thresholds were used , and the baseline power coefficient (Pbase) was 
+fixed at zero, giving an indication of how the model performs when given only the location of a 
+building and its annual energy demand. Estimates of heating and cooling energy demand estimates 
+could be improved if bespoke temperature thresholds were used. 
+ 
+ 
+
+
+========== PAGE 123 ==========
+122 
+ 
+Supplementary Figure 158: Simulations of individual building demand from 10 randomly 
+selected buildings from the BRE dataset (UK).  In all cases, t he default BAIT parameters and 
+temperature thresholds were used , and the baseline power coefficient ( Pbase) was fixed at zero, 
+giving an indication of how the model performs when given only the location of a building and its 
+annual energy  demand. Estimates of heating and cooling energy demand estimates could be 
+improved if bespoke temperature thresholds were used. 
+ 
+ 
+
+
+========== PAGE 124 ==========
+123 
+ 
+Supplementary Figure 159: Simulations of individual building demand from 10 randomly 
+selected buildings from the Customer Led Network Revolution dataset (UK). In all cases, the 
+default BAIT parameters and temperature thresholds were used, and the baseline power coefficient 
+(Pbase) was fixed at zero, giving an indication of how the model performs when given only the 
+location of a building and its annual energy  demand. Estimates of heating and cooling energy 
+demand estimates could be improved if bespoke temperature thresholds were used. 
+ 
+ 
+
+
+========== PAGE 125 ==========
+124 
+ 
+Supplementary Figure 160: Simulations of individual building demand from 10 randomly 
+selected buildings from the Energy Demand Research Project electricity dataset (UK).  In all 
+cases, the default BAIT parameters and temperature thresholds were used, and the baseline power 
+coefficient (Pbase) was fixed at zero, giving an indication of how the mode l performs when given 
+only the location of a building and its annual energy  demand. Estimates of heating and cooling 
+energy demand estimates could be improved if bespoke temperature thresholds were used. 
+ 
+ 
+
+
+========== PAGE 126 ==========
+125 
+ 
+Supplementary Figure 161: Simulations of individual building demand from 10 randomly 
+selected buildings from the Energy Demand Research Project natural gas dataset (UK). In all 
+cases, the default BAIT parameters and temperature thresholds were used, and the baseline power 
+coefficient (Pbase) was fixed at zero, giving an indication of how the model performs when given 
+only the location of a building and its annual energy  demand. Estimates of heating and cooling 
+energy demand estimates could be improved if bespoke temperature thresholds were used. 
+ 
+ 
+
+
+========== PAGE 127 ==========
+126 
+ 
+Supplementary Figure 162: Simulations of individual building demand from 10 randomly 
+selected buildings from the Home Energy Metering Study dataset (US). In all cases, the default 
+BAIT parameters and temperature thresholds were used, and the baseline power coefficient (Pbase) 
+was fixed at zero, giving an indication of how the model performs when given only the location of 
+a building and its annual energy  demand. Estimates of heating and cooling energy demand 
+estimates could be improved if bespoke temperature thresholds were used. 
+ 
+ 
+
+
+========== PAGE 128 ==========
+127 
+ 
+Supplementary Figure 163: Simulations of individual building demand from 10 randomly  
+selected buildings from the Pecan Street dataset (US). In all cases, the default BAIT parameters 
+and temperature thresholds were used, and the baseline power coefficient (Pbase) was fixed at zero, 
+giving an indication of how the model performs when given only the location of a building and its 
+annual energy  demand. Estimates of heating and cooling energy demand estimates could be 
+improved if bespoke temperature thresholds were used. 
+ 
+ 
+
+
+========== PAGE 129 ==========
+128 
+ 
+Supplementary Figure 164: Simulations of individual building demand from 10 randomly 
+selected buildings from the Residential Building Stock Assessment dataset (US).  In all cases, 
+the default BAIT parameters and temperature thresholds were used , and the baseline  power 
+coefficient (Pbase) was fixed at zero, giving an indication of how the model performs when given 
+only the location of a building and its annual energy  demand. Estimates of heating and cooling 
+energy demand estimates could be improved if bespoke temperature thresholds were used. 
+ 
+ 
+  
+
+
+========== PAGE 130 ==========
+129 
+ 
+Supplementary Figure 165: Quality of the Demand.ninja at representing daily natural gas 
+demand in European countries (2013 -2019). In each panel, the black line represents metered 
+demand, the green line represents the Demand.ninja estimate. 
+  
+
+
+========== PAGE 131 ==========
+130 
+ 
+Supplementary Figure 166: Quality of the Demand.ninja at representing daily natural gas 
+demand in US states (2010 -2019). In each panel, the black line represents metered demand, the 
+green line represents the Demand.ninja estimate. 
+  
+
+
+========== PAGE 132 ==========
+131 
+ 
+Supplementary Figure 167: Eight energy demand profiles from exemplary buildings that 
+were discarded from the datasets reported in Supplementary Table 3. Building energy demand 
+profiles were typically discarded if they had an R2 coefficient below 0.6 in smaller datasets, or below 
+0.8 in datasets with over 10,000 buildings, but profiles were added back into the dataset if they were 
+below these thresholds and displayed none of the erroneous traits shown below. The common 
+erroneous traits we experienced were: buildings that were simply not conditioned using the 
+metered fuel ( panel a and e ), that had non-standard occupancy patterns such as holiday homes 
+(panel f, occupied from January to March), or which use heating timers (panel g shown as a small 
+number of discrete consumption levels), or suspected monitoring or data entry errors (panels b, c, 
+d, and h). 
+ 
+ 
+
+
+========== PAGE 133 ==========
+132 
+ 
+Supplementary Figure 168: Demonstration of the relationships between temperature, BAIT 
+and energy demand, using national gas consumption in Great Britain from 2015 –19 as an 
+example. Comparing panel (a) and panel (c) shows how moving from raw temperature to BAIT 
+greatly improves the fit with gas demand. Panel (b) shows that BAIT generally corresponds with 
+air temperature and is not systematically higher or lower. 
+ 
+  
+
+
+========== PAGE 134 ==========
+133 
+ 
+ 
+ 
+ 
+Supplementary Figure 169: Regressions correlating temperature to other weather variables 
+in three example regions, and a summary of the regressions from all locations considered in 
+this study. Panels (a, d, g) consider solar irradiance and panels (b, e, h) consider wind speed, with 
+red lines showing the linear regressions. Panels (c, f, j) consider relative humidity, with red lines 
+showing log-linear regressions. The regression lines from all regions are summarised in panels (h, 
+i, j) as grey lines, with thick red lines representing the demand -weighted mean across all regions, 
+which defined the relationships for the weather counterfactuals in this study. 
+ 
+
+
+========== PAGE 135 ==========
+134 
+ 
+Supplementary Figure 170: Hourly diurnal profiles of electricity demand in New South 
+Wales, Australia. Panels show weekdays (a to c) and weekends (d to f), during the winter (a and 
+d), shoulder (b and e), and summer (c and f) months. Lines show the mean diurnal profile during 
+each group of days, and the shaded areas represent the additional demand experienced during hot 
+and cold days, which we ascribe to cooling and heating respectively. Days that are above the 90 th 
+percentile for HDDs or CDDs are classifi ed as cold or hot days, respectively. Days that fall below 
+the 10th percentile for both HDDs and CDDs are classified as mild days. 
+ 
+  
+
+
+========== PAGE 136 ==========
+135 
+ 
+Supplementary Figure 171: Hourly diurnal profiles of electricity demand in Queens land, 
+Australia. Figure follows the same design as Supplementary Figure 170; see the caption there for 
+more detail. 
+ 
+ 
+Supplementary Figure 172: Hourly diurnal profiles of electricity demand in Southern 
+Australia. Figure follows the same design as Supplementary Figure 170; see the caption there for 
+more detail. 
+ 
+
+
+========== PAGE 137 ==========
+136 
+ 
+Supplementary Figure 173: Hourly diurnal profiles of electricity demand in Victoria 
+Australia. Figure follows the same design as Supplementary Figure 170; see the caption there for 
+more detail. 
+ 
+ 
+Supplementary Figure 174: Hourly diurnal profiles of electricity demand in Austria.  Figure 
+follows the same design as Supplementary Figure 170; see the caption there for more detail. 
+ 
+ 
+
+
+========== PAGE 138 ==========
+137 
+ 
+Supplementary Figure 175: Hourly diurnal profiles of electricity demand in Belgium. Figure 
+follows the same design as Supplementary Figure 170; see the caption there for more detail. 
+ 
+ 
+ 
+Supplementary Figure 176: Hourly diurnal profiles of electricity demand in Bulgaria. Figure 
+follows the same design as Supplementary Figure 170; see the caption there for more detail. 
+ 
+ 
+
+
+========== PAGE 139 ==========
+138 
+ 
+Supplementary Figure 177: Hourly diurnal profiles of electricity demand in Denmark. Figure 
+follows the same design as Supplementary Figure 170; see the caption there for more detail. 
+ 
+ 
+ 
+Supplementary Figure 178: Hourly diurnal profiles of electricity demand in Estonia.  Figure 
+follows the same design as Supplementary Figure 170; see the caption there for more detail. 
+ 
+ 
+
+
+========== PAGE 140 ==========
+139 
+ 
+Supplementary Figure 179: Hourly diurnal profiles of electricity demand in Finland.  Figure 
+follows the same design as Supplementary Figure 170; see the caption there for more detail. 
+ 
+ 
+ 
+Supplementary Figure 180: Hourly diurnal profiles of electricity demand in France.  Figure 
+follows the same design as Supplementary Figure 170; see the caption there for more detail. 
+ 
+ 
+
+
+========== PAGE 141 ==========
+140 
+ 
+Supplementary Figure 181: Hourly diurnal profiles of electricity demand in Great Britain.  
+Figure follows the same design as Supplementary Figure 170; see the caption there for more detail. 
+ 
+ 
+ 
+Supplementary Figure 182: Hourly diurnal profiles of electricity demand in Germany. Figure 
+follows the same design as Supplementary Figure 170; see the caption there for more detail. 
+ 
+ 
+
+
+========== PAGE 142 ==========
+141 
+ 
+Supplementary Figure 183: Hourly diurnal profiles of electricity de mand in Greece.  Figure 
+follows the same design as Supplementary Figure 170; see the caption there for more detail. 
+ 
+ 
+ 
+Supplementary Figure 184: Hourly diurnal profiles of electricity demand in Hungary. Figure 
+follows the same design as Supplementary Figure 170; see the caption there for more detail. 
+ 
+ 
+
+
+========== PAGE 143 ==========
+142 
+ 
+Supplementary Figure 185: Hourly diurnal profiles of electricity demand in Italy.  Figure 
+follows the same design as Supplementary Figure 170; see the caption there for more detail. 
+ 
+ 
+ 
+Supplementary Figure 186: Hourly diurnal profiles of electricity demand in Japan.  Figure 
+follows the same design as Supplementary Figure 170; see the caption there for more detail. 
+ 
+ 
+
+
+========== PAGE 144 ==========
+143 
+ 
+Supplementary Figure 187: Hourly diurnal profiles of electricity demand in Latvia.  Figure 
+follows the same design as Supplementary Figure 170; see the caption there for more detail. 
+ 
+ 
+ 
+Supplementary Figure 188: Hourly diurnal profiles of electricity demand in Lithuania. Figure 
+follows the same design as Supplementary Figure 170; see the caption there for more detail. 
+ 
+ 
+
+
+========== PAGE 145 ==========
+144 
+ 
+Supplementary Figure 189: Hourly diurnal profiles of electricity demand in Portugal. Figure 
+follows the same design as Supplementary Figure 170; see the caption there for more detail. 
+ 
+ 
+ 
+Supplementary Figure 190: Hourly diurnal profiles of electricity demand in Romania. Figure 
+follows the same design as Supplementary Figure 170; see the caption there for more detail. 
+ 
+ 
+
+
+========== PAGE 146 ==========
+145 
+ 
+Supplementary Figure 191: Hourly diurnal profiles of electricity demand in Slovakia. Figure 
+follows the same design as Supplementary Figure 170; see the caption there for more detail. 
+ 
+ 
+ 
+Supplementary Figure 192: Hourly diurnal profiles of electricity demand in Spain.  Figure 
+follows the same design as Supplementary Figure 170; see the caption there for more detail. 
+ 
+ 
+
+
+========== PAGE 147 ==========
+146 
+ 
+Supplementary Figure 193: Hourly diurnal profiles of electricity demand in Sweden.  Figure 
+follows the same design as Supplementary Figure 170; see the caption there for more detail. 
+ 
+ 
+ 
+Supplementary Figure 194: Hourly diurnal profiles of electricity demand in the CAISO 
+electricity market (US).  Figure follows the same design as Supplementary Figure 170; see the 
+caption there for more detail. 
+ 
+
+
+========== PAGE 148 ==========
+147 
+ 
+Supplementary Figure 195: Hourly diurnal profiles of electricity demand in the Carolinas 
+electricity market (US).  Figure follows the same design as Supplementary Figure 170; see the 
+caption there for more detail. 
+ 
+ 
+Supplementary Figure 196: Hourly diurnal profiles of electricity demand in the Central 
+electricity market (US).  Figure follows the same design as Supplementary Figure 170; see the 
+caption there for more detail. 
+ 
+
+
+========== PAGE 149 ==========
+148 
+ 
+Supplementary Figure 197: Hourly diurnal profiles of electricity demand in the ERCOT 
+electricity market (US).  Figure follows the same design as Supplementary Figure 170; see the 
+caption there for more detail. 
+ 
+ 
+Supplementary Figure 198: Hourly diurnal profiles of electricity demand in the Florida 
+electricity market (US).  Figure follows the same design as Supplementary Figure 170; see the 
+caption there for more detail. 
+ 
+
+
+========== PAGE 150 ==========
+149 
+ 
+Supplementary Figure 199: Hourly diurnal profiles of electricity demand in the MISO 
+electricity market (US).  Figure follows the same design as Supplementary Figure 170; see the 
+caption there for more detail. 
+ 
+ 
+Supplementary Figure 200: Hourly diurnal profiles of electricity demand in the ISONE 
+electricity market (US).  Figure follows the  same design as Supplementary Figure 170; see the 
+caption there for more detail. 
+ 
+
+
+========== PAGE 151 ==========
+150 
+ 
+Supplementary Figure 201: Hourly diurnal profiles of electricity demand in the Northwest 
+electricity market (US).  Figure follows the same design as Supplementary Figure 170; see the 
+caption there for more detail. 
+ 
+ 
+Supplementary Figure 202: Hourly diurnal profiles of electricity demand in the NYISO 
+electricity market (US).  Figure follows the same design as Supplementary Figure 170; see the 
+caption there for more detail. 
+ 
+
+
+========== PAGE 152 ==========
+151 
+ 
+Supplementary Figure 203: Hourly diurnal profiles of electricity demand in the PJM 
+electricity market (US).  Figure follows the same design as Supplementary Figure 170; see the 
+caption there for more detail. 
+ 
+ 
+Supplementary Figure 204: Hourly diurnal profiles of electricity demand in the Southeast 
+electricity market (US).  Figure follows the same design as Supplementary Figure 170; see the 
+caption there for more detail. 
+ 
+
+
+========== PAGE 153 ==========
+152 
+ 
+Supplementary Figure 205: Hourly diurnal profiles of electricity demand in the Southwest 
+electricity market (US).  Figure follows the same design as Supplementary Figure 170; see the 
+caption there for more detail. 
+ 
+ 
+Supplementary Figure 206: Hourly diurnal profiles of electricity demand in the Tennessee 
+electricity market (US).  Figure follows the same design as Supplementary Figure 170; see the 
+caption there for more detail. 
+ 
+
+
+========== PAGE 154 ==========
+153 
+ 
+Supplementary Figure 207: Hourly diurnal profiles of electricity demand for heating and 
+cooling across all countrie s and regions for which we have data.  Profiles are generated by 
+subtracting diurnal demand during mild days from demand during hot / cold days. Lines show the 
+mean profile and shaded areas show the standard deviation across all days.  
+  
+
+
+========== PAGE 155 ==========
+154 
+Supplementary References 
+[1] M. De Rosa, V. Bianco, F. Scarpa, L.A. Tagliafico, Heating and cooling building energy 
+demand evaluation; A simplified model and a modified degree days approach, Applied 
+Energy. 128 (2014) 217–229. https://doi.org/10.1016/j.apenergy.2014.04.067. 
+[2] B. Bueno, L. Norford, G. Pigeon, R. Britter, A resistance -capacitance network model 
+for the analysis of the interactions between the energy performance of buildings and 
+the urban climate, Building and Environment. 54 (2012) 116 –125. 
+https://doi.org/10.1016/j.buildenv.2012.01.023. 
+[3] D.B. Crawley, L.K. Lawrie, F.C. Winkelmann, W.F. Buhl, Y.J. Huang, C.O. Pedersen, R.K. 
+Strand, R.J. Liesen, D.E. Fisher, M.J. Witte, J. Glazer, EnergyPlus: Creating a new -
+generation building energy simulation program, Energy and Buildings. 33 (2001) 319–
+331. https://doi.org/10.1016/S0378-7788(00)00114-6. 
+[4] D.B. Crawley, J.W. Hand, M. Kummert, B.T. Griffith, Contrasting the capabilities of 
+building energy performance simulation programs, Build Environ. 43 (2008) 661–673. 
+https://doi.org/10.1016/j.buildenv.2006.10.027. 
+[5] H.X. Zhao, F. Magoulès, A review on the prediction of building energy consumption, 
+Renewable and Sustainable Energy Reviews. 16 (2012) 3586 –3592. 
+https://doi.org/10.1016/j.rser.2012.02.049. 
+[6] A. Foucquier, S. Robert, F. Suard, L. Stéphan, A. Jay, State of the art in building 
+modelling and energy performances prediction: A review, Renewable and Sustainable 
+Energy Reviews. 23 (2013) 272–288. https://doi.org/10.1016/j.rser.2013.03.004. 
+[7] M. Kavgic, A. Mavrogianni, D. Mumovic, A. Summerfield, Z. Stevanovic, M. Djurovic -
+Petrovic, A review of bottom-up building stock models for energy consumption in the 
+residential sector, Building and Environment. 45 (2010) 1683 –1697. 
+https://doi.org/10.1016/j.buildenv.2010.01.021. 
+[8] L. Frayssinet, L. Merlier, F. Kuznik, J.L. Hubert, M. Milliez, J.J. Roux, Modeling the 
+heating and cooling energy demand of urban buildings at city scale, Renewable and 
+Sustainable Energy Reviews. 81 (2018) 2318 –2327. 
+https://doi.org/10.1016/j.rser.2017.06.040. 
+[9] C. Turner, M. Frankel, Energy Performance of LEED ® for New Construction Buildings, 
+Vancouver, 2008. https://newbuildings.org/resource/energy -performance-leed-
+new-construction-buildings/ (accessed June 21, 2023). 
+[10] W. Chung, Review of building energy-use performance benchmarking methodologies, 
+Appl Energy. 88 (2011) 1470–1479. https://doi.org/10.1016/j.apenergy.2010.11.022. 
+[11] X. Pang, M. Wetter, P. Bhattacharya, P. Haves, A framework for simulation-based real-
+time who le building performance assessment, Build Environ. 54 (2012) 100 –108. 
+https://doi.org/10.1016/j.buildenv.2012.02.003. 
+[12] E. Azar, C.C. Menassa, A comprehensive analysis of the impact of occupancy 
+parameters in energy simulation of office buildings, Energy Build. 55 (2012) 841–853. 
+https://doi.org/10.1016/j.enbuild.2012.10.002. 
+
+========== PAGE 156 ==========
+155 
+[13] J.H. Scofield, Do LEED-certified buildings save energy? Not really..., Energy Build. 41 
+(2009) 1386–1390. https://doi.org/10.1016/j.enbuild.2009.08.006. 
+[14] F. Karlsson, P. Ro hdin, M.-L. Persson, Measured and predicted energy demand of a 
+low energy building: important aspects when using Building Energy Simulation, 
+Building Services Engineering Research and Technology. 28 (2007) 223 –235. 
+https://doi.org/10.1177/0143624407077393. 
+[15] P. De Wilde, The gap between predicted and measured energy performance of 
+buildings: A framework for investigation, Automation in Construction. 41 (2014) 40 –
+49. https://doi.org/10.1016/j.autcon.2014.02.009. 
+[16] D. Coakley, P. Raftery, M. Keane, A review of methods to match building energy 
+simulation models to measured data, Renewable and Sustainable Energy Reviews. 37 
+(2014) 123–141. https://doi.org/10.1016/j.rser.2014.05.007. 
+[17] E.M. Ryan, T.F. Sanquist, Validation of building energy modeling tools under idealized 
+and realistic conditions, Energy and Buildings. 47 (2012) 375 –382. 
+https://doi.org/10.1016/j.enbuild.2011.12.020. 
+[18] N. Fumo, M.A. Rafe Biswas, Reg ression analysis for prediction of residential energy 
+consumption, Renewable and Sustainable Energy Reviews. 47 (2015) 332 –343. 
+https://doi.org/10.1016/j.rser.2015.03.035. 
+[19] M. Waite, E. Cohen, H. Torbey, M. Piccirilli, Y. Tian, V. Modi, Global trends i n urban 
+electricity demands for cooling and heating, Energy. 127 (2017) 786 –802. 
+https://doi.org/10.1016/j.energy.2017.03.095. 
+[20] A. Tsanas, A. Xifara, Accurate quantitative estimation of energy performance of 
+residential buildings using statistical machine learning tools, Energy Build. 49 (2012) 
+560–567. https://doi.org/10.1016/j.enbuild.2012.03.003. 
+[21] C. Robinson, B. Dilkina, J. Hubbs, W. Zhang, S. Guhathakurta, M.A. Brown, R.M. 
+Pendyala, Machine learning approaches for estimating commercial building  energy 
+consumption, Appl Energy. 208 (2017) 889 –904. 
+https://doi.org/10.1016/j.apenergy.2017.09.060. 
+[22] H.-X. Zhao, F. Magoulès, E.C. Paris, G. Voie Des Vignes, Feature Selection for 
+Predicting Building Energy Consumption Based on Statistical Learning M ethod, J 
+Algorithm Comput Technol. 6 (2012) 59. https://doi.org/https://doi.org/10.1260/1748-
+3018.6.1.59. 
+[23] D. Hsu, Identifying key variables and interactions in statistical models of building 
+energy consumption using regularization, Energy. 83 (2015) 1 44–155. 
+https://doi.org/10.1016/j.energy.2015.02.008. 
+[24] S. Seyedzadeh, F.P. Rahimian, I. Glesk, M. Roper, Machine learning for estimation of 
+building energy consumption and performance: a review, Visualization in Engineering. 
+6 (2018) 1–20. https://doi.org/10.1186/s40327-018-0064-7. 
+[25] C.L. Hor, S.J. Watson, S. Majithia, Analyzing the impact of weather variables on 
+monthly electricity demand, IEEE Transactions on Power Systems. 20 (2005) 2078 –
+2085. https://doi.org/10.1109/TPWRS.2005.857397. 
+
+========== PAGE 157 ==========
+156 
+[26] P. Wes termann, R. Evins, Surrogate modelling for sustainable building design – A 
+review, Energy Build. 198 (2019) 170 –186. 
+https://doi.org/10.1016/j.enbuild.2019.05.057. 
+[27] L. Van Gelder, P. Das, H. Janssen, S. Roels , Comparative study of metamodelling 
+techniques in building energy simulation: Guidelines for practitioners, Simul Model 
+Pract Theory. 49 (2014) 245–257. https://doi.org/10.1016/j.simpat.2014.10.004. 
+[28] P. Geyer, A. Schlüter, Automated metamodel generation for Design Space Exploration 
+and decision-making - A novel method supporting performance -oriented building 
+design and retrofitting, Applied Energy. 119 (2014) 537 –556. 
+https://doi.org/10.1016/j.apenergy.2013.12.064. 
+[29] R.E. Edwards, J. New, L.E. Parker, B. Cui, J. Dong, Constructing large scale surrogate 
+models from big data and artificial intelligence, Applied Energy. 202 (2017) 685–699. 
+https://doi.org/10.1016/j.apenergy.2017.05.155. 
+[30] F. Ascione, N. Bianco, C. De Stasio, G.M. Mauro, G.P. Vanoli, Artificial neural networks 
+to predict energy performance and retrofit scenarios for any member of a building 
+category: A novel approach, Energy. 118 (2017) 999 –1017. 
+https://doi.org/10.1016/j.energy.2016.10.126. 
+[31] T. Catalina, V. Iordache, B. Caracaleanu, Multiple regression model for fast prediction 
+of the heating energy demand, Energy Build. 57 (2013) 302 –312. 
+https://doi.org/10.1016/j.enbuild.2012.11.010. 
+[32] J.S. Hygh, J.F. DeCarolis, D.B. Hill, S. Ranji Ranjithan, Multivariate regression as an 
+energy assessment tool in early building design, Building and Environment. 57 (2012) 
+165–175. https://doi.org/10.1016/j.buildenv.2012.04.021. 
+[33] J.C. Lam, K.K.W. Wan, D. Liu, C.L. Tsang, Multiple regression models for energy use in 
+air-conditioned office bui ldings in different climates, Energy Conversion and 
+Management. 51 (2010) 2692–2697. https://doi.org/10.1016/j.enconman.2010.06.004. 
+[34] Z. Romani, A. Draoui, F. Allard, Metamodeling the heating and cooling energy needs 
+and simultaneous building envelope optimization for low energy building design in 
+Morocco, Energy and Buildings. 102 (2015) 139 –148. 
+https://doi.org/10.1016/j.enbuild.2015.04.014. 
+[35] A. Rackes, A.P. Melo, R. Lamberts, Naturally comfortable and sustainable: Informed 
+design guidance and per formance labeling for passive commercial buildings in hot 
+climates, Applied Energy. 174 (2016) 256 –274. 
+https://doi.org/10.1016/j.apenergy.2016.04.081. 
+[36] P. Westermann, M. Welzel, R. Evins, Using a deep temporal convolutional network as 
+a building energy surrogate model that spans multiple climate zones, Appl Energy. 
+278 (2020) 115563. https://doi.org/10.1016/j.apenergy.2020.115563. 
+[37] IEA, World Energy Balances 2020, Paris, 2021. 
+[38] M. Berger, J. Worlitschek, A novel approach for estimating resident ial space heating 
+demand, Energy. 159 (2018) 294–301. https://doi.org/10.1016/j.energy.2018.06.138. 
+
+========== PAGE 158 ==========
+157 
+[39] J. Sachs, D. Moya, S. Giarola, A. Hawkes, Clustered spatially and temporally resolved 
+global heat and cooling energy demand in the residential sector, Appl Energy. 250 
+(2019) 48–62. https://doi.org/10.1016/j.apenergy.2019.05.011. 
+[40] S. Pezzutto, S. Zambo tti, S. Croce, P. Zambelli, G. Garegnani, C. Scaramuzzino, R.P. 
+Pascuas, F. Haas, D. Exner, E. Lucchi, D. Valle, A. Zubaryeva, A. Müller, M. Hartner, T. 
+Fleiter, A.-L. Klingler, M. Kühnbach, P. Manz, S. Marwitz, M. Rehfeldt, J. Steinbach, E. 
+Popovski, D2.3 WP2 Report-Open Data Set for the EU28, 2019. https://www.hotmaps-
+project.eu/wp-content/uploads/2018/03/D2.3-Hotmaps_for-upload_revised-
+final_.pdf (accessed June 21, 2023). 
+[41] O. Ruhnau, L. Hirth, A. Praktiknjo, Time series of heat demand and heat pump 
+efficiency for energy system modeling, Sci Data. 6 (2019) 189. 
+https://doi.org/10.1038/s41597-019-0199-y. 
+[42] M. Peacock, A. Fragaki, B.J. Matuszewski, Review of Heat Demand Time Series 
+Generation for Energy System Modelling BT  - Energy and Sustainable Futures, in: I. 
+Mporas, P. Kourtessis, A. Al -Habaibeh, A. Asthana, V. Vukovic, J. Senior (Eds.), 
+Springer International Publishing, Cham, 2021: pp. 53 –60. 
+https://doi.org/https://doi.org/10.1007/978-3-030-63916-7_7. 
+[43] German Federation of the Gas - and Water Industry (BGW) & German Association of 
+Local Utilities (VKU), Application of Standard Load Profiles for Supplying Non- Daily-
+Metered Customers, 2006. 
+[44] National Grid, Gas Demand Forecasting Methodology, 2016. 
+https://www.nationalgas.com/document/132516/download#:~:text=Traditionally%20
+National%20Grid%20has%20produced,connections%20to%20the%20gas%20network. 
+(accessed June 21, 2023). 
+[45] D. Fischer, T. Wolf, J. Scherer, B. Wille-Haussmann, A stochastic bottom-up model for 
+space heating and domestic hot  water load profiles for German households, Energy 
+and Buildings. 124 (2016) 120–128. https://doi.org/10.1016/j.enbuild.2016.04.069. 
+[46] D. Fischer, J. Scherer, A. Haertl, K.B. Lindberg, M. Elci, B. Wille -Haussmann, 
+Stochastic modelling and simulation of energy flows for residential areas, in: 
+Proceedings Internationaler ETG-Kongress, 2014. 
+[47] M. Mourshed, Relationship between annual mean temperature and degree -days, 
+Energy and Buildings. 54 (2012) 418 –425. 
+https://doi.org/10.1016/j.enbuild.2012.07.024. 
+[48] Y. Petri, K. Caldeira, Impacts of global warming on residential heating and cooling 
+degree-days in the United States, Nature Publishing Group. 5 (2015) 12427. 
+https://doi.org/10.1038/srep12427. 
+[49] J. Spinoni, J. V. Vogt, P. Barbosa, A. Dosio, N. McC ormick, A. Bigano, H. -M. Füssel, 
+Changes of heating and cooling degree -days in Europe from 1981 to 2100, 
+International Journal of Climatology. 38 (2018) e191 –e208. 
+https://doi.org/10.1002/joc.5362. 
+
+========== PAGE 159 ==========
+158 
+[50] M. Berger, J. Worlitschek, The link between climate a nd thermal energy demand on 
+national level: A case study on Switzerland, Energy and Buildings. 202 (2019) 109372. 
+https://doi.org/10.1016/j.enbuild.2019.109372. 
+[51] T. Atalla, S. Gualdi, A. Lanza, A global degree days database for energy-related 
+applications, Energy. 143 (2018) 1048 –1055. 
+https://doi.org/10.1016/j.energy.2017.10.134. 
+[52] D. Wheeler, Energy+ Country Performance Ratings, 2001-2010, London, 2012. 
+[53] Eurostat, Cooling and heating degree days by country - monthly data , (2020). 
+https://data.europa.eu/euodp/en/data/dataset/qpz4216lVn91T1vF3v2NKQ (accessed 
+July 1, 2023). 
+[54] BizEE Software, Degree Days: Weather Data for Energy Saving, (2020). 
+https://www.degreedays.net/ (accessed July 1, 2023). 
+[55] Stark, Degree Days For Free, (2020). https://www.stark.co.uk/degree-days-for-free/ 
+(accessed August 20, 2020). 
+[56] D. Moran, K.B. Pandolf, Y. Shapiro, Y. Heled, Y. Shani, W.T. Mathew, R. Gonzalez, An 
+environmental stress index (ESI) as a substitute for the wet bulb globe temp erature 
+(WBGT), J Therm Biol. 26 (2001) 427 –431. https://doi.org/10.1016/S0306 -
+4565(01)00055-9. 
+[57] R.G. Steadman, The assessment of sultriness. Part I. A temperature -humidity index 
+based on human physiology and clothing science., Journal of Applied Meteorology. 18 
+(1979) 861–873. https://doi.org/10.1175/1520-0450(1979)018<0861:TAOSPI>2.0.CO;2. 
+[58] J. Masterson, F.A. Richardson, Humidex; A Method of Quantifying Human Discomfort 
+Due to Excessive Heat and Humidity., Environment Canada, Downsview, Ontario, 1979. 
+[59] D. Ramon, K. Allacker, F. De Troyer, H. Wouters, N.P.M. van Lipzig, Future heating and 
+cooling degree days for Belgium under a high -end climate change scenario, Energy 
+Build. 216 (2020) 109935. https://doi.org/10.1016/j.enbuild.2020.109935. 
+[60] Copernicus, ERA5-HEAT (Human thErmAl comforT): Thermal comfort indices derived 
+from ERA5 reanalysis, (2020). https://doi.org/10.24381/cds.553b7518. 
+[61] Elexon, Load Profiles and their use in Electricity Settlement, 2018. 
+https://bscdocs.elexon.co.uk/guidance-notes/load-profiles-and-their-use-in-
+electricity-settlement (accessed April 19, 2022). 
+[62] S. Kozarcanin, G.B. Andresen, I. Staffell, Estimating country -specific space heating 
+threshold temperatures from national gas and electricity consumption data, Energy 
+Build. 199 (2019) 368–380. https://doi.org/10.1016/j.enbuild.2019.07.013. 
+[63] O. Ruhnau, J. Muessel, Update and extension of the When2Heat dataset, ZBW 
+\textendash{} Leibniz Information Centre for Economics, Hamburg, 2022. 
+http://hdl.handle.net/10419/249997. 
+[64] E.J.H. Wilson, A. Parker, A. Fontanini, E. Present, J.L. Reyna, R. Adhikari, C. Bianchi, C. 
+CaraDonna, M. Dahlhausen, J. Kim, A. LeBar, L. Liu, M. Praprost, L. Zhang, P. DeWitt, 
+N. Merket, A. Speake, T. Hong, H. Li,  N. Mims Frick, Z. Wang, A. Blair, H. Horsey, D. 
+Roberts, K. Trenbath, O. Adekanye, E. Bonnema, R. El Kontar, J. Gonzalez, S. Horowitz, 
+D. Jones, R.T. Muehleisen, S. Platthotam, M. Reynolds, J. Robertson, K. Sayers, Q. Li, 
+
+========== PAGE 160 ==========
+159 
+End-Use Load Profiles for the U.S. Building Stock: Methodology and Results of Model 
+Calibration, Validation, and Uncertainty Quantification, 2022. 
+https://doi.org/10.2172/1854582. 
+[65] National Grid, Data Item Explorer, (2022). https://mip -prd-
+web.azurewebsites.net/DataItemExplorer (accessed May 31, 2022). 
+[66] K. Halttunen, I. Staffell, R. Slade, R. Green, Y. -M. Saint -Drenan, M. Jansen, Global 
+assessment of the merit -order effect and revenue cannibalisation for variable 
+renewable energy, SSRN. (2022). https://doi.org/10.2139/ssrn.3741232. 
+[67] US Energy Information Administration, Hourly Electric Grid Monitor, (2022). 
+https://www.eia.gov/electricity/gridmonitor/dashboard/electric_overview/US48/US4
+8 (accessed May 31, 2022). 
+[68] Australian Energy Market Operator, Aggregated price and demand  data, (2022). 
+https://www.aemo.com.au/energy-systems/electricity/national-electricity-market-
+nem/data-nem/aggregated-data (accessed May 31, 2022). 
+[69] Eurostat, Eurostat Energy Database (nrg_cb_gasm), (2022). 
+https://ec.europa.eu/eurostat/web/energy/data/database (accessed June 1, 2022). 
+[70] US Energy Information Administration, Natural Gas Monthly, (2022). 
+https://www.eia.gov/naturalgas/data.php (accessed June 1, 2022). 
+[71] J. Edwards, Low energy dwellings in the Milton Keynes Energy Park, Energy 
+Management. 26 (1990) 32–33. 
+[72] AECOM Building Engineering, Energy Demand Research Project: Early Smart Meter 
+Trials, 2007-2010, (2014). 
+[73] Customer-Led Network Revolution, Electricity Profiles from CLNR Monitoring Trials, 
+(2015). 
+[74] B. Anderson, D. Eyers , R. Ford, D. Giraldo Ocampo, R. Peniamina, J. Stephenson, K. 
+Suomalainen, L. Wilcocks, M. Jack, New Zealand GREEN Grid Household Electricity 
+Demand Study 2014 -2018, (2018). https://doi.org/http://doi.org/10.5255/UKDA -SN-
+853334. 
+[75] Elergone Energia, Electricity metering in Portugal, 2011-2014, (2015). 
+[76] Northwest Energy Efficiency Alliance, Home Energy Metering Study - Public Data, 
+(2020). 
+[77] B. Larson, L. Gilman, R. Davis, M. Logsdon, J. Uslan, B. Hannas, D. Baylon, P. Storm, V. 
+Mugford, N. Kvaltine, Residential Building Stock Assessment: Metering Study, Seattle, 
+2014. 
+[78] Pecan Street, Dataport: Residential Metering Data for Texas, California, and New York, 
+(2019). 
+[79] C. Miller, A. Kathirgamanathan, B. Picchetti, P. Arjunan, J.Y. Park, Z. Nagy, P. Raftery, 
+B.W. Hobson, Z. Shi, F. Meggers, The Building Data Genome Project 2, energy meter 
+data from the ASHRAE Great Energy Predictor III competition, (2020). 
+[80] Australian Government, Smart-Grid Smart-City Customer Trial Data, (2015). 
+  

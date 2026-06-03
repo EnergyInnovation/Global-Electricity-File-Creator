@@ -4,3 +4,7 @@ data/efs/EFSLoadProfile_Reference_Moderate.zip
 data/weather/ninja-weather-country-US-temperature_area_wtd-merra2.csv
 data/weather/ninja-weather-country-US-wind_speed_area_wtd-merra2.csv
 data/weather/ninja-weather-country-US-irradiance_surface_area_wtd-merra2.csv
+
+# Parquet cache for parsed-and-filtered intermediates. Always safe to delete;
+# the pipeline rebuilds it on the next run when USE_CACHE = True.
+data/cache/

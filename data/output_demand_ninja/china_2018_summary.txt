@@ -1,0 +1,42 @@
+China 2018 - Demand.ninja hourly heating / cooling electricity
+================================================================
+Model         : Staffell, Pfenninger and Johnson (2023), Nature Energy
+Code          : github.com/renewables-ninja/demand-ninja (local clone)
+Weather       : renewables.ninja MERRA-2 reanalysis, province level
+Aggregation   : per-province demand, population-weighted via
+                province population in APAC W/(C*person) coefficients
+Total pop.    : 1396.1 million (sum of 31 province values)
+
+Parameters (APAC averages, Supplementary Table 4)
+  T_heat      : 11.9 degC
+  T_cool      : 20.4 degC
+  P_heat      : 29.0 W/(degC*person)
+  P_cool      : 52.0 W/(degC*person)
+  smoothing   : 0.73
+  solar gains : 0.014 degC/(W/m^2)
+  wind chill  : -0.12 degC/(m/s)
+  humidity    : 0.036 degC/(g/kg)
+
+Annual totals
+  Heating     : 1,053.7 TWh (1,053,689,832,601 kWh)
+  Cooling     : 501.8 TWh (501,758,637,818 kWh)
+  Combined    : 1,555.4 TWh
+
+Peak hourly demand
+  Heating     : 628.3 GW
+  Cooling     : 384.2 GW
+
+Caveats (read before using)
+  - China was not in the paper's calibration set; APAC-region
+    averages (n=5) are used as a proxy. Heating power is high
+    because the APAC sample is heating-electrified (Japan, etc.);
+    real Chinese electric heating is much lower in the north
+    where district heating runs on coal/gas.
+  - Output represents WEATHER-DRIVEN demand for a generic
+    APAC-style building stock. Calibrate against IEA or China
+    Electricity Council data before using as an estimate of
+    actual Chinese demand.
+  - Province population mapping was inferred from temperature
+    patterns; verify against renewables.ninja source docs.
+  - The paper does not split commercial vs residential.
+  - All numbers should be verified against primary sources.

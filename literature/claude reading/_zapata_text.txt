@@ -1,0 +1,999 @@
+
+
+========== PAGE 1 ==========
+Energy 258 (2022) 124741
+Available online 10 July 2022
+0360-5442/© 2022 The Authors. Published by Elsevier Ltd. This is an open access article under the CC BY license ( http://creativecommons.org/licenses/by/4.0/).
+Future global electricity demand load curves 
+Victhalia Zapata Castillo
+a , *
+, Harmen-Sytze de Boer
+b
+, Raúl Maícas Mu ˜noz
+c
+, 
+David E.H.J. Gernaat
+a , b
+, Ren ´e Benders
+c
+, Detlef van Vuuren
+a , b 
+a
+Copernicus Institute of Sustainable Development, Utrecht University, Utrecht, the Netherlands 
+b
+PBL Netherlands Environmental Assessment Agency, The Hague, the Netherlands 
+c
+Integrated Research on Energy, Environment and Society IREES, University of Groningen, the Netherlands   
+ARTICLE INFO  
+Keywords: 
+Integrated model 
+Electricity demand 
+IAM 
+VRE 
+SSP 
+Scenarios 
+ABSTRACT  
+The rapidly increasing electricity demand and the expected increase in the contribution of variable renewable 
+energy sources raise the need for looking at the characteristics of long-term demand variations. Furthermore, 
+demand changes (e.g., the increasing penetration of electric vehicles) could affect the shape of future load curves. 
+However, integrated assessment models often assume a constant load shape. In this research, the shape of future 
+electricity demand load curves is determined with a global scope for long-term exploratory scenarios analysis 
+within integrated assessment models. This was done by using empirical data on daily demand patterns of 
+different end-uses and aggregating them with end-use annual electricity demand data from the IMAGE model. 
+The regional hourly aggregated patterns modelled vary over the years by projected variation of temperature and 
+contribution variations of the different sectors to total electricity demand. Results under the shared socioeco -
+nomic pathway two show that future load curves depict low changes over time and a large sensitivity to load 
+variations from electric vehicle daily charging patterns.   
+1. Introduction 
+Global electricity demand is expected to grow rapidly in the next 
+decades, driven by economic growth, structural changes, and further 
+electrification [ 1 ]. As the growth is unevenly distributed between the 
+different end-uses of electricity, not only is the total volume subject to 
+change but also the demand variation over a day. This could have clear 
+consequences for the design of future energy systems [ 2 ]. In particular, 
+the variation of electricity demand over a day, month, and year can play 
+a crucial role in enabling high shares of variable renewable energies 
+(VRE, such as wind and solar power) into the grid and estimating the 
+associated costs. Furthermore, it has been demonstrated that planning 
+electricity systems with high penetration of VRE requires high time 
+resolution models [ 3 ]. 
+In recent years, dedicated energy models have improved the repre -
+sentation of short-term dynamics [ 4 ]. Chan et al. [ 4 ] surveyed fifty-four 
+energy models, with most of them having an hourly resolution. Tok -
+tarova et al. [ 5 ] developed long-term load projections for all countries 
+implementing multiple linear regression. Their projections depend on 
+socioeconomic variables and consider the effect of some end-uses but 
+exclude the expected influence of electric vehicles. The TIMES [ 6 ] and 
+GENeSYS-MOD [ 7 ] models account for intra-annual variation with 
+time-slices that differentiate day and night, weekdays and weekends, 
+and seasons. Furthermore, they account for demand-side flexibility for 
+heat and electricity. Another dedicated global model is Balmorel, which 
+has an hourly resolution [ 8 ], and for Europe, a module was developed 
+for analyzing end-use demand response to electricity prices [ 9 ]. Addi -
+tionally, there are dedicated tools for analyzing demand load changes 
+over time, such as Eload and Destinee [ 10 ], but they depend on other 
+model data for a complete analysis of the energy system [ 11 ]. 
+Future electricity systems can also be studied with integrated 
+assessment models (IAMs). The latter are tools for understanding long 
+term development pathways of global energy demand and supply under 
+varied climate change mitigation strategies with the interaction of so -
+cioeconomic, biodiversity and land-use scenarios. However, due to their 
+global, wide system scope and long-term time horizon, IAMs face 
+important challenges when modelling short-term dynamics of the power 
+sector [ 12 ]; still, these dynamics are important for future projections 
+[ 13 ] under climate change mitigation scenarios. IAMs mostly implement 
+load duration curves (LDCs) to capture short-term dynamics [ 14 ]. LDCs 
+represent load demand sorted from the highest load to the lowest load. It 
+enables analyzing the dispatch order of energy sources, and they allow, 
+* Corresponding author. 
+E-mail address: v.h.zapatacastillo@uu.nl (V.Z. Castillo).  
+Contents lists available at ScienceDirect 
+Energy 
+journal homepag e: www.el sevier.com/loc ate/energy 
+https://doi.org/10.1016/j.energy.2022.124741 
+Received 20 September 2021; Received in revised form 20 June 2022; Accepted 2 July 2022   
+
+========== PAGE 2 ==========
+Energy 258 (2022) 124741
+2
+for instance, identifying the fraction of time with a high or low elec -
+tricity demand. A steep LDC function will make it more difficult for 
+renewable electricity to achieve high penetration levels in the energy 
+system if the supply of electricity and peak demand are out-of-phase. 
+However, currently, the shape of the LDCs is often assumed to remain 
+constant and based on historical demand data [ 15 ]. 
+The IAMs GCAM and POLES-JRC analyze some intra-annual demand 
+variation. The first one captures load demand variations over time 
+depending on temperature changes and considering day/night varia -
+tions [ 16 ]. However, the results are given only for USA, and there is no 
+illustration of the changes in the shape of load curves over time. 
+POLES-JRC implements a representative summer and winter load curve 
+per sector with a global scope [ 17 ]. Furthermore, for the Europe region, 
+POLES-JRC is coupled with a short-term dispatch model (EUCAD) for 
+analyzing electricity storage and demand response options [ 18 ]. 
+PRIMES is a regional IAM with a European scope that models 
+intra-annual demand variability depending on individual load profiles of 
+end-uses [ 19 ]. 
+A recent improvement for global IAMs is described in the paper of M. 
+Brinkerink et al. [ 20 ], in which scenario data obtained with the IAM 
+MESSAGE is implemented in the high temporal resolution power system 
+model PLEXOS such as its results can be used to update parameters in 
+MESSAGE (e.g. capacity factors, curtailment values and generation 
+cost). Although the proposed methodology in that paper can improve 
+the accuracy of IAMs results, the high-resolution PLEXOS model only 
+focuses on the power sector. Therefore, it cannot model demand for 
+hydrogen from other sectors (such as transport) or changes in the shape 
+of demand due to structural changes such as the increased use of electric 
+vehicles, heat pumps or air cooling devices. Given this gap, this research 
+aims to improve the representation of energy demand short-term dy -
+namics within IAMs. To this end, time-dependent hourly demand pat -
+terns are developed for large global regions and associated LDCs based 
+on projected structural changes in demand, empirically observed de -
+mand patterns per end-use, and stylized functions. This is done by using 
+the projections of the IAM model IMAGE on electricity demand by 
+end-use function (e.g. lighting or heating) [ 21 ]. These demand patterns 
+that change over time can subsequently be used in IAMs. 
+This paper is organized as follows. Section 2 introduces the meth -
+odology for modelling hourly electricity demand patterns. In Section 3 , 
+the resulting regional demand patterns are compared with their 
+analogue empirical data to assess the model performance; and the pro -
+jected changes over time are described. Finally, Section 4 presents the 
+discussion and conclusions. 
+2. Methodology 
+The method presented here looks at the typical demand pattern per 
+end-use function (e.g. electricity use for lighting is larger during dark 
+evening hours). The residential and service sectors are divided into six 
+end-uses: lighting, cooling, heating, water heating, cooking, and appli -
+ances/equipment. Demand in the industry sector is broken down into 
+four categories: food, paper, cement and steel. Furthermore, the trans -
+port sector is divided into electric vehicles (EV) and railways. Energy 
+demand from other sectors (non-specified demand, agriculture, forestry 
+and fisheries) and other industries are assumed to be one function. The 
+overall structure of the methodology implemented is schematically 
+shown in Fig. 1 . Future demand on an hourly basis is calculated using 
+annual projections (obtained from IMAGE model) and end-use hourly 
+load demand patterns based on empirically-based data found in the 
+literature. The hourly patterns are related to metrics that influence the 
+daily and monthly shape of end-use demand curves in order to be able to 
+extrapolate the scarce available data to all regions. The metrics are 
+building occupancy profiles and biophysical parameters for those end- 
+uses found to have climate dependence. The resulting hourly elec -
+tricity demand curves can subsequently be validated against empirical 
+regional electricity demand data on an hourly basis. 
+HED stands for hourly electricity demand for each end-use e, which 
+varies over regions r, months m, hours h and year y. HPatt stands for 
+hourly patterns, and YED stands for yearly electricity demand. This 
+means that for each end-use or sector, information is needed on 1) the 
+variation of demand per month over the year and 2) the variation of 
+demand over a day. For the latter, two typical hourly day patterns were 
+used, one for working days and another for weekend days, following the 
+variations already identified in total electricity demand [ 22 ]. The 
+methodology applied is in line with the engineering method [ 23 ]. For all 
+end-uses/sectors, the hourly pattern ( HPatt ) was calculated by multi -
+plying the daily variation ( DV ), which varies for weekdays or weekends, 
+and monthly variation ( MV ), as shown in Equation (2) . Hence 24 
+day-demand-patterns are obtained for each end-use. 
+HPatt
+r , e , m , h
+= DV
+r , e , m , h
+* ​ MV
+r , e , m
+(2) 
+The daily variation ( DV ) is calculated as shown in Equation (3) for 
+end-uses in the residential and service sectors identified as a relationship 
+between climate conditions and electricity demand for the monthly and 
+hourly aggregating level (listed in Table 1 ). For each of these end-uses, a 
+specific stylized function ( f
+e
+) was formulated that depends on building 
+hourly occupancy profiles ( Occ ) and on the hourly and monthly 
+Fig. 1. Schema of the overall structure of the model. 
+HED
+r , e , y , m , h
+= YED
+r , e , y
+* ​ HPatt
+r , e , m , h
+(1)    
+V.Z. Castillo et al.                                                                                                                                                                                                                              
+
+========== PAGE 3 ==========
+Energy 258 (2022) 124741
+3
+variation of a biophysical parameter ( BP ) which are temperature or 
+irradiance. Furthermore, some end-uses, such as water heating and 
+lighting for the service sector, were identified to depend on climate 
+conditions but only for monthly variation. In contrast, for their daily 
+variation, an hourly pattern based on empirical data was implemented. 
+In the end, the implementation of a climate parameter at the monthly 
+and/or hourly aggregating level enables to have a residential and service 
+sector pattern that varies across regions and over time. 
+DV
+r , e , m , h
+= f
+e
+( Occ
+h
+, BP
+r , m , h
+) (3) 
+For end-uses without climate dependence in the residential and 
+service sector, average weekend and weekday hourly patterns were 
+determined from empirical data and literature research. An annual 
+pattern describing monthly variations was applied to the end-use pat -
+terns that depicted a seasonal variation. A detailed methodology with 
+the specific stylized functions for the end-uses with dependence on the 
+biophysical parameters and the patterns implemented for end-uses 
+without these dependencies are available in the supplementary section. 
+All end-uses aggregated allow to estimate hourly load patterns for 
+regions and months and estimate future load shape changes by projected 
+variation of climate conditions and/or uneven end-use demand increase. 
+Finally, annual LDCs are built using the modelled monthly regional 
+hourly patterns from weekday and weekend days. LDCs are commonly 
+used within IAMs for capturing the dynamics between demand and 
+supply in a simplified way. Within IMAGE, the ADVANCE LDCs are 
+currently used for researching alternatives for balancing electricity de -
+mand and supply with the integration of VRE sources; however, their 
+shapes do not change over time [ 15 ]. Therefore, for this research, annual 
+regional LDCs were built for analyzing their change over time and for 
+comparison purposes with the empirically-based LDCs from the 
+ADVANCE project [ 14 ]. 
+2.1. Input data 
+Empirically-based daily patterns found in the literature on hourly 
+electricity demand by end-use were implemented to create the stylized 
+demand patterns. However, publicly available measured data by end- 
+use is very scarce. Few countries have collected these data and mostly 
+from Europe and North America. As a result, each end-use pattern was 
+calibrated with one set of empirically-based data. For end-use patterns 
+without dependence on biophysical parameters, a set of empirically- 
+based data was used to represent load demand in all regions. Table 2 
+depicts the data used for each end-use demand pattern. 
+The daily load shape of electric vehicles (EV) is expected to change 
+over time, depending on the increasing penetration of EVs in the market 
+and EV charging stations ’ technology development. Therefore, two 
+charging demand pattern scenarios were implemented ( Fig. 2 ), one 
+based on currently used EV charging patterns (uncontrolled charging) 
+and one based on the implementation of EV controlled chargers for 
+charging the car at times of base-load, such as during midnight hours. 
+2.1.1. Occupancy profiles (Occ) 
+Occupancy profiles describe people ’ s presence in the service or res -
+idential sector as a percentage of other activities. This information can 
+be obtained from Time Use Surveys (TUS), which are questionnaires that 
+gather how people spend their time daily. TUS are commonly used for 
+modelling electricity demand because there is a demonstrated depen -
+dence between the timing of electricity demand and people ’ s behavior 
+[ 38 – 41 ]. Therefore, people ’ s occupancy profile plays a vital role in 
+modelling hourly demand for the service and residential sectors. 
+Although TUS from three regions were available [ 42 – 44 ], the European 
+database “ HETUS ” was the only one implemented in this study because 
+of the distinction between weekday and weekend occupancy profiles 
+and the distinction between sleeping and awaken at every hour of the 
+day. It gathers data from 15 European countries between 1998 and 2004 
+[ 44 ]. For the residential sector, not only the location of people matters 
+but also whether a person is sleeping or performing an activity in a 
+building. Hence, four different profiles were derived from HETUS data 
+for this sector: active occupancy profiles (only people awake are 
+considered) and total occupancy profiles, both differentiating between 
+weekdays and weekend days. The HETUS database was also imple -
+mented for deriving occupancy profiles of buildings in the service sector. 
+Statistics related to the percentage of people working, sleeping, studying 
+or eating at home or in the service sector were used [ 44 ]. Fig. 3 
+Table 1 
+Parameters that influence the modelled end-use patterns in the Residential and 
+service sector (BP).  
+End-use Biophysical parameter Building occupancy 
+profile dependence 
+Monthly 
+dependence 
+Hourly 
+dependence 
+Residential – 
+Lighting 
+Irradiance Irradiance yes 
+Service – Lighting Irradiance – – 
+Residential – 
+Heating 
+Temperature Temperature yes 
+Service – Heating Temperature – – 
+Residential & 
+service- Cooling 
+Temperature Temperature yes 
+Residential & 
+service – Hot 
+Water 
+Temperature – –  
+Table 2 
+End-use electricity demand data used.  
+End-Use demand Data used Location 
+Residential - 
+Lighting and 
+appliances 
+REMODECE campaign with 100 houses 
+participating per country [ 24 ]. 
+Appliances included: fridge-freezer, TV, 
+dryer, washing machine, dishwasher, 
+microwave oven. 
+12 European 
+countries. 
+Residential- Heating Based on Danish panel data 
+measurements [ 25 ]. 
+Denmark 
+Residential-Hot 
+water 
+Pacific Northwest project [ 26 ] with 25 
+houses measured. 
+USA 
+Residential - Cooling Pacific Northwest project with 415 air 
+conditioners measurement in the 
+residential sector [ 27 ]. 
+USA- California 
+Residential - 
+Cooking 
+UK measured data campaign on 250 
+households from 2010 to 2011 [ 28 ]. 
+UK 
+All end-uses for the 
+service sector 
+Extended database from 936 locations in 
+USA in 2004 and it covers 16 reference 
+types of commercial buildings for 
+different end-uses [ 29 ] 
+USA 
+Transport – EV 
+(Electric Vehicles) 
+The realistic scenario from Babrowski 
+et al., 2014 [ 30 ] based on mobility 
+surveyed data in Germany and reviewed 
+with Sch ¨auble et al., 2017 and Weiller, 
+2011 [ 31 , 32 ]. 
+The scenario for controlled charging was 
+inspired by a literature review on this 
+topic [ 30 , 33 – 35 ]. 
+Germany 
+Transport- Railways Modelled data based on Netherland ’ s 
+railways demand patterns from the 1992 
+model by ECN institute (personal 
+correspondence). 
+The 
+Netherlands 
+Industries: food and 
+paper 
+Panel data database from 2012. It covers 
+33 different electricity demand end-uses 
+or industries with about 4500 
+representative customers [ 36 ]. 
+Denmark 
+Industries: cement 
+and steel 
+Cement and steel industries in China 
+have continuous processes that require 
+almost continuous daily load [ 37 ]. 
+Therefore, a continuous daily load 
+pattern was implemented. 
+For their monthly variation, the panel 
+data database from Denmark was 
+implemented [ 36 ]. 
+China/ 
+Denmark  
+V.Z. Castillo et al.                                                                                                                                                                                                                              
+
+========== PAGE 4 ==========
+Energy 258 (2022) 124741
+4
+illustrates the occupancy profile obtained for the residential and service 
+sector for weekday and weekend days. 
+2.1.2. Biophysical parameters (BP) 
+Two biophysical parameters are implemented in this research: tem -
+perature and irradiance. The relationship between temperature and 
+electricity demand fluctuations has been primarily studied [ 45 – 50 ]. The 
+temperature was found to directly influence the seasonal and/or daily 
+electricity demand patterns for space cooling and heating in the service 
+and the residential sector. A 24-h pattern of temperature variation for 
+these end-uses for every month of a year was implemented. It was ob -
+tained by averaging five years of historical data of daily maximum and 
+minimum temperature collected from the ISIMIP database from the 
+climate model GFDL-ESM2M [ 51 ]. Then, a sinusoidal equation was 
+applied for obtaining hourly day-variations. The hourly temperature 
+data is then translated into cooling degree hours (CDH) and heating 
+degree hours (HDH) which indicate the hourly variation of temperature 
+compared to a reference temperature. An average reference temperature 
+of 18 
+◦
+C was applied both for cooling and heating. For seasonal variation 
+over the years until 2100, monthly cooling degree days (CDD) and 
+heating degree days (HDD) data previously calculated within IMAGE 
+were used [ 52 ]. Concerning the influence of temperature on heating in 
+the service sector, it was only found for the monthly variation; while for 
+its hourly variation, the service heating daily patterns from the literature 
+do not correlate with the mentioned parameters (building occupancy 
+profile and the HDH). A reason for this is the so-called thermal inertia in 
+buildings producing a time-lag and a reduction of heat flows between 
+outdoor and indoor temperature, and it varies depending on the building 
+materials used [ 53 , 54 ]. 
+Temperature also influences electricity demand for water heating. 
+However, this influence is related to seasonal variation and not to daily 
+variation [ 55 ]. While seasonal water heating electricity demand is 
+related to the temperature of water from pipelines, it mainly depends on 
+ambient temperature [ 55 ]. Then, the seasonality factor was simplified to 
+use a stylized function depending on HDD for the residential and service 
+sector (the stylized functions are found in supplementary information). 
+The monthly variation of lighting demand from empirical data fol -
+lows a trend that highly resembles the variation of hours with solar 
+irradiance (i.e. daylength). There is an inverse relationship between 
+monthly daylength variation and seasonal electricity demand for light -
+ing. This is, in particular, the case for the residential sector [ 24 , 26 , 56 ]. 
+However, this is not the only factor affecting monthly demand, national 
+holidays and people behavior can also affect the monthly lighting de -
+mand in the residential sector. For the service sector, lighting demand 
+seems very constant throughout the year, according to the reference 
+data used from the USA [ 29 ]. Still, with some lower demand in summer 
+times than in winter times. Therefore, a stylized function depending on 
+daylength was implemented for this sector. Concerning lighting daily 
+variation, for the service sector, it depends mainly on building occu -
+pancy and not so much on hourly irradiance [ 57 , 58 ]. However, for the 
+residential sector, next to people ’ s occupancy profile, hourly lighting 
+demand resembles the sunrise and sunset hour variation. Therefore, a 
+24 h pattern of irradiance level varying per month is implemented as the 
+biophysical parameter affecting electricity demand for residential 
+lighting. This parameter was obtained by using a model that formulates 
+daylight hours depending on latitude and day of the year [ 59 ]. Then, the 
+daylight hours were distributed throughout the day using a sinus func -
+tion centered around 12:30 h to obtain the day pattern of irradiance per 
+region. Note that the stylized functions between the end-uses mentioned 
+and the biophysical parameters are explained in detail in the supple -
+mentary section. 
+2.1.3. Future sectoral electricity demand 
+The hourly patterns are combined with projections of annual sectoral 
+(end-use) electricity demand. For this, the SSP2 baseline scenario from 
+the Shared Socioeconomic Pathways (SSPs) is implemented in the 
+Fig. 2. Electricity demand patterns implemented from EV charging for weekend (right side) and weekdays (left side). The blue curve corresponds to a currently used EV charging 
+pattern [ 30 ] , and the orange curve corresponds to a controlled charging pattern for demand valley filling [ 30 , 33 – 35 ]. 
+Fig. 3. Occupancy profiles (Occ) implemented in the model for residential and service sector for weekday and weekend days. Residential active occupancy profile 
+(orange colour) exclude the percentage of people sleeping, while residential total occupancy profiles (red colour) include all people in this sector. 
+V.Z. Castillo et al.                                                                                                                                                                                                                              
+
+========== PAGE 5 ==========
+Energy 258 (2022) 124741
+5
+IMAGE model [ 60 ]. The SSP2 is the “ Middle of the road ” pathway with 
+medium assumptions for social, economic and technological parame -
+ters. In this scenario, the total energy demand continues to rise despite 
+that the intensity of resource and energy use declines [ 61 ]. 
+The annual contribution to the total electricity demand of the end- 
+use sectors in the SSP2 scenario changes over time. They depend on 
+drivers such as population growth, income, technology, and lifestyle 
+assumptions which vary over time, depending on the SSP scenario 
+implemented [ 52 ]. Fig. 4 illustrates how the contribution of sectoral 
+demand to total demand changes between 2019 and 2070 under the 
+SSP2 scenario with further granularity to cooling and heating in the 
+residential and service sector. India is the region by far with the expected 
+largest increase of total electricity demand within this period (indicated 
+with the black dots in Fig. 4 ) and with the expected largest increase of 
+cooling demand. For the USA and Western Europe, there is an increase in 
+cooling demand of 81% and 96% compared to 2019 values, but it con -
+tinues to have a low share of the total demand (3% for Western Europe in 
+2070). All regions in the graph, except for Western Europe and the USA, 
+show an increase in the share of service demand. Especially for China 
+and India, due to a significant increase in cooling demand. For most 
+regions, the largest variation in end-use electricity demand comes from 
+an expected rapid increase in electric vehicles (EV) charging demand, 
+with the largest increase for Western Europe and Brazil. 
+3. Results 
+The end-use demand patterns are aggregated into total hourly elec -
+tricity demand for each region implementing the SSP2 scenario. The 
+hourly electricity demand patterns obtained vary over time and between 
+regions. These variations are influenced by the climate-related param -
+eters used (with regional, hourly and monthly variation) and annual 
+end-use electricity demand modelled of the IMAGE-SSP2 scenario (with 
+regional and annual variation). In this section the results are illustrated 
+by first comparing the obtained regional modelled patterns with 
+empirical electricity demand data. Second, the patterns variation over 
+regions and time are illustrated and finally, the load duration curves and 
+the changes over time are analyzed. 
+3.1. Comparison with empirical data 
+In this section, the aggregated yearly average patterns for weekday 
+and weekend days are compared to empirical data for the regions where 
+the data is available: Western Europe and Central Europe [ 62 ], USA [ 63 ] 
+and Brazil [ 64 ]. Fig. 5 illustrates the comparison of the modelled and 
+empirical average pattern for February for the region of Europe for 
+weekday and weekend days. Modelled patterns for Western and Central 
+Europe regions show the best fitting with the measured data. They de -
+pict well the pattern variation across regions, mainly for weekend days. 
+For Europe, two load-peaks can be distinguished: the morning one is 
+related to building heating demand in February; the evening one is 
+related to peak demand from different end-uses in the residential sector. 
+For Brazil, only one peak-load during evening hours can be distin -
+guished in the empirical and modelled patterns. However, for all re -
+gions, the base-load from the modelled patterns is lower than the 
+empirical patterns, and the base to peak-load ratio is lower for the 
+measured patterns than the modelled ones. These differences could be 
+related to the implementation of static patterns for most end-uses, 
+especially for end-uses from the residential and service sectors that 
+may vary across regions depending on people ’ s culture (such as cooking 
+and appliances use); this may affect the shape of the residential pattern 
+for some of the regions. Furthermore, there is a scarcity of end-use 
+empirical data, especially for the service sector, to validate the input 
+data used and validate the end-use stylized functions obtained. This 
+could mainly affect the peak to the base-load ratio for the service sector 
+pattern. Still, the modelled patterns have their peak-load and base-load 
+occurring at similar times as the empirical patterns and capture the 
+general characteristics. In the supplementary section, a similar com -
+parison is shown for September. 
+3.2. Patterns variation over region and time 
+Fig. 6 shows the regional variation of the average electricity demand 
+day-pattern for the year 2019. It shows how the peak/base-load ratio 
+can largely vary between regions. Typically, less developed regions 
+depict a larger peak-load in evening hours related to the peak-load from 
+the residential sector. This is shown for Eastern Africa in Fig. 5 , but this 
+can also be seen for other low-income regions such as Rest Central 
+America, Rest South Asia, Northern and Western Africa. Furthermore, 
+regions with a very high share of demand from the industry sector depict 
+a high base-load. For example, this is the case for India, which has the 
+highest base-load (72% of the peak-load), followed by China and South 
+Africa. 
+The development of annual sectoral and end-use demand affects the 
+shape of the hourly demand patterns over time. This is illustrated in 
+Fig. 7 with the August weekday pattern variation between 2019 and 
+2070 and considering a currently used EV charging demand pattern. 
+Further, for the year 2070, the patterns obtained with the imple -
+mentation of the EV controlled charge demand patterns are also shown. 
+For the 2019 August demand pattern, all regions in Fig. 7 have a 
+distinctive peak-load during evening hours caused by the evening peak- 
+load from the residential sector (this is the least in Western Europe). By 
+2070, the changes in load shape are highly influenced by the rapid in -
+crease in demand from EV except for India. For this last one, the changes 
+are related to a more rapid increase in service and residential sectors 
+(especially from cooling) than in other sectors ( Fig. 4 ) However, for 
+Brazil, the Western Europe region, and to a lower extent also for China, it 
+Fig. 4. Sectoral and end-use share of total electricity demand for 2019 and 2070 under the SSP2 scenario. The black dots represent the total demand indexed to the 
+regional demand values for 2019 (right axis). 
+V.Z. Castillo et al.                                                                                                                                                                                                                              
+
+========== PAGE 6 ==========
+Energy 258 (2022) 124741
+6
+can be noted that future total demand patterns are sensitive to variations 
+on the EV demand pattern. Total demand for 2070 with the imple -
+mentation of currently used EV patterns (yellow curve) shows a morning 
+and evening peak that coincides with those EV demand patterns. They 
+occur in the morning when people arrive at the office and in the evening, 
+coinciding with the residential sector ’ s peak. 
+Under this scenario variant, the base-load and the peak-load differ -
+ence increases towards 2070. However, when implementing the 
+controlled EV charging pattern, the difference between the peak-load 
+and base-load is lower for 2070 when compared to the 2019 curve. 
+Furthermore, the peak-loads occur during daylight hours (around noon) 
+and midnight hours. This result highlights the importance of imple -
+menting controlled charging stations that can respond to the generation 
+pattern of VRE and that avoid charging the cars at hours of peak demand 
+from sectors or end-uses that are more difficult to control, such as the 
+residential sector. 
+3.3. Load duration curves 
+The LDCs were built using the monthly modelled patterns obtained 
+of hourly electricity demand for weekdays and weekend (section 3.1 and 
+3.2). These patterns were then translated into one-year hourly data of 
+electricity demand. Fig. 8 shows the modelled LDCs and a comparison 
+with the empirical-based LDCs [ 14 ]. Note that the years of the modelled 
+(blue line Fig. 8 ) and measured (orange line Fig. 8 ) LDCs vary depending 
+on the availability of the empirically-based data as follows: Japan, India 
+and USA LDCs correspond to the year 2010, Brazil LDCs are from the 
+Fig. 5. Comparison of measured and modelled hourly electricity demand patterns of the average weekday and weekend day for February for Europe, USA and Brazil. The years 
+vary per graph depending on the availability of measured data [ 62 – 64 ]. 
+Fig. 6. Regional variation of the electricity demand weekday pattern in May 
+2019 for selected regions. 
+V.Z. Castillo et al.                                                                                                                                                                                                                              
+
+========== PAGE 7 ==========
+Energy 258 (2022) 124741
+7
+Fig. 7. Electricity demand annual pattern variation from the average weekday in August for the Western Europe region (top-left), China (top-right), Brazil (bottom- 
+left), and India region (bottom-right). The green line represents the demand pattern for the year 2070 with the implementation of a controlled EV charging pattern. 
+Fig. 8. Left side: Comparison of load duration curves 
+between modelled and measured data extracted from 
+Ref. [ 14 ]. Right side: Modelled present LDCs (orange 
+line) compared to future LDCs for the year 2070 
+under two EV charging load scenarios. The red line 
+represents a LDC for 2070 with uncontrolled charging 
+based on present data. The green line represents a 
+LDC for 2070 with a controlled charging pattern. The 
+years of the modelled (blue line) and measured (or -
+ange line) LDCs vary depending on the availability of 
+the empirically-based data as follows: Japan, India 
+and USA LDCs correspond to the year 2010, Brazil 
+LDCs are from the year 2009, and Europe LDCs are 
+from the year 2006.   
+V.Z. Castillo et al.                                                                                                                                                                                                                              
+
+========== PAGE 8 ==========
+Energy 258 (2022) 124741
+8
+year 2009, and Europe LDCs are from the year 2006. Fig. 8 also shows 
+2070 LDCs under the SSP2 scenario using the current EV charging 
+pattern (red line) and a controlled EV charging pattern (green line). The 
+modelled LDCs reflect the general characteristics as observed in the 
+empirically-based LDCs, especially for Brazil and Europe regions. 
+However, for most regions, the modelled LDCs depict a larger base to 
+peak-load ratio. For most regions, there is a visible drop in the LDC 
+around the hour 5000 caused by the baseload from residential and 
+service sector during late night hours. Examples for sectoral daily load 
+patterns and LDCs are shown in the supplementary section. 
+Concerning the variation of LDCs over time, the regions of Europe, 
+Brazil and Japan have more variation over time and show a larger 
+sensitivity to changes in implementing the EV charging pattern for 2070. 
+As expected, the implementation of EV controlled charging patterns has 
+Fig. 9. Sectoral decomposition of load duration curves for selected regions. From left to right, the first corresponds to LDCs for 2019 with the current EV charging 
+pattern. The second column corresponds to 2070 LDCs with the controlled EV charging pattern. 
+V.Z. Castillo et al.                                                                                                                                                                                                                              
+
+========== PAGE 9 ==========
+Energy 258 (2022) 124741
+9
+a flattening effect on the LDCs compared to the present (orange line) and 
+2070 LDCs with the currently used EV charging pattern (red line). The 
+LDC from USA depicts very little variation over time as a result of 
+relatively small changes in sectoral share in total electricity demand 
+compared to other regions. Still, the low changes in its LDC are related to 
+reducing the share of demand from the residential and service sector for 
+2070. 
+To better understand the effect of sectoral demand variation in the 
+shape of LDCs, they have been decomposed on each of the electricity 
+demand sectors considered. This is illustrated in Fig. 9 for the 2019 LDCs 
+and the year 2070 with the implementation of a controlled EV charging 
+pattern. For all regions in Fig. 9, the service and residential sectors’ load 
+curves contribute to a larger difference between peak and base-load due 
+to their hourly and monthly patterns (non-stacked sectoral LDCs are 
+shown at the end of the supplementary section). Additionally, the peaks 
+from the service sector are at different times than the peaks from resi -
+dential sector. The loads are larger during evening hours (after 16 
+o’clock) for the residential sector while for the service sector, the loads 
+are larger before 17 o’clock. Furthermore, these peaks do not necessarily 
+coincide with the largest load from total demand. 
+4. Conclusions and discussions 
+There are two visible trends in the electricity sector: an increase in 
+demand for electricity and a rapid growth in the electricity production 
+from renewable energy sources. This poses a significant challenge: how 
+can the variable supply from solar and wind match demand? To solve 
+this issue, detailed knowledge is required about both the timing of 
+electricity supply and the timing of electricity demand. In this paper, it is 
+discussed how the timing of demand is different between regions and 
+how it may change over time. This research aims to generate hourly 
+patterns of electricity demand with a global scope that vary over time 
+and across the different world regions for long-term exploratory sce -
+nario analyses. 
+4.1. Discussions 
+Because of the scarcity of empirical end-use hourly demand data, 
+simplifications were made that could exclude details on regional vari -
+ations. For example, one set of hourly demand patterns was imple -
+mented for all regions for some end-uses with a strong cultural 
+component, such as the use of appliances and demand for cooking. 
+Since we limit ourselves to empirically observed demand patterns, 
+not all relevant options that can have an influence on load demand 
+patterns are implemented: 
+Specific demand-side management policies were not included in the 
+assessment, and they may affect the shape of daily demand, especially in 
+the future. For example, heat-pumps usage whose demand patterns are 
+different from traditional electric heaters [65] and they have the po -
+tential to respond to changes in electricity supply or price if coupled 
+with thermal storage. Furthermore, improvements in building insulation 
+and its implementation at a large scale could also influence the daily 
+pattern of heating demand. These two examples are essential strategies 
+for decarbonizing heating demand in buildings [66]. 
+The effect of new technologies (with different load shapes) pene -
+trating the market cannot be captured with models based on regression 
+analysis or historical load curves [67]. In this regard, a future 
+improvement would be the modelling of the EV-to-grid concept for 
+supporting the balance of supply and demand with high penetration of 
+solar and wind sources [68]. This concept together with power to fuels 
+(for example, for producing hydrogen and synthetic fuels) can be 
+important strategies for supporting the penetration of VREs. 
+5. Conclusions 
+Based on our results, the following conclusions were obtained: 
+The model can capture the general features of the empirical load 
+demand patterns. Aggregated weekday and weekend total hourly elec -
+tricity demand patterns were compared to empirical data for four re -
+gions. The peak-load and the base-load of the modelled and the 
+empirical patterns occur at a similar time. They can capture differences 
+between the regions observed in the empirical data, especially for 
+weekend days. For instance, in February, both the model and empirical 
+patterns depict two peak-loads for Europe; while for Brazil, one peak- 
+load is distinguished during evening hours. Overall, the regions of 
+Western and Central Europe show the best fitting. However, the differ -
+ence between peak and base-load is larger for our modelled patterns 
+over the regions compared. 
+The model captures LDCs and daily load shape variations across re -
+gions, with less developed regions typically depicting a larger peak-load 
+in evening hours. These are the Eastern Africa, Rest of Central America, 
+Rest of South Asia, Northern and Western Africa regions. They all depict 
+a larger share of the residential sector demand, and a lower demand 
+share from industry and/or service sector compared to developed re -
+gions. Further, regions with the highest share of demand from the in -
+dustry sector depict higher base-load, such as India, China and South 
+Africa. In our view, the variation of demand patterns across regions is 
+well captured. 
+For all regions and under the middle of the road scenario, small 
+changes can be expected in the shape of LDCs and daily load of elec -
+tricity demand over time. The changes are more visible for the daily load 
+patterns compared to the LDCs, especially for the second half of this 
+century. For most regions, such as Brazil, Western Europe and China, the 
+changes mainly result from the rapid increase in demand from electric 
+vehicles (EV) charging. For India, the changes of demand pattern over 
+time are mostly determined by a more rapid increase in service sector 
+demand compared to the other sectors. The variation of hourly demand 
+over region and time is captured by first the uneven end-use annual 
+increase in demand. Secondly, it is influenced by the projected variation 
+of biophysical parameters that affect the modelled end-use patterns. 
+Future electricity demand day patterns and load duration curves 
+(LDCs) are expected to have a large sensitivity to load shape variations 
+from electric vehicle daily charging patterns. The LDCs and load pat -
+terns modelled for 2050 and 2070 with the current used EV charging 
+patterns depict a larger difference between the peak and base-load than 
+the 2019 situation. However, a flattening of future load curves can be 
+expected by implementing controlled EV charging technologies. This 
+highlights the importance of implementing a bottom-up approach for 
+modelling future long-term electricity demand load. Furthermore, this 
+method gives insight into the effect of policies that incentivize the 
+implementation of new technologies that can respond to electricity 
+pricing and production. They would enable a reciprocal relationship 
+between electricity production, pricing and demand and then facilitate 
+the penetration of variable renewable energies (VREs). 
+For future research, the electricity hourly demand patterns modelled 
+in this research can be combined with potential hourly VRE estimations. 
+This will help IAMs to better capture the dynamics between electricity 
+demand and (VRE) electricity supply within different mitigation stra -
+tegies in IAMs. For instance, the correlation between solar supply and 
+the projected air-conditioning demand increase in the India’s service 
+sector is not captured with the currently used static residual load 
+duration curves. The dynamic load patterns developed here are the first 
+step into improving the estimations of electricity production and storage 
+capacity needed, dispatch order, residual load after supplying the de -
+mand with VRE sources, and investments needed for balancing supply 
+and demand under different demand scenarios. All this facilitates the 
+analysis and implementation of international climate policy for the en -
+ergy sector. 
+Credit author statement 
+Harmen-Sytze de Boer, Detlef van Vuuren and Victhalia Zapata 
+V.Z. Castillo et al.                                                                                                                                                                                                                              
+
+========== PAGE 10 ==========
+Energy 258 (2022) 124741
+10
+developed the idea, Victhalia Zapata designed the experiments and 
+wrote the article. Raul Maicas contributed with the LDCs decomposition. 
+All authors discussed the results and contributed to the manuscript. 
+Code availability 
+PBL holds the proprietary rights of the IMAGE computer code, 
+extensive documentation is provided ( https://models.pbl.nl/image/i 
+ndex.php/Welcome_to_IMAGE_3.0_Documentation ). 
+Credit author statement 
+VZ, HSdB and DvV developed the idea, VZ developed the experi -
+ments and wrote the article. RMM contributed with the LDCs decom -
+position. All authors discussed the results and contributed to the 
+manuscript. 
+Declaration of competing interest 
+The authors declare that they have no known competing financial 
+interests or personal relationships that could have appeared to influence 
+the work reported in this paper. 
+Data availability 
+Modelled end-use electricity demand obtained and total hourly 
+electricity demand per region are provided in the following link: 
+https://data.mendeley.com/datasets/pmd2dchk44/1 . 
+Acknowledgements 
+The paper benefitted from funding from the European Research 
+Council under grant ERC-CoG PICASSO (n
+◦
+819566). 
+Appendix A. Supplementary data 
+Supplementary data to this article can be found online at https://doi. 
+org/10.1016/j.energy.2022.124741 . 
+References 
+[1] IEA. World. Energy outlook. 2021 [https://doi.org/www.iea.org/weo] . 
+[2] Bossmann T, Pfluger B, Wietschel M. The shape matters! How structural changes in 
+the electricity load curve affect optimal investments in generation capacity.  Int 
+Conf Eur Energy Mark EEM 2013;10:1 – f8. https://doi.org/10.1109/ 
+EEM.2013.6607361 . 
+[3] Haydt G, Leal V, Pina A, Silva CA. The relevance of the energy resource dynamics 
+in the mid/long-term energy planning models. Renew Energy 2011;36:3068 – 74. 
+https://doi.org/10.1016/J.RENENE.2011.03.028 . 
+[4] Chang M, Thellufsen JZ, Zakeri B, Pickering B, Pfenninger S, Lund H, et al. Trends 
+in tools and approaches for modelling the energy transition. Appl Energy 2021; 
+290:116731. https://doi.org/10.1016/J.APENERGY.2021.116731 . 
+[5] Toktarova A, Gruber L, Hlusiak M, Bogdanov D, Breyer C. Long term load 
+projection in high resolution for all countries globally. Int J Electr Power Energy 
+Syst 2019;111:160 – 81. https://doi.org/10.1016/J.IJEPES.2019.03.055 . 
+[6] Loulou R, Lehtil ¨a A, Kanudia A, Remme U, Goldstein G. Documentation for the 
+TIMES model - Part II 2016. 
+[7] L ¨offler K, Hainsch K, Burandt T, Oei PY, Kemfert C, Von Hirschhausen C. Designing 
+a model for the global energy system — GENeSYS-MOD: an application of the open- 
+source energy modeling system (OSeMOSYS). Energies 2017;10. https://doi.org/ 
+10.3390/EN10101468 . 1468 2017;10:1468. 
+[8] Wiese F, Bramstoft R, Koduvere H, Pizarro Alonso A, Balyk O, Kirkerud JG, et al. 
+Balmorel open source energy system model. Energy Strategy Rev 2018;20:26 – 34. 
+https://doi.org/10.1016/J.ESR.2018.01.003 . 
+[9] Kirkerud JG, Nagel NO, Bolkesj ø TF. The role of demand response in the future 
+renewable northern European energy system. Energy 2021;235:121336. https:// 
+doi.org/10.1016/J.ENERGY.2021.121336 . 
+[10] Bobmann T, Staffell I. The shape of future electricity demand: exploring load 
+curves in 2050s Germany and Britain. Energy 2015;90:1317 – 33. https://doi.org/ 
+10.1016/J.ENERGY.2015.06.082 . 
+[11] Staffell I, Pfenninger S. The increasing impact of weather on electricity supply and 
+demand. Energy 2018;145:65 – 78. https://doi.org/10.1016/J. 
+ENERGY.2017.12.051 . 
+[12] Collins S, Deane JP, Poncelet K, Panos E, Pietzcker RC, Delarue E, et al. Integrating 
+short term variations of the power system into integrated energy system models: a 
+methodological review. Renew Sustain Energy Rev 2017;76:839 – 56. https://doi. 
+org/10.1016/J.RSER.2017.03.090 . 
+[13] Poncelet K, Delarue E, Six D, Duerinck J, D ’ haeseleer W. Impact of the level of 
+temporal and operational detail in energy-system planning models. Appl Energy 
+2016;162:631 – 43. https://doi.org/10.1016/J.APENERGY.2015.10.100 . 
+[14] Ueckerdt F, Pietzcker R, Scholz Y, Stetter D, Giannousakis A, Luderer G. 
+Decarbonizing global power supply under region-specific consideration of 
+challenges and options of integrating variable renewables in the REMIND model. 
+Energy Econ 2017;64:665 – 84. https://doi.org/10.1016/J.ENECO.2016.05.012 . 
+[15] Pietzcker RC, Ueckerdt F, Carrara S, de Boer HS, Despr ´es J, Fujimori S, et al. 
+System integration of wind and solar power in integrated assessment models: a 
+cross-model evaluation of new approaches. Energy Econ 2017;64:583 – 99. https:// 
+doi.org/10.1016/j.eneco.2016.11.018 . 
+[16] Khan Z, Iyer G, Patel P, Kim S, Hejazi M, Burleyson C, et al. Impacts of long-term 
+temperature change and variability on electricity investments. Nat Commun 2021; 
+12:1643. https://doi.org/10.1038/S41467-021-21785-1 . 121 2021;12:1 – 12. 
+[17] Despr ´es J, Keramidas K, Schmitz A, Kitous A, Schade B, Diaz Vazquez A, et al. 
+POLES-JRC model documentation. 2018. https://doi.org/10.2760/814959 . 
+[18] Despr ´es J, Mima S, Kitous A, Criqui P, Hadjsaid N, Noirot I. Storage as a flexibility 
+option in power systems with high shares of variable renewable energy sources: a 
+POLES-based analysis. Energy Econ 2017;64:638 – 50. https://doi.org/10.1016/J. 
+ENECO.2016.03.006 . 
+[19] PRIMES – E3 Modelling n.d. https://e3modelling.com/modelling-tools/primes/ 
+(accessed June 8, 2022). 
+[20] Brinkerink M, Zakeri B, Huppmann D, Glynn J, 
+´
+O Gallach ´oir B, Deane P. Assessing 
+global climate change mitigation scenarios from a power system perspective using 
+a novel multi-model framework. Environ Model Software 2022;150:105336. 
+https://doi.org/10.1016/J.ENVSOFT.2022.105336 . 
+[21] Stehfest E, Vuuren D van, Kram T, Bouwman L, Alkemade R, Bakkenes M, et al. 
+Integrated assessment of global environmental change with IMAGE 3.0. Model 
+description and policy applications. 2014 . 
+[22] EIA. Electricity demand changes in predictable patterns. https://www.eia. 
+gov/todayinenergy/detail.php?id = 4190# ; 2011. 
+[23] Swan LG, Ugursal VI. Modeling of end-use energy consumption in the residential 
+sector: a review of modeling techniques. Renew Sustain Energy Rev 2009;13: 
+1819 – 35. https://doi.org/10.1016/j.rser.2008.09.033 . 
+[24] Almeida A De, Fonseca P, Bandeirinha R, Fernandes T, Araújo R, Nunes U. 
+Residential monitoring to decrease energy use and carbon emissions in Europe, 
+vols. 1 – 14; 2008 . 
+[25] Andersen FM, Baldini M, Hansen LG, Jensen CL. Households ’ hourly electricity 
+consumption and peak demand in Denmark. Appl Energy 2017;208:607 – 19. 
+https://doi.org/10.1016/j.apenergy.2017.09.094 . 
+[26] Cahill JM, Ritland KG, Lin-Kelly W. Description of electric energy use in 
+commercial buildings in the Pacific Northwest: 1986-1992 1992. 
+[27] Moezzi M, Eto JH. Improving electricity peak demand forecasts with measured 
+data : an application of PG & E ’ s residential end-use metered data load data. 1992 . 
+[28] UK D of E & CC. Household electricity survey. https://www.gov.uk/government/co 
+llections/household-electricity-survey ; 2014. 
+[29] EERE. Commercial and residential hourly load profiles for all TMY3 locations in 
+the United States - datasets - office of energy efficiency & renewable energy. 2013. 
+https://data.openei.org/submissions/153 . 
+[30] Babrowski S, Heinrichs H, Jochem P, Fichtner W. Load shift potential of electric 
+vehicles in Europe. J Power Sources 2014;255:283 – 93. https://doi.org/10.1016/j. 
+jpowsour.2014.01.019 . 
+[31] Sch ¨auble J, Kaschub T, Ensslen A, Jochem P, Fichtner W. Generating electric 
+vehicle load profiles from empirical data of three EV fleets in Southwest Germany. 
+J Clean Prod 2017;150:253 – 66. https://doi.org/10.1016/j.jclepro.2017.02.150 . 
+[32] Weiller C. Plug-in hybrid electric vehicle impacts on hourly electricity demand in 
+the United States. Energy Pol 2011;39:3766 – 78. https://doi.org/10.1016/j. 
+enpol.2011.04.005 . 
+[33] Yi Z, Scoffield D, Smart J, Meintz A, Jun M, Mohanpurkar M, et al. A highly 
+efficient control framework for centralized residential charging coordination of 
+large electric vehicle populations. Int J Electr Power Energy Syst 2020;117: 
+105661. https://doi.org/10.1016/j.ijepes.2019.105661 . 
+[34] Hu Z, Zhan K, Zhang H, Song Y. Pricing mechanisms design for guiding electric 
+vehicle charging to fill load valley. Appl Energy 2016;178:155 – 63. https://doi.org/ 
+10.1016/j.apenergy.2016.06.025 . 
+[35] Tuchnitz F, Ebell N, Schlund J, Pruckner M. Development and evaluation of a smart 
+charging strategy for an electric vehicle fleet based on reinforcement learning. 
+Appl Energy 2021;285:116382. https://doi.org/10.1016/j.apenergy.2020.116382 . 
+[36] Paneldata. 2012. http://www.elforbrugspanel.dk/Pages/Rapportering.aspx . 
+[37] Yao M, Hu Z, Sifuentes F, Zhang N. Integrated power management of conventional 
+units and industrial loads in China ’ s ancillary services scheduling. Energies 2015;8: 
+3955 – 77 . 
+[38] Foteinaki K, Li R, Rode C, Andersen RK. Modelling household electricity load 
+profiles based on Danish time-use survey data. Energy Build 2019;202:109355. 
+https://doi.org/10.1016/j.enbuild.2019.109355 . 
+[39] Wid ´en J, Nilsson AM, W ¨ackelgård E. A combined Markov-chain and bottom-up 
+approach to modelling of domestic lighting demand. Energy Build 2009;41: 
+1001 – 12. https://doi.org/10.1016/j.enbuild.2009.05.002 . 
+[40] Wid ´en J, W ¨ackelgård E. A high-resolution stochastic model of domestic activity 
+patterns and electricity demand. Appl Energy 2010;87:1880 – 92. https://doi.org/ 
+10.1016/j.apenergy.2009.11.006 . 
+V.Z. Castillo et al.                                                                                                                                                                                                                              
+
+========== PAGE 11 ==========
+Energy 258 (2022) 124741
+11
+[41] Chiou YS, Carley KM, Davidson CI, Johnson MP. A high spatial resolution 
+residential energy model based on American Time Use Survey data and the 
+bootstrap sampling method. Energy Build 2011;43:3528 – 38. https://doi.org/ 
+10.1016/j.enbuild.2011.09.020 . 
+[42] U.S. BUREAU OF LABOR STATISTICS. American time use survey — 2016 microdata 
+files. https://www.bls.gov/tus/datafiles_2016.htm ; 2016. 
+[43] Statistics Bureau of Japan. Survey on time use and leisure activities. http://www.st 
+at.go.jp/english/data/shakai/index.html ; 2016. 
+[44] Statistics Sweden. Harmonised European time use survey (HETUS) n.d. 
+[45] Fazeli R, Ruth M, Davidsdottir B. Temperature response functions for residential 
+energy demand – a review of models. Urban Clim 2016;15:45 – 59. https://doi.org/ 
+10.1016/J.UCLIM.2016.01.001 . 
+[46] Waite M, Cohen E, Torbey H, Piccirilli M, Tian Y, Modi V. Global trends in urban 
+electricity demands for cooling and heating. Energy 2017;127:786 – 802. https:// 
+doi.org/10.1016/j.energy.2017.03.095 . 
+[47] Palacios-Garcia EJ, Moreno-Munoz A, Santiago I, Flores-Arias JM, Bellido- 
+Outeirino FJ, Moreno-Garcia IM. A stochastic modelling and simulation approach 
+to heating and cooling electricity consumption in the residential sector. Energy 
+2018;144:1080 – 91. https://doi.org/10.1016/j.energy.2017.12.082 . 
+[48] Bartels R, Fiebig DG, Garben M, Lumsdaine R. An end-use electricity load 
+simulation model. Util Pol 1992;2:71 – 82. https://doi.org/10.1016/0957-1787(92) 
+90055-N . 
+[49] Lindberg KB, Bakker SJ, Sartori I. Modelling electric and heat load profiles of non- 
+residential buildings for use in long-term aggregate load forecasts. Util Pol 2019; 
+58:63 – 88. https://doi.org/10.1016/j.jup.2019.03.004 . 
+[50] Mclachlan C, Glynn S, Hill F, Edwards R, Kuriakose J, Wood R, et al. Air 
+conditioning demand assessment. 2016 . 
+[51] Frieler K, Lange S, Piontek F, O Reyer CP, Schewe J, Lange S, et al. Assessing the 
+impacts of 1.5
+◦
+C global warming-simulation protocol of the inter-sectoral impact 
+model intercomparison project (ISIMIP-2b). Geosci Model Dev (GMD) 2017;10: 
+4321 – 45. https://doi.org/10.5194/gmd-10-4321-2017 . 
+[52] Isaac M, Van Vuuren DP. Modeling global residential sector energy demand for 
+heating and air conditioning in the context of climate. Change 2009;37:507 – 21. 
+https://doi.org/10.1016/j.enpol.2008.09.051 . 
+[53] Ding Y, Bratteb ø H, Nord N. A systematic approach for data analysis and prediction 
+methods for annual energy profiles: an example for school buildings in Norway. 
+Energy Build 2021;247:111160. https://doi.org/10.1016/J. 
+ENBUILD.2021.111160 . 
+[54] Ma Z, Yan R, Nord N. A variation focused cluster analysis strategy to identify 
+typical daily heating load profiles of higher education buildings. Energy 2017;134: 
+90 – 102. https://doi.org/10.1016/J.ENERGY.2017.05.191 . 
+[55] Hendron R, Engebrecht C. Building America house simulation protocols, vol. 79; 
+2010. https://doi.org/10.1017/CBO9781107415324.004 . 
+[56] Zimmermann JP. End-use metering campaign in 400 households in Sweden. Asses 
+Poten Electric Sav 2009;17. 05 – 2743 . 
+[57] Zhou X, Yan D, Hong T, Ren X. Data analysis and stochastic modeling of lighting 
+energy use in large office buildings in China. Energy Build 2015;86:275 – 87. 
+https://doi.org/10.1016/j.enbuild.2014.09.071 . 
+[58] Yun GY, Kim H, Kim JT. Effects of occupancy and lighting use patterns on lighting 
+energy consumption. Energy Build 2012;46:152 – 8. https://doi.org/10.1016/j. 
+enbuild.2011.10.034 . Elsevier. 
+[59] Forsythe WC, Rykiel EJ, Stahl RS, Wu Hi, Schoolfield RM. A model comparison for 
+daylength as a function of latitude and day of year. Ecol Model 1995;80:87 – 95. 
+https://doi.org/10.1016/0304-3800(94)00034-F . 
+[60] van Vuuren DP, Stehfest E, Gernaat DEHJ, Doelman JC, van den Berg M, 
+Harmsen M, et al. Energy, land-use and greenhouse gas emissions trajectories 
+under a green growth paradigm. Global Environ Change 2017;42:237 – 50. https:// 
+doi.org/10.1016/j.gloenvcha.2016.05.008 . 
+[61] Fricko O, Havlik P, Rogelj J, Klimont Z, Gusti M, Johnson N, et al. The marker 
+quantification of the Shared Socioeconomic Pathway 2: a middle-of-the-road 
+scenario for the 21st century. Global Environ Change 2017;42:251 – 67. https://doi. 
+org/10.1016/j.gloenvcha.2016.06.004 . 
+[62] ENTSOE - Data Portal 2015. https://www.entsoe.eu/data/data-portal/. 
+[63] EIA. Real-time operating grid. n.d, https://www.eia.gov/beta/electricity/gri 
+dmonitor/dashboard/electric_overview/US48/US48?src = email . 
+[64] ONS. RESULTADOS DA OPERAÇ
+˜
+AO- Hist ´orico da Operaç ˜ao n.d. http://www.ons. 
+org.br/Paginas/resultados-da-operacao/historico-da-operacao/curva_carga 
+_horaria.aspx . 
+[65] Love J, Smith AZP, Watson S, Oikonomou E, Summerfield A, Gleeson CP, et al. The 
+addition of heat pump electricity load profiles to GB electricity demand: evidence 
+from a heat pump field trial. 2017. https://doi.org/10.1016/j. 
+apenergy.2017.07.026 . 
+[66] Daioglou V, Mikropoulos E, Gernaat D, van Vuuren DP. Efficiency improvement 
+and technology choice for energy and emission reductions of the residential sector. 
+Energy 2022;243:122994. https://doi.org/10.1016/J.ENERGY.2021.122994 . 
+[67] McNeil MA, Karali N, Letschert V. Forecasting Indonesia ’ s electricity load through 
+2030 and peak demand reductions from appliance and lighting efficiency. Energy 
+Sustain Dev 2019;49:65 – 77. https://doi.org/10.1016/j.esd.2019.01.001 . 
+[68] Lund H, Kempton W. Integration of renewable energy into the transport and 
+electricity sectors through V2G. Energy Pol 2008;36:3578 – 87. https://doi.org/ 
+10.1016/J.ENPOL.2008.06.007 . 
+V.Z. Castillo et al.                                                                                                                                                                                                                              

@@ -1,0 +1,58 @@
+# Runtime dependencies for energy_timeslice_pipeline.py
+# Install with: pip install -r requirements.txt
+
+# Core scientific stack
+pandas
+numpy
+scikit-learn
+scipy
+pyyaml
+requests
+
+# Excel I/O
+openpyxl
+xlsxwriter
+
+# Deflate64 support for the EFS archive.
+# We use the local zipfile_deflate64.py shim (sits next to the pipeline
+# script) which is backed by 'inflate64'. This avoids needing the upstream
+# 'zipfile-deflate64' package, which has no prebuilt wheel for Python 3.12
+# on Windows and requires Microsoft Visual C++ Build Tools to compile.
+inflate64
+
+# Parquet engine for the intermediate cache (data/cache/*.parquet) used by
+# load_weather_data, load_enduse_data_mendeley, and load_enduse_data_efs_us
+# when USE_CACHE = True in run_pipeline.py.
+pyarrow
+
+# Plotting for the per-cluster diagnostic PNGs written when
+# MAKE_DIAGNOSTIC_PLOTS = True in run_pipeline.py. Imported lazily so a
+# missing install just disables the plotting feature with a warning rather
+# than crashing the run.
+matplotlib
+
+# -----------------------------------------------------------------------------
+# DemandCast runtime dependencies (transitive)
+# -----------------------------------------------------------------------------
+# We use the upstream DemandCast project (https://github.com/open-energy-transition/demandcast)
+# via a git clone under .vendor/demandcast/ rather than installing it as a
+# package. That means DemandCast's own Python dependencies are NOT picked up
+# automatically — they must be installed alongside the pipeline's own deps.
+#
+# The list below is the minimum subset needed for the country presets that
+# have been validated end-to-end (United States via EIA, South Korea via
+# KROGD, China via Wu et al.). DemandCast's full pyproject.toml lists ~38
+# runtime deps; we omit the heavy geospatial stack (cartopy, geopandas,
+# rasterio, netcdf4, xarray, rioxarray, etc.) and the ML stack (xgboost-cpu,
+# scikit-learn is already above) because no code path we use touches them.
+#
+# If you bring online a new DemandCast retriever (e.g. CENACE for Mexico,
+# ENTSO-E for European countries, EPIAS for Turkey, ESKOM for South Africa)
+# you may hit a new missing-module error like
+# "No module named 'pycountry_convert'". When that happens, identify the
+# missing module via the error message and add it here.
+pycountry            # ISO-3166 country code lookups; used by entities.py
+pycountry-convert    # ISO-3 ↔ ISO-2 ↔ continent code conversions
+countryinfo          # country metadata lookups used by some retrievers
+entsoe-py            # imported at module level by utils/fetcher.py
+timezonefinder       # mapping coordinates → IANA timezone (used by utils)
