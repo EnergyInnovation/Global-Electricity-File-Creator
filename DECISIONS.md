@@ -10,9 +10,12 @@ See `CLAUDE.md` for the canonical methodology that these decisions inform.
 
 ## 2026-06-03 — Plan: integrate develop's non-US calibration layer onto master (control surface + calibration defaults)
 
-> **Status: PROPOSED — for staff review. Not yet executed.** Phase 0 branch audit is complete; no
-> code has been merged. See `INTERNATIONAL_INTEGRATION_PLAN.md` for the full plan and the verified
-> Phase 0 findings.
+> **Status: IMPLEMENTED ON FEATURE BRANCH `feature/international-onto-master` — for staff review; NOT
+> yet merged to `master`.** The develop→master merge plus integration fixups are committed on the
+> feature branch (one merge commit). Verified on synthetic data and structurally (see Verification
+> below); full end-to-end country runs with real external data and the US EPS regression remain to be
+> run in an environment with those inputs + network access. See `INTERNATIONAL_INTEGRATION_PLAN.md`
+> for the full plan and the verified Phase 0 findings.
 
 ### Context
 The branches diverged at `d4ef526`. `master` carries the clustering consolidation (the hemisphere-aware
@@ -68,13 +71,29 @@ one-line fix.
 - Docs: `README.md`, `CLUSTERING_METHODOLOGY.md` (new per-region section), `DECISIONS.md` (this entry),
   `INTERNATIONAL_INTEGRATION_PLAN.md` (new).
 
-### Verification (planned)
-US regression bit-identical (US/state clustering untouched); Brazil SH smoke test (Summer Peak DOYs in
-Dec–Feb; days_per_timeslice sums to 365); Korea + China end-to-end with `zapata_ridge_nnls`. Validate
-all derived outputs against primary sources before any work-product use.
+### Verification
+**Done (this round, synthetic / structural — no external data needed):**
+- Merge is textually clean; merged `energy_timeslice_pipeline.py` parses, imports, and has no duplicate
+  function defs; `cluster_timeslices` is master's wrapper.
+- Hemisphere smoke test (`scripts/verify_international_merge_smoke.py`) **PASS**: United States Summer
+  Peak representative day in July; Brazil Summer Peak in January (austral summer); `days_per_timeslice`
+  sums to 365 for both. Confirms the `country=` flip works through the merged wrapper.
+- R3 EFS-override routing **PASS**: US runner override beats preset default; `None` falls back to
+  preset; non-US presets ignore the EFS args without error.
+- US/state pipeline source (`state_pipeline/`, `rebuild_us_national_v2.py`, workbook scripts) is
+  **unchanged by the merge** (0 source insertions/deletions) — so US EPS outputs cannot have changed.
+
+**Still to run (needs an environment with external data + network):**
+- Full end-to-end country runs: Brazil / South Korea / China via `run_pipeline.py` with real
+  DemandCast / Mendeley / Ember / Renewables.ninja inputs and `zapata_ridge_nnls`.
+- US EPS regression diff (state_pipeline / national rebuild) against a saved baseline.
+
+Validate all derived outputs against primary sources before any work-product use.
 
 ### Effect on model output
-None yet — proposal stage. No files merged or regenerated.
+None to existing US EPS files — the US/state pipeline source is untouched by the merge. Non-US outputs
+are not regenerated in this round; when re-run, non-US clustering moves to the consolidated rep-day +
+hemisphere methodology (numerical shifts expected vs prior develop runs; see plan §9).
 
 ---
 
