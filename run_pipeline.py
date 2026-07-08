@@ -46,7 +46,7 @@ except Exception:
 #
 # Run the pipeline once to see the full preset table printed to the console.
 # Aliases work too (e.g. 'KR', 'kor', 'southkorea' all resolve to South Korea).
-COUNTRY = 'China'
+COUNTRY = 'USA'
 
 # Target year for the synthetic representative-day output.
 #
@@ -86,7 +86,15 @@ SEASONAL_CALIBRATION = True
 # Calibration method for matching the Mendeley/Zapata synthetic shapes to
 # DemandCast observed totals.
 #
-#   'level_seasonal' (default, legacy) — multiplicative annual scaling
+#   None (recommended) — use the country preset's default:
+#       United States       → 'level_seasonal'  (pinned to legacy master-branch
+#                             behavior so US clustering outputs stay comparable
+#                             with the historical baseline)
+#       South Korea / China → 'zapata_ridge_nnls'
+#       other presets       → 'level_seasonal' (no 'calibration_method' field)
+#     A non-None value here overrides the preset for this run.
+#
+#   'level_seasonal' (legacy) — multiplicative annual scaling
 #       then per-month and per-peak adjustments. Matches the production
 #       behavior pre-Zapata-integration. Annual mean matches exactly by
 #       construction; hourly NRMSE typically ~1.7–2.0 (worse than naive
@@ -116,7 +124,7 @@ SEASONAL_CALIBRATION = True
 # verified/mapped presets in energy_timeslice_pipeline.py already have it.
 # See zapata_implementation_readme.md for methodology, assumptions, and
 # the full standalone-test result comparison.
-CALIBRATION_METHOD = 'zapata_ridge_nnls'  # 'zapata_nnls'  'level_seasonal'
+CALIBRATION_METHOD = None  # None = preset default; or 'level_seasonal' / 'zapata_nnls' / 'zapata_ridge_nnls'
 
 # Ridge regularization strength for zapata_ridge_nnls. Ignored otherwise.
 #   0.0   — pure NNLS, equivalent to zapata_nnls (no EPS-prior anchoring)
@@ -196,7 +204,14 @@ WIND_ROUGHNESS_LENGTH = 0.03
 # capacity factors so their annual mean matches the value reported by
 # Ember.
 #
-#   'cap_redistribute' (recommended, default) — multiply, clip values >1
+#   None (recommended) — use the country preset's default:
+#       United States → 'multiplicative'  (pinned to legacy master-branch
+#                       behavior for baseline comparability; note this can
+#                       yield CF values > 1.0)
+#       all others    → 'cap_redistribute'
+#     A non-None value here overrides the preset for this run.
+#
+#   'cap_redistribute' — multiply, clip values >1
 #       to 1.0, then redistribute the clipped energy across unsaturated
 #       hours so the annual mean still hits the target. Bounded by
 #       construction (every output is in [0, 1]).
@@ -213,7 +228,7 @@ WIND_ROUGHNESS_LENGTH = 0.03
 # synthetic shape itself needs upstream tuning (hub height, roughness
 # length, power-curve assumptions). See HANDOFF.md → "Weather Data
 # Improvements" for the full discussion.
-CF_CALIBRATION_MODE = 'cap_redistribute'
+CF_CALIBRATION_MODE = None  # None = preset default; or 'cap_redistribute' / 'multiplicative'
 
 
 # ============================================================================

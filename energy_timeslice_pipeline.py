@@ -309,6 +309,9 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         # Path B (zapata_ridge_nnls): per-end-use MWh/year prior extracted
         # from EPS-South Korea (eps-southkorea). See data/eps_priors/parse_eps_extract.py.
         'eps_prior_path': 'data/eps_priors/eps_prior_KR.csv',
+        # Default demand calibration when the runner leaves
+        # CALIBRATION_METHOD = None (runner override still wins).
+        'calibration_method': 'zapata_ridge_nnls',
         'default_year': 2025,
         'last_n_years': 4,
         'status': 'verified',
@@ -330,6 +333,9 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         # Path B (zapata_ridge_nnls): per-end-use MWh/year prior extracted
         # from EPS-China (eps-china-igdp). See data/eps_priors/parse_eps_extract.py.
         'eps_prior_path': 'data/eps_priors/eps_prior_CN.csv',
+        # Default demand calibration when the runner leaves
+        # CALIBRATION_METHOD = None (runner override still wins).
+        'calibration_method': 'zapata_ridge_nnls',
         'default_year': 2018,
         'last_n_years': 1,
         'status': 'verified',
@@ -344,12 +350,26 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         'demand_shape_source': 'efs',
         'efs_electrification': 'Reference',
         'efs_technology_advancement': 'Moderate',
-        # CONUS spans four timezones. We pick Central as a centroid-of-load
-        # approximation for a national EFS-driven run; for region-specific
-        # runs you'd want to refactor to a per-subregion timezone instead.
-        # This is a starting point — verify it matches whatever convention
-        # the EPS U.S. consumers expect.
-        'timezone': 'America/Chicago',
+        # ---- Master-parity pinning (2026-07-07) ----------------------------
+        # The US run from this script is pinned to the legacy master-branch
+        # behavior so its clustering outputs stay comparable with the
+        # historical US baseline (see DECISIONS.md 2026-07-07). Three pins:
+        #   * no 'timezone' key — weather stays in UTC, exactly as on master.
+        #     CONUS spans four timezones, so any single-tz localization is an
+        #     approximation anyway; allow_utc_weather suppresses the loud
+        #     no-timezone warning for this deliberate opt-out.
+        #   * cf_calibration_mode 'multiplicative' — master's pure scalar
+        #     scaling. NOTE: yields wind CF values > 1.0 (implied multiplier
+        #     ~29×); retained for baseline continuity only. The canonical US
+        #     EPS inputs come from the Cambium-based national pipeline
+        #     (rebuild_us_national_v2.py), not from this script.
+        #   * calibration_method 'level_seasonal' — the only demand
+        #     calibration that existed on master.
+        # A runner override (non-None CALIBRATION_METHOD / CF_CALIBRATION_MODE
+        # in run_pipeline.py) still takes precedence over these pins.
+        'allow_utc_weather': True,
+        'cf_calibration_mode': 'multiplicative',
+        'calibration_method': 'level_seasonal',
         # CONUS centroid; spans 25–49°N
         'latitude_deg': 38.0,
         # Path B (zapata_ridge_nnls): per-end-use MWh/year prior extracted
@@ -1823,6 +1843,17 @@ def generate_full_pipeline_for_preset(
         efs_technology_advancement if efs_technology_advancement is not None
         else preset.get('efs_technology_advancement', 'Moderate')
     )
+    # Per-preset behavior pinning (same pattern as the EFS overrides above):
+    # runner override (not None) → preset value → global default. This is
+    # what lets the United States preset pin master-parity choices
+    # ('multiplicative' CF scaling, 'level_seasonal' demand calibration)
+    # while international presets keep cap_redistribute / Zapata defaults.
+    resolved_cf_calibration_mode = kwargs.pop('cf_calibration_mode', None)
+    if resolved_cf_calibration_mode is None:
+        resolved_cf_calibration_mode = preset.get('cf_calibration_mode', 'cap_redistribute')
+    resolved_calibration_method = kwargs.pop('calibration_method', None)
+    if resolved_calibration_method is None:
+        resolved_calibration_method = preset.get('calibration_method', 'level_seasonal')
     return generate_full_pipeline_for_country(
         mendeley_dir=os.path.join(data_dir, 'mendeley'),
         efs_dir=os.path.join(data_dir, 'efs'),
@@ -1843,6 +1874,9 @@ def generate_full_pipeline_for_preset(
         efs_electrification=resolved_efs_electrification,
         efs_technology_advancement=resolved_efs_technology_advancement,
         country_timezone=preset.get('timezone'),
+        allow_utc_weather=preset.get('allow_utc_weather', False),
+        cf_calibration_mode=resolved_cf_calibration_mode,
+        calibration_method=resolved_calibration_method,
         latitude_deg=preset.get('latitude_deg'),
         eps_prior_path=preset.get('eps_prior_path'),
         lambda_ridge=preset.get('lambda_ridge', kwargs.pop('lambda_ridge', 1.0)),
@@ -3167,6 +3201,7 @@ def generate_full_pipeline_for_country(
     use_cache: bool = False,
     cache_dir: Optional[str] = None,
     country_timezone: Optional[str] = None,
+    allow_utc_weather: bool = False,
     cf_calibration_mode: str = 'cap_redistribute',
     make_plots: bool = True,
     compare_pinned_unpinned: bool = False,
@@ -3600,11 +3635,20 @@ def generate_full_pipeline_for_country(
     # If country_timezone is None (e.g. an unverified preset that hasn't
     # had a timezone assigned yet) we leave the index in UTC and emit a
     # warning, so the failure mode is loud rather than silently producing
-    # mis-aligned outputs.
+    # mis-aligned outputs. Presets that deliberately opt out of
+    # localization (currently only the United States, pinned to the legacy
+    # master-branch UTC behavior for baseline comparability) set
+    # allow_utc_weather=True to suppress the warning.
     if country_timezone:
         if weather_df.index.tz is None:
             weather_df.index = weather_df.index.tz_localize('UTC')
         weather_df.index = weather_df.index.tz_convert(country_timezone)
+    elif allow_utc_weather:
+        _status(
+            'weather',
+            "keeping weather in UTC (preset sets allow_utc_weather=True — "
+            "deliberate legacy-parity opt-out of timezone localization)",
+        )
     else:
         import warnings
         warnings.warn(

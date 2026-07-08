@@ -86,7 +86,10 @@
       "Read(//c/Users/Claire Trevisan/GitHub/eps-us/InputData/elec/SHELF//**)",
       "Bash(ls /c/glb-elec-master/output/ 2>/dev/null | head -20; echo ====; ls /c/glb-elec-master/data/ 2>/dev/null)",
       "Bash(grep \"clustering,net_load,representative_day_full_year\" /c/glb-elec-master/output/UnitedStates_timeslice_results_Metrics.csv /c/glb-elec-master/output/UnitedStates_EFS_test_Metrics.csv 2>/dev/null; echo ====; cat \"/c/glb-elec-master/output/UnitedStates_EFS_test_EPS/SHELF/SHELF-days-per-timeslice.csv\" 2>/dev/null; echo ====; ls -la \"/c/Users/Claire Trevisan/GitHub/eps-us/InputData/elec/SHELF/\" | head -8)",
-      "Bash(cd \"/c/Users/Claire Trevisan/GitHub/Global-Electricity-File-Creator\" && grep -rl \"Fall,136\" output/ scripts/data_outputs/ 2>/dev/null | head; grep -l \"Fall,136\" /c/glb-elec-master/output/*_EPS/SHELF/SHELF-days-per-timeslice.csv /c/glb-elec-master/output/*.csv 2>/dev/null; ls state-eps-data-repository 2>/dev/null | head -3; grep -rl \"Fall,136\" \"/c/Users/Claire Trevisan/GitHub/eps-us/InputData/elec/\" 2>/dev/null | head -3)"
+      "Bash(cd \"/c/Users/Claire Trevisan/GitHub/Global-Electricity-File-Creator\" && grep -rl \"Fall,136\" output/ scripts/data_outputs/ 2>/dev/null | head; grep -l \"Fall,136\" /c/glb-elec-master/output/*_EPS/SHELF/SHELF-days-per-timeslice.csv /c/glb-elec-master/output/*.csv 2>/dev/null; ls state-eps-data-repository 2>/dev/null | head -3; grep -rl \"Fall,136\" \"/c/Users/Claire Trevisan/GitHub/eps-us/InputData/elec/\" 2>/dev/null | head -3)",
+      "Read(//c/Users/Claire Trevisan/GitHub/EPS Structure Testing/InputData/elec/SHELF/**)",
+      "Bash(python scripts/build_us_run_workbooks.py)",
+      "Bash(python scripts/verify_us_run_workbooks.py)"
     ]
   }
 }
