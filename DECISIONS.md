@@ -8,6 +8,45 @@ See `CLAUDE.md` for the canonical methodology that these decisions inform.
 
 ---
 
+## 2026-07-10 — Fix: Zapata demand basis fails when target year is beyond the weather archive
+
+### Context
+`run_pipeline.py` for South Korea (default_year 2025, `zapata_ridge_nnls`) crashed in
+`build_zapata_hybrid_basis` with "weather_df cannot be aligned to mendeley_df index without
+NaN after reindex." Root cause: the Renewables.ninja weather archive ends in 2024, but the
+Zapata shape regeneration filtered weather to the exact target year (`index.year == year`).
+For year 2025 that yielded only the ~9 tz-spillover hours (UTC 2024 tail → local 2025), which
+could not cover the full-year Mendeley demand index. China (target 2018, in-archive) was
+unaffected, which is why only KR — and by extension every preset with a future target year —
+was broken.
+
+### Decision
+Added `_zapata_weather_for_year(weather_naive, target_year, mendeley_index)` and routed both
+Zapata branches (`zapata_nnls`, `zapata_ridge_nnls`) through it. If the target year is fully
+present in the archive it is used as before (China bit-identical). Otherwise the most recent
+full weather year (≤ target) is selected as a proxy and its calendar is relabeled to the
+target year, aligned by (month, day, hour) so leap-year differences are handled; residual gaps
+(e.g. a leap-day target against a non-leap proxy) are interpolated. A status line reports the
+substitution.
+
+### Rationale
+The Zapata regeneration needs a representative weather *year* for the climate-sensitive shape,
+not literally the model year — using the latest available weather year as a proxy is the
+standard weather-year approach and keeps the demand shape physically grounded. Aligning by
+month/day/hour rather than exact timestamp makes it robust to any target year.
+
+### Affected files / variables
+- `energy_timeslice_pipeline.py`: new `_zapata_weather_for_year`; both Zapata branches in
+  `generate_full_pipeline_for_country` call it instead of the raw `index.year == year` filter.
+
+### Effect on model output
+South Korea now runs end-to-end: Zapata basis built on 8,760 hours (2024 weather relabeled to
+2025); wind from 5 ninja sites × 2018–2024 calibrated to Ember 0.1861; days_per_timeslice
+68/83/92/40/18/64 = 365; SHELF 23 + SYSHECF 26 written. China (target 2018) unchanged. All
+"mapped" presets with default_year 2025 are similarly unblocked. Inputs for staff review.
+
+---
+
 ## 2026-07-10 — Wind CF from Renewables.ninja per-site simulation outputs (China)
 
 ### Context

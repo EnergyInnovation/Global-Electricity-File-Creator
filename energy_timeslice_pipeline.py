@@ -314,6 +314,16 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         'calibration_method': 'zapata_ridge_nnls',
         'default_year': 2025,
         'last_n_years': 4,
+        # Wind CF from Renewables.ninja per-site SIMULATION outputs (hub-height,
+        # power-curve, bias-corrected), same as China — see DECISIONS.md
+        # 2026-07-10. Sites in data/weather/ninja_sim/KR/ (fetch with
+        # scripts/fetch_ninja_sites.py --country KR). Averaged across sites over
+        # wind_cf_years, calibrated to the Ember annual wind CF. Solar still uses
+        # the ninja weather product. NOTE: only 2022 site data is on disk so far;
+        # the loader uses whatever years are available until more are fetched.
+        'wind_cf_source': 'ninja_sites',
+        'wind_sites_dir': None,  # None → data/weather/ninja_sim
+        'wind_cf_years': 7,      # most-recent 7 available site-years (decoupled from last_n_years)
         'status': 'verified',
     },
     'china': {
@@ -338,6 +348,18 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         'calibration_method': 'zapata_ridge_nnls',
         'default_year': 2018,
         'last_n_years': 1,
+        # Wind CF comes from Renewables.ninja per-site SIMULATION outputs
+        # (hub-height, power-curve, bias-corrected) rather than the 2 m weather
+        # variable. Site CSVs live in data/weather/ninja_sim/CN/ (fetched by
+        # scripts/fetch_ninja_sites.py). They are averaged across sites over the
+        # calibration window, then calibrated to the Ember annual wind CF. Solar
+        # still uses the ninja weather product. See DECISIONS.md 2026-07-10.
+        'wind_cf_source': 'ninja_sites',
+        'wind_sites_dir': None,  # None → data/weather/ninja_sim
+        # Wind averages its own multi-year window of the site archive, decoupled
+        # from last_n_years (demand). 7 = all of 2018–2024 downloaded for CN.
+        # Runner can override via WIND_CF_YEARS in run_pipeline.py.
+        'wind_cf_years': 7,
         'status': 'verified',
     },
     'united states': {
@@ -1854,6 +1876,13 @@ def generate_full_pipeline_for_preset(
     resolved_calibration_method = kwargs.pop('calibration_method', None)
     if resolved_calibration_method is None:
         resolved_calibration_method = preset.get('calibration_method', 'level_seasonal')
+    # Wind-CF year window (only meaningful for wind_cf_source='ninja_sites'):
+    # runner override (not None) → preset → None (country fn falls back to
+    # last_n_years). Decoupled from last_n_years so wind can average more years
+    # of the site-simulation archive than the demand-calibration window uses.
+    resolved_wind_cf_years = kwargs.pop('wind_cf_years', None)
+    if resolved_wind_cf_years is None:
+        resolved_wind_cf_years = preset.get('wind_cf_years')
     return generate_full_pipeline_for_country(
         mendeley_dir=os.path.join(data_dir, 'mendeley'),
         efs_dir=os.path.join(data_dir, 'efs'),
@@ -1876,6 +1905,9 @@ def generate_full_pipeline_for_preset(
         country_timezone=preset.get('timezone'),
         allow_utc_weather=preset.get('allow_utc_weather', False),
         cf_calibration_mode=resolved_cf_calibration_mode,
+        wind_cf_source=preset.get('wind_cf_source', 'weather'),
+        wind_sites_dir=preset.get('wind_sites_dir'),
+        wind_cf_years=resolved_wind_cf_years,
         calibration_method=resolved_calibration_method,
         latitude_deg=preset.get('latitude_deg'),
         eps_prior_path=preset.get('eps_prior_path'),
@@ -2133,6 +2165,148 @@ def compute_capacity_factors_from_weather(
     df_cf = pd.concat([pv_cf, wind_cf], axis=1)
     df_cf.columns = ['solar_cf', 'wind_cf']
     return df_cf
+
+
+DEFAULT_WIND_SITES_DIR = os.path.join(DEFAULT_DATA_DIR, 'weather', 'ninja_sim')
+
+
+def load_site_wind_capacity_factors(
+    country_iso2: str,
+    n_years: int,
+    sites_dir: Optional[str] = None,
+    country_timezone: Optional[str] = None,
+) -> pd.Series:
+    """Average Renewables.ninja per-site wind SIMULATION output into an hourly CF series.
+
+    Reads ``<sites_dir>/<ISO2>/<site>_<year>.csv`` files produced by
+    ``scripts/fetch_ninja_sites.py``, keeps the most recent ``n_years`` of
+    calendar-year data **available on disk**, and averages the site
+    ``electricity`` columns at each hour. Because the fetch uses ``capacity=1``,
+    ``electricity`` IS the hourly capacity factor (0-1) at hub height — sheared
+    and bias-corrected by Renewables.ninja's simulation.
+
+    This REPLACES the legacy 2 m-wind-speed → log-shear → power-curve estimate
+    (:func:`compute_wind_capacity_factor_from_weather`). The 2 m ninja *weather*
+    variable has an inverted diurnal cycle relative to hub height and is
+    unusable for wind shape; the site simulation output is the correct source.
+    See CLAUDE.md and DECISIONS.md (2026-07-10).
+
+    The wind window is **decoupled from the demand/CF calibration window**
+    (``last_n_years``): wind uses its own ``n_years`` of site data (preset key
+    ``wind_cf_years``). The returned multi-year series is reduced to a
+    day-of-year × hour climatology by the caller and mapped onto the run's
+    calendar, so the number of wind years need not match the number of demand
+    years. Selection is the most recent ``n_years`` years actually present, not
+    a window anchored to the model year — the site archive (2018–2024) is a
+    weather climatology independent of the model's target year.
+
+    Times in the source files are UTC. When ``country_timezone`` is given the
+    returned index is converted to that timezone so it aligns with the localized
+    weather series used elsewhere in the pipeline (the demand/SHELF side runs on
+    local time). The instant of each observation is preserved; only the labels
+    change.
+
+    Parameters
+    ----------
+    country_iso2 : str
+        ISO2 code naming the per-country subfolder (e.g. ``'CN'``).
+    n_years : int
+        Number of most-recent available site-years to average (preset
+        ``wind_cf_years``). If fewer years exist on disk, all are used and a
+        status line reports the shortfall.
+    sites_dir : str, optional
+        Root directory holding ``<ISO2>/`` subfolders. Defaults to
+        ``data/weather/ninja_sim``.
+    country_timezone : str, optional
+        IANA timezone to convert the UTC index into. ``None`` leaves it in UTC.
+
+    Returns
+    -------
+    pandas.Series
+        Hourly wind capacity factor named ``'wind_cf'``, tz-aware index,
+        spanning the selected site-years.
+    """
+    import glob as _glob
+
+    sites_dir = sites_dir or DEFAULT_WIND_SITES_DIR
+    country_dir = os.path.join(sites_dir, country_iso2)
+    if not os.path.isdir(country_dir):
+        raise FileNotFoundError(
+            f"No site-wind directory for {country_iso2!r} at {country_dir!r}. "
+            f"Run  python scripts/fetch_ninja_sites.py --country {country_iso2}  first."
+        )
+
+    # Discover (path, site, year) for every well-named CSV, then select the most
+    # recent n_years years actually present on disk.
+    parsed: List[tuple] = []
+    for path in sorted(_glob.glob(os.path.join(country_dir, '*.csv'))):
+        stem = os.path.splitext(os.path.basename(path))[0]
+        # filename convention from fetch_ninja_sites.py: <site>_<year>.csv
+        site, _, yr = stem.rpartition('_')
+        if yr.isdigit():
+            parsed.append((path, site, int(yr)))
+    if not parsed:
+        raise FileNotFoundError(
+            f"No <site>_<year>.csv files for {country_iso2!r} under {country_dir!r}. "
+            f"Fetch them with scripts/fetch_ninja_sites.py."
+        )
+    available_years = sorted({y for _, _, y in parsed})
+    n_req = int(n_years) if n_years else len(available_years)
+    sel_years = set(available_years[-n_req:])
+    if len(sel_years) < n_req:
+        _status(
+            'cf',
+            f"  wind_cf: requested {n_req} year(s) but only {len(sel_years)} "
+            f"site-year(s) on disk for {country_iso2} ({sorted(sel_years)}) — using all available",
+        )
+
+    frames: List[pd.Series] = []
+    used_sites: set = set()
+    used_years: set = set()
+    for path, site, yr in parsed:
+        if yr not in sel_years:
+            continue
+        # Renewables.ninja CSVs carry a metadata header block; the data header
+        # row starts with 'time'. Find it dynamically so the parser survives
+        # header-length changes between API versions.
+        with open(path, encoding='utf-8') as fh:
+            skip = next((i for i, line in enumerate(fh) if line.startswith('time')), 0)
+        df = pd.read_csv(path, skiprows=skip, usecols=['time', 'electricity'])
+        s = pd.Series(
+            pd.to_numeric(df['electricity'], errors='coerce').to_numpy(),
+            index=pd.to_datetime(df['time'], utc=True),
+            name='wind_cf',
+        )
+        frames.append(s)
+        used_sites.add(site)
+        used_years.add(yr)
+
+    if not frames:
+        raise FileNotFoundError(
+            f"No site-wind CSVs for {country_iso2!r} in years {sorted(wanted_years)} "
+            f"under {country_dir!r}. Fetch them with scripts/fetch_ninja_sites.py."
+        )
+
+    # Average across all site-year series at each UTC timestamp. Concatenating
+    # then grouping by the (duplicated) timestamp index means each hour is the
+    # mean over whatever sites are present for that hour — robust to a site
+    # missing a year.
+    combined = pd.concat(frames)
+    wind_cf = combined.groupby(level=0).mean().sort_index()
+    wind_cf.name = 'wind_cf'
+
+    # Localize UTC → country timezone so the index aligns with the localized
+    # weather elsewhere in the pipeline (instant preserved, labels shift).
+    if country_timezone:
+        wind_cf.index = wind_cf.index.tz_convert(country_timezone)
+
+    _status(
+        'cf',
+        f"wind_cf source = ninja site outputs: averaged {len(used_sites)} site(s) "
+        f"× years {sorted(used_years)} ({len(wind_cf):,} hours)  "
+        f"raw annual-mean CF={float(wind_cf.mean()):.4f}",
+    )
+    return wind_cf
 
 
 def load_ember_annual_capacity_factors(
@@ -2495,6 +2669,140 @@ def calibrate_capacity_factors(
     return df_scaled
 
 
+def calibrate_wind_cf_speed_rescale(
+    weather: pd.DataFrame,
+    target_mean: float,
+    wind_speed_col: str = 'wind_speed',
+    ref_height: float = 2.0,
+    hub_height: float = 100.0,
+    roughness_length: float = 0.03,
+    k_bounds: Tuple[float, float] = (0.25, 8.0),
+    tol: float = 1e-7,
+    max_iter: int = 80,
+) -> Tuple[pd.Series, Dict[str, Any]]:
+    """Calibrate wind CF in WIND-SPEED space instead of CF space.
+
+    Solves for a scalar ``k`` such that
+    ``mean(power_curve(k * v_hub)) == target_mean`` and returns the wind CF
+    series computed from the rescaled speeds. Because the calibration acts on
+    the speed distribution *before* the power curve:
+
+      * output is bounded to [0, 1] by construction (the power curve is);
+      * the shape distortion is physical — calm hours stay near zero and the
+        ramp region stretches through the cubic power curve — rather than the
+        linear stretch of 'multiplicative' or the hour-pinning of
+        'cap_redistribute';
+      * ``k`` directly compensates the two dominant low-biases of a national
+        area-averaged wind-speed series (site-selection bias and
+        power-curve-of-the-mean averaging), which act in speed space.
+
+    See HANDOFF.md → "Weather Data Improvements" for the bias discussion.
+
+    Parameters mirror ``compute_capacity_factors_from_weather`` (the live
+    pipeline uses ref_height=2.0 for renewables.ninja files). ``k_bounds``
+    brackets the bisection; the mean CF is monotonically increasing in ``k``
+    over any realistic range.
+
+    Returns (calibrated_series, diagnostics_dict). Diagnostics use the same
+    keys the other calibration modes emit (so build_run_metrics and the
+    status printer pick them up), plus ``speed_scale_k``.
+    """
+    v_ref = pd.to_numeric(weather[wind_speed_col], errors='coerce')
+
+    def _cf_for_k(k: float) -> pd.Series:
+        scaled = weather[[wind_speed_col]].copy()
+        scaled[wind_speed_col] = v_ref * k
+        return compute_wind_capacity_factor_from_weather(
+            scaled,
+            wind_speed_col=wind_speed_col,
+            ref_height=ref_height,
+            hub_height=hub_height,
+            roughness_length=roughness_length,
+        )
+
+    base = _cf_for_k(1.0)
+    initial_mean = float(base.mean())
+    target = float(target_mean)
+
+    def _diag(series: pd.Series, k: float, iterations: int, unreachable: bool) -> Dict[str, Any]:
+        vals = pd.to_numeric(series, errors='coerce').to_numpy()
+        finite = vals[~np.isnan(vals)]
+        return {
+            'mode': 'speed_rescale',
+            'initial_mean': initial_mean,
+            'target_mean': target,
+            'initial_multiplier': (target / initial_mean) if initial_mean > 0 else float('nan'),
+            'speed_scale_k': float(k),
+            'iterations': iterations,
+            'fraction_at_cap': float(np.mean(finite >= 1.0 - 1e-6)) if finite.size else float('nan'),
+            'final_max': float(np.nanmax(vals)) if finite.size else float('nan'),
+            'residual_mean_error': float(np.nanmean(vals) - target),
+            'mean_unreachable': unreachable,
+        }
+
+    if not np.isfinite(target) or target <= 0 or not np.isfinite(initial_mean):
+        return base, _diag(base, 1.0, 0, False)
+
+    # mean CF is NOT monotone in k over the full bracket: at extreme k the
+    # rescaled speeds blow past the turbine cut-out and the mean collapses
+    # (empirically for China 2018 the mean peaks near k≈4 and falls after).
+    # So: coarse log-spaced grid to bracket the FIRST upward crossing of the
+    # target, then bisect inside that bracket. If no grid point reaches the
+    # target, return the max-mean series and flag unreachable.
+    lo, hi = float(k_bounds[0]), float(k_bounds[1])
+    grid = np.geomspace(lo, hi, 33)
+    f_grid = [float(_cf_for_k(k).mean()) for k in grid]
+    iterations = len(grid)
+    cross = None
+    for i in range(1, len(grid)):
+        if f_grid[i - 1] < target <= f_grid[i]:
+            cross = (grid[i - 1], grid[i])
+            break
+    if f_grid[0] >= target:
+        # Synthetic already above target at the lower bound; clamp there.
+        return _cf_for_k(lo), _diag(_cf_for_k(lo), lo, iterations, True)
+    if cross is None:
+        import warnings
+        k_best = float(grid[int(np.argmax(f_grid))])
+        warnings.warn(
+            f"speed_rescale: wind CF target {target:.4f} unreachable for any "
+            f"speed scale in [{lo}, {hi}] (max mean {max(f_grid):.4f} at "
+            f"k={k_best:.2f}). Returning the max-mean series — the synthetic "
+            "wind-speed product needs upstream work (see HANDOFF.md → "
+            "'Weather Data Improvements').",
+            stacklevel=2,
+        )
+        series = _cf_for_k(k_best)
+        return series, _diag(series, k_best, iterations, True)
+
+    b_lo, b_hi = cross
+    for _ in range(max_iter):
+        iterations += 1
+        mid = 0.5 * (b_lo + b_hi)
+        f_mid = float(_cf_for_k(mid).mean())
+        if abs(f_mid - target) < tol:
+            b_lo = b_hi = mid
+            break
+        if f_mid < target:
+            b_lo = mid
+        else:
+            b_hi = mid
+    k = 0.5 * (b_lo + b_hi)
+    series = _cf_for_k(k)
+    if k > 2.0:
+        import warnings
+        warnings.warn(
+            f"speed_rescale: wind-speed scale k={k:.2f} exceeds 2.0. The "
+            "calibration is bounded and shape-preserving, but a scale this "
+            "large means the underlying area-averaged wind-speed product is "
+            "far from fleet conditions — consider per-preset hub height / "
+            "power-curve updates or a fleet-weighted weather product "
+            "(HANDOFF.md → 'Weather Data Improvements').",
+            stacklevel=2,
+        )
+    return series, _diag(series, k, iterations, False)
+
+
 def _align_modeled_and_real_series(
     modeled_series: pd.Series,
     real_series: pd.Series,
@@ -2647,6 +2955,7 @@ def build_run_metrics(
     diagnostic_fields = (
         'mode',
         'initial_multiplier',
+        'speed_scale_k',          # speed_rescale mode only
         'iterations',
         'fraction_at_cap',
         'final_max',
@@ -2824,10 +3133,9 @@ def make_cluster_diagnostic_plots(
     For each of the 6 timeslices, four plots are written:
 
         <Label>_net_load.png        — net load (MW)
-        <Label>_solar_cf.png        — solar capacity factor (0–1)
-        <Label>_wind_cf.png         — wind capacity factor (0–1)
-        <Label>_normalized_load.png — total load / annual total load
-                                       (unitless; sums to 1 across the year)
+        <Label>_load.png            — total load (MW)
+        <Label>_solar_cf.png        — solar capacity factor (0–1), calibrated
+        <Label>_wind_cf.png         — wind capacity factor (0–1), calibrated
 
     Every plot shows:
         * one thin grey line per day in the cluster (low alpha)
@@ -2893,11 +3201,6 @@ def make_cluster_diagnostic_plots(
 
     # Build a tidy work frame: date + hour + variable values + label.
     work = df[required_cols].copy()
-    annual_total_load = float(pd.to_numeric(work['load'], errors='coerce').sum())
-    if annual_total_load > 0:
-        work['load_normalized'] = work['load'] / annual_total_load
-    else:
-        work['load_normalized'] = work['load']
     work['__date'] = pd.to_datetime(work.index).floor('D')
     work['__hour'] = pd.to_datetime(work.index).hour
     work['__label'] = labels.values
@@ -2919,15 +3222,70 @@ def make_cluster_diagnostic_plots(
             or timeslice_metadata.loc[ts_id].get('is_pinned_winter', False)
         )
 
-    # Variable spec: (column, y-axis label, filename suffix)
+    # Variable spec: (column, y-axis label, filename suffix). These are the
+    # calibrated / model-input series (one line per synthetic-year day). Total
+    # load is plotted in absolute MW (not normalized) for direct readability.
     variables = [
-        ('net_load',         'Net load (MW)',                                  'net_load'),
-        ('solar_cf',         'Solar capacity factor',                          'solar_cf'),
-        ('wind_cf',          'Wind capacity factor',                           'wind_cf'),
-        ('load_normalized',  'Normalized hourly load (fraction of annual)',    'normalized_load'),
+        ('net_load',  'Net load (MW)',                        'net_load'),
+        ('load',      'Total load (MW)',                      'load'),
+        ('solar_cf',  'Solar capacity factor (calibrated)',   'solar_cf'),
+        ('wind_cf',   'Wind capacity factor (calibrated)',    'wind_cf'),
     ]
 
     paths_written: "list[str]" = []
+
+    def _render_variable(
+        pivot: pd.DataFrame, ts_label: str, ts_label_safe: str, n_days: int,
+        ylabel: str, suffix: str, rep_date=None, is_pinned=False, overlay_rep=False,
+    ) -> None:
+        """Draw one per-cluster variable plot and append its path."""
+        if pivot is None or pivot.empty:
+            return
+        fig, ax = plt.subplots(figsize=(8.0, 4.5))
+
+        # Per-day curves (low alpha) — every day in the cluster as a thin grey line.
+        for _, day_row in pivot.iterrows():
+            ax.plot(range(24), day_row.values, color='0.55', linewidth=0.6, alpha=0.35)
+
+        # 25–75th percentile shaded band.
+        p25 = pivot.quantile(0.25, axis=0)
+        p75 = pivot.quantile(0.75, axis=0)
+        ax.fill_between(
+            range(24), p25.values, p75.values,
+            color='steelblue', alpha=0.18, label='25–75th pct',
+        )
+
+        # Cluster mean (dashed).
+        cluster_mean = pivot.mean(axis=0)
+        ax.plot(
+            range(24), cluster_mean.values,
+            color='steelblue', linestyle='--', linewidth=1.5, label='cluster mean',
+        )
+
+        # Rep-day overlay (red) — only requested on net_load.
+        if overlay_rep and rep_date is not None and rep_date in pivot.index:
+            rep_values = pivot.loc[rep_date].values
+            rep_label_parts = [f"rep day {rep_date.date()}"]
+            rep_label_parts.append("(pinned)" if is_pinned else "(centroid-nearest)")
+            ax.plot(
+                range(24), rep_values,
+                color='firebrick', linewidth=2.0, label=" ".join(rep_label_parts),
+            )
+
+        country_suffix = f" — {country}" if country else ""
+        ax.set_title(f"{ts_label} ({n_days} days){country_suffix}\n{ylabel}")
+        ax.set_xlabel('Hour of day (local)')
+        ax.set_ylabel(ylabel)
+        ax.set_xlim(0, 23)
+        ax.set_xticks(range(0, 24, 2))
+        ax.grid(True, alpha=0.3)
+        ax.legend(loc='best', fontsize='small', framealpha=0.85)
+        fig.tight_layout()
+
+        out_path = os.path.join(output_dir, f'{ts_label_safe}_{suffix}.png')
+        fig.savefig(out_path, dpi=110)
+        plt.close(fig)
+        paths_written.append(out_path)
 
     for ts_id in sorted(pd.unique(labels.dropna())):
         ts_id = int(ts_id)
@@ -2942,67 +3300,17 @@ def make_cluster_diagnostic_plots(
         if representative_dates and ts_id in representative_dates:
             rep_date = pd.Timestamp(representative_dates[ts_id]).floor('D')
 
+        # Calibrated / model-input variables.
         for col, ylabel, suffix in variables:
             if col not in ts_rows.columns:
                 continue
             pivot = ts_rows.pivot_table(
                 index='__date', columns='__hour', values=col, aggfunc='first',
             ).reindex(columns=range(24))
-            if pivot.empty:
-                continue
-
-            fig, ax = plt.subplots(figsize=(8.0, 4.5))
-
-            # Per-day curves (low alpha) — every day in the cluster as a thin grey line.
-            for _, day_row in pivot.iterrows():
-                ax.plot(
-                    range(24), day_row.values,
-                    color='0.55', linewidth=0.6, alpha=0.35,
-                )
-
-            # 25–75th percentile shaded band.
-            p25 = pivot.quantile(0.25, axis=0)
-            p75 = pivot.quantile(0.75, axis=0)
-            ax.fill_between(
-                range(24), p25.values, p75.values,
-                color='steelblue', alpha=0.18, label='25–75th pct',
+            _render_variable(
+                pivot, ts_label, ts_label_safe, n_days, ylabel, suffix,
+                rep_date=rep_date, is_pinned=is_pinned, overlay_rep=(col == 'net_load'),
             )
-
-            # Cluster mean (dashed).
-            cluster_mean = pivot.mean(axis=0)
-            ax.plot(
-                range(24), cluster_mean.values,
-                color='steelblue', linestyle='--', linewidth=1.5, label='cluster mean',
-            )
-
-            # Rep-day overlay (red) — only on net_load.
-            if col == 'net_load' and rep_date is not None and rep_date in pivot.index:
-                rep_values = pivot.loc[rep_date].values
-                rep_label_parts = [f"rep day {rep_date.date()}"]
-                if is_pinned:
-                    rep_label_parts.append("(pinned)")
-                else:
-                    rep_label_parts.append("(centroid-nearest)")
-                ax.plot(
-                    range(24), rep_values,
-                    color='firebrick', linewidth=2.0,
-                    label=" ".join(rep_label_parts),
-                )
-
-            country_suffix = f" — {country}" if country else ""
-            ax.set_title(f"{ts_label} ({n_days} days){country_suffix}\n{ylabel}")
-            ax.set_xlabel('Hour of day (local)')
-            ax.set_ylabel(ylabel)
-            ax.set_xlim(0, 23)
-            ax.set_xticks(range(0, 24, 2))
-            ax.grid(True, alpha=0.3)
-            ax.legend(loc='best', fontsize='small', framealpha=0.85)
-            fig.tight_layout()
-
-            out_path = os.path.join(output_dir, f'{ts_label_safe}_{suffix}.png')
-            fig.savefig(out_path, dpi=110)
-            plt.close(fig)
-            paths_written.append(out_path)
 
     return paths_written
 
@@ -3203,6 +3511,9 @@ def generate_full_pipeline_for_country(
     country_timezone: Optional[str] = None,
     allow_utc_weather: bool = False,
     cf_calibration_mode: str = 'cap_redistribute',
+    wind_cf_source: str = 'weather',
+    wind_sites_dir: Optional[str] = None,
+    wind_cf_years: Optional[int] = None,
     make_plots: bool = True,
     compare_pinned_unpinned: bool = False,
     calibration_only: bool = False,
@@ -3441,12 +3752,12 @@ def generate_full_pipeline_for_country(
             _zapata_weather.index = _zapata_weather.index.tz_convert(country_timezone)
         if _zapata_weather.index.tz is not None:
             _zapata_weather.index = _zapata_weather.index.tz_localize(None)
-        _zapata_weather = _zapata_weather[_zapata_weather.index.year == year]
-        if _zapata_weather.empty:
-            raise ValueError(
-                f"No weather rows for {country_iso2} year {year}; cannot build Zapata basis. "
-                "Verify data/weather/ninja-weather-country-{ISO2}-*.csv covers the target year."
-            )
+        _zapata_weather, _zw_src_year, _zw_relabeled = _zapata_weather_for_year(
+            _zapata_weather, year, df_synthetic.index)
+        if _zw_relabeled:
+            _status('calibrate-load',
+                    f"target year {year} is beyond the weather archive; using {_zw_src_year} "
+                    f"weather relabeled to {year} for the Zapata shape")
         _status(
             'calibrate-load',
             f"building Zapata hybrid basis  ({len(_zapata_weather):,} hours × stylized funcs)",
@@ -3509,11 +3820,12 @@ def generate_full_pipeline_for_country(
             _zapata_weather.index = _zapata_weather.index.tz_convert(country_timezone)
         if _zapata_weather.index.tz is not None:
             _zapata_weather.index = _zapata_weather.index.tz_localize(None)
-        _zapata_weather = _zapata_weather[_zapata_weather.index.year == year]
-        if _zapata_weather.empty:
-            raise ValueError(
-                f"No weather rows for {country_iso2} year {year}; cannot build Zapata basis."
-            )
+        _zapata_weather, _zw_src_year, _zw_relabeled = _zapata_weather_for_year(
+            _zapata_weather, year, df_synthetic.index)
+        if _zw_relabeled:
+            _status('calibrate-load',
+                    f"target year {year} is beyond the weather archive; using {_zw_src_year} "
+                    f"weather relabeled to {year} for the Zapata shape")
         _status('calibrate-load',
                 f"building Zapata hybrid basis  ({len(_zapata_weather):,} hours × stylized funcs)")
         _df_basis_raw = build_zapata_hybrid_basis(
@@ -3688,6 +4000,51 @@ def generate_full_pipeline_for_country(
         t=_t,
     )
 
+    # --- Wind CF source override: Renewables.ninja per-site simulation outputs ---
+    # For presets with wind_cf_source='ninja_sites' (China + South Korea as of
+    # 2026-07-10), replace the 2 m-weather-derived wind_cf with the site-averaged
+    # hub-height simulation output. The 2 m weather variable has an inverted
+    # diurnal cycle vs hub height and is unusable for wind shape (see
+    # DECISIONS.md 2026-07-10); the site outputs are the correct wind shape.
+    # Solar is unchanged.
+    #
+    # Wind uses its OWN multi-year window (wind_cf_years, decoupled from the
+    # demand/CF last_n_years window): the site archive is a weather climatology
+    # and benefits from more years regardless of the model target year. We
+    # reduce the selected site-years to a (day-of-year, hour) climatology and map
+    # it onto cf_df's calendar. This also removes the UTC↔local boundary gap: a
+    # single site-year's tz-shifted tail wraps around to fill the year's opening
+    # hours, so every (doy, hour) cell is populated.
+    if wind_cf_source == 'ninja_sites':
+        _wind_years = wind_cf_years if wind_cf_years is not None else last_n_years
+        site_wind_cf = load_site_wind_capacity_factors(
+            country_iso2, _wind_years,
+            sites_dir=wind_sites_dir, country_timezone=country_timezone,
+        )
+        _sidx = site_wind_cf.index
+        clim = site_wind_cf.groupby([_sidx.dayofyear, _sidx.hour]).mean()
+        _keys = list(zip(cf_df.index.dayofyear, cf_df.index.hour))
+        aligned = pd.Series(clim.reindex(_keys).to_numpy(), index=cf_df.index)
+        n_missing = int(aligned.isna().sum())
+        if n_missing:
+            # Only possible if a (doy, hour) cell is entirely absent across all
+            # selected site-years (e.g. cf_df includes leap-day Feb 29 but no
+            # site-year is a leap year). Fill by time-interpolation.
+            aligned = aligned.interpolate(method='time', limit_direction='both').ffill().bfill()
+            _status(
+                'cf',
+                f"  wind_cf: filled {n_missing} (doy,hour) cell(s) "
+                f"({100 * n_missing / len(aligned):.2f}%) absent from the site-year climatology",
+            )
+        cf_df['wind_cf'] = aligned.to_numpy()
+        _wind_raw_mean = float(pd.to_numeric(cf_df['wind_cf'], errors='coerce').mean())
+        _status(
+            'cf',
+            f"replaced weather-derived wind_cf with ninja site outputs "
+            f"(wind_cf_years={_wind_years}, doy×hour climatology; "
+            f"raw annual-mean CF={_wind_raw_mean:.4f})",
+        )
+
     # Step 4: Calibrate capacity factors using Ember statistics
     capacities, observed_cf = load_ember_annual_capacity_factors(
         ember_csv_path, country=ember_country_name, variables=['Solar', 'Wind'], last_n_years=last_n_years
@@ -3699,12 +4056,76 @@ def generate_full_pipeline_for_country(
         f"Ember targets for {country_iso2}: solar={_solar_target:.4f}  wind={_wind_target:.4f}  "
         f"(calibration mode = {cf_calibration_mode})",
     )
-    cf_scaled = calibrate_capacity_factors(
-        cf_df,
-        observed_cf,
-        rename_map={'Solar': 'solar_cf', 'Wind': 'wind_cf'},
-        mode=cf_calibration_mode,
-    )
+    if wind_cf_source == 'ninja_sites':
+        # Wind CF already comes from hub-height site simulation outputs, so the
+        # speed_rescale path does not apply (there is no wind-speed series to
+        # rescale). Calibrate the wind annual mean to the Ember target with
+        # cap_redistribute (bounded [0, 1]); solar keeps the requested mode,
+        # falling back to cap_redistribute if the run selected speed_rescale.
+        _solar_mode = 'cap_redistribute' if cf_calibration_mode == 'speed_rescale' else cf_calibration_mode
+        cf_scaled = calibrate_capacity_factors(
+            cf_df,
+            {k: v for k, v in observed_cf.items() if k == 'Solar'},
+            rename_map={'Solar': 'solar_cf'},
+            mode=_solar_mode,
+        )
+        _wind_target = observed_cf.get('Wind')
+        if _wind_target is not None and np.isfinite(float(_wind_target)):
+            _wind_cal = calibrate_capacity_factors(
+                cf_df,
+                {'Wind': float(_wind_target)},
+                rename_map={'Wind': 'wind_cf'},
+                mode='cap_redistribute',
+            )
+            cf_scaled['wind_cf'] = _wind_cal['wind_cf']
+            _diags = dict(cf_scaled.attrs.get('calibration_diagnostics', {}))
+            _wd = _wind_cal.attrs.get('calibration_diagnostics', {}).get('wind_cf')
+            if _wd:
+                _diags['wind_cf'] = _wd
+            cf_scaled.attrs['calibration_diagnostics'] = _diags
+            _status(
+                'cf',
+                f"  wind_cf: site-output CF calibrated to Ember target "
+                f"{float(_wind_target):.4f} (cap_redistribute)",
+            )
+        else:
+            cf_scaled['wind_cf'] = cf_df['wind_cf']
+            _status('cf', "  wind_cf: site-output CF used uncalibrated (no Ember wind target)")
+    elif cf_calibration_mode == 'speed_rescale':
+        # Wind is calibrated in wind-speed space (physical shape, bounded by
+        # the power curve — see calibrate_wind_cf_speed_rescale). Solar keeps
+        # cap_redistribute: its multiplier is near 1 in practice and there is
+        # no equivalent "speed" to rescale for irradiance.
+        cf_scaled = calibrate_capacity_factors(
+            cf_df,
+            {k: v for k, v in observed_cf.items() if k == 'Solar'},
+            rename_map={'Solar': 'solar_cf'},
+            mode='cap_redistribute',
+        )
+        _wind_target = observed_cf.get('Wind')
+        if _wind_target is not None and np.isfinite(float(_wind_target)):
+            _wind_series, _wind_diag = calibrate_wind_cf_speed_rescale(
+                weather_year,
+                float(_wind_target),
+                wind_speed_col='wind_speed',
+                roughness_length=roughness_length,
+            )
+            cf_scaled['wind_cf'] = _wind_series
+            _diags = dict(cf_scaled.attrs.get('calibration_diagnostics', {}))
+            _diags['wind_cf'] = _wind_diag
+            cf_scaled.attrs['calibration_diagnostics'] = _diags
+            _status(
+                'cf',
+                f"  wind_cf: speed_rescale k={_wind_diag['speed_scale_k']:.3f} "
+                f"(replaces CF-space multiplier {_wind_diag['initial_multiplier']:.2f}×)",
+            )
+    else:
+        cf_scaled = calibrate_capacity_factors(
+            cf_df,
+            observed_cf,
+            rename_map={'Solar': 'solar_cf', 'Wind': 'wind_cf'},
+            mode=cf_calibration_mode,
+        )
     # Surface the per-column calibration diagnostics inline so the user
     # sees the multiplier and the fraction-at-cap at the moment they
     # matter, without having to open the metrics CSV.
@@ -4733,6 +5154,68 @@ def _zapata_broadcast_occupancy(
 ) -> np.ndarray:
     """Pick the right HETUS profile per hour based on day-of-week."""
     return np.where(is_weekend, profile_weekend[hours], profile_weekday[hours])
+
+
+def _zapata_weather_for_year(
+    weather_naive: pd.DataFrame,
+    target_year: int,
+    mendeley_index: pd.DatetimeIndex,
+) -> Tuple[pd.DataFrame, int, bool]:
+    """Return weather aligned to the Mendeley target-year calendar for the
+    Zapata basis, falling back to a proxy year when the target is out of range.
+
+    The Renewables.ninja weather archive ends in a fixed year (currently 2024),
+    but non-US presets can target a later year (e.g. South Korea's 2025). The
+    Zapata regeneration only needs a representative weather *year* for the
+    climate-sensitive shape, so when the target year is not fully covered we use
+    the most recent full weather year and relabel its calendar to the target
+    year (matching by month/day/hour). Years already in the archive (e.g. China
+    2018) resolve to themselves and are unaffected.
+
+    Parameters
+    ----------
+    weather_naive : DataFrame
+        Weather on a naive (tz-stripped) local-time hourly index spanning many
+        years (must include a ``temperature`` column).
+    target_year : int
+        The run's target year (the Mendeley demand-shape year).
+    mendeley_index : DatetimeIndex
+        The Mendeley target-year hourly index to align onto.
+
+    Returns
+    -------
+    (DataFrame, int, bool)
+        Weather reindexed to ``mendeley_index``; the source weather year used;
+        and whether a proxy year was substituted (True) or the target year was
+        used directly (False).
+    """
+    yr_counts = weather_naive.index.year.value_counts()
+    full_years = sorted(y for y, n in yr_counts.items() if n >= 8760)
+    if not full_years:
+        raise ValueError(
+            "No full weather year available to build the Zapata basis "
+            f"(archive years: {sorted(int(y) for y in yr_counts.index)})."
+        )
+    if target_year in full_years:
+        src_year, relabeled = int(target_year), False
+    else:
+        earlier = [y for y in full_years if y <= target_year]
+        src_year, relabeled = int(earlier[-1] if earlier else full_years[-1]), True
+
+    src = weather_naive[weather_naive.index.year == src_year]
+    # Align by (month, day, hour) so the proxy year maps onto the target-year
+    # calendar regardless of leap-year differences.
+    src_keyed = src.set_axis(
+        pd.MultiIndex.from_arrays([src.index.month, src.index.day, src.index.hour])
+    )
+    mkey = list(zip(mendeley_index.month, mendeley_index.day, mendeley_index.hour))
+    out = src_keyed.reindex(mkey)
+    out.index = mendeley_index
+    if out['temperature'].isna().any():
+        # Residual gap only if the target calendar has a day the proxy lacks
+        # (e.g. a leap-day target against a non-leap proxy). Fill smoothly.
+        out = out.interpolate(method='time', limit_direction='both').ffill().bfill()
+    return out, src_year, relabeled
 
 
 def build_zapata_hybrid_basis(
@@ -6991,6 +7474,138 @@ def export_to_excel(
         )
 
 
+def export_workbook_source_csvs(
+    df: pd.DataFrame,
+    labels: pd.Series,
+    timestamps: pd.Series,
+    timeslice_metadata: pd.DataFrame,
+    cf_cols: Iterable[str],
+    load_cols: Iterable[str],
+    root_output_dir: str,
+) -> None:
+    """Write workbook-source CSVs matching the eps-us xlsx source-tab format.
+
+    These are the hourly source-of-record files a self-contained SHELF/SYSHECF
+    workbook (build-input-xlsx pattern) consumes — one row per hour with
+    derived day_of_year / hour_of_day / slice columns at the right, mirroring
+    the "ResStock national source" and "Cambium hourly source" tab layouts in
+    the eps-us workbooks. Written to <root_output_dir>/workbook_sources/:
+
+      demand_hourly_source.csv   timestamp + raw end-use demand columns +
+                                 day_of_year / hour_of_day / slice. Category
+                                 resolution (direct / sum / template_split per
+                                 EPS_SHELF_FILE_MAP) stays in the workbook
+                                 formulas — split categories cannot be
+                                 represented as single pre-resolved hourly
+                                 columns under the representative-day math.
+      cf_hourly_source.csv       timestamp, load, net_load, solar/wind gen +
+                                 cf columns, derived columns, then one
+                                 CF_<tech> column per SYSHECF tech: hourly
+                                 series for pipeline-derived techs (solar-pv,
+                                 solar-pv-dist, onshore/offshore-wind),
+                                 template tables expanded to hourly via each
+                                 hour's (slice, hour_of_day) for the rest, so
+                                 every SYSHECF tab derives from this one tab.
+      clustering.csv             DOY → slice map plus per-slice days and
+                                 representative-day DOY (first six rows).
+      annual_category_totals.csv informational annual MWh per demand column.
+
+    The invariant (checked by scripts/verify_workbook_sources.py): the
+    representative-day math applied to these CSVs reproduces the exported
+    SHELF-*.csv / SYSHECF-*.csv files exactly.
+    """
+    src_dir = os.path.join(root_output_dir, 'workbook_sources')
+    os.makedirs(src_dir, exist_ok=True)
+
+    label_map = build_eps_timeslice_label_map(timeslice_metadata)
+    n = len(df)
+    ts = pd.to_datetime(pd.Series(timestamps).reset_index(drop=True))
+    try:
+        if ts.dt.tz is not None:
+            ts = ts.dt.tz_localize(None)
+    except (TypeError, AttributeError):
+        pass
+    ts_txt = ts.dt.strftime('%Y-%m-%d %H:%M')
+    doy = np.arange(n) // 24 + 1
+    hod = np.arange(n) % 24
+    slice_names = pd.Series(labels).reset_index(drop=True).map(label_map.to_dict())
+
+    load_cols = [c for c in load_cols if c in df.columns]
+    cf_cols = [c for c in cf_cols if c in df.columns]
+
+    # ---- demand_hourly_source.csv ----
+    demand = pd.DataFrame({'timestamp': ts_txt})
+    for c in load_cols:
+        demand[c] = pd.to_numeric(df[c], errors='coerce').to_numpy()
+    demand['day_of_year'] = doy
+    demand['hour_of_day'] = hod
+    demand['slice'] = slice_names.to_numpy()
+    demand.to_csv(os.path.join(src_dir, 'demand_hourly_source.csv'), index=False)
+
+    # ---- cf_hourly_source.csv ----
+    cf = pd.DataFrame({'timestamp': ts_txt})
+    for c in ['load', 'net_load', 'solar_gen', 'wind_gen', *cf_cols]:
+        if c in df.columns and c not in cf.columns:
+            cf[c] = pd.to_numeric(df[c], errors='coerce').to_numpy()
+    cf['day_of_year'] = doy
+    cf['hour_of_day'] = hod
+    cf['slice'] = slice_names.to_numpy()
+    slice_idx = slice_names.map(
+        {s: i for i, s in enumerate(EPS_TIMESLICE_ORDER)}
+    )
+    for file_name, spec in EPS_SYSHECF_FILE_MAP.items():
+        tech = file_name[len('SYSHECF-'):]
+        if isinstance(spec, dict) and spec.get('mode') == 'direct' \
+                and spec.get('column') in df.columns:
+            series = pd.to_numeric(df[spec['column']], errors='coerce').to_numpy()
+            cf[f'CF_{tech}'] = series * float(spec.get('multiplier', 1.0))
+        else:
+            csv_path = os.path.join(root_output_dir, 'SYSHECF', f'{file_name}.csv')
+            if not os.path.exists(csv_path):
+                continue
+            tbl = _load_existing_eps_csv(csv_path).reindex(
+                index=EPS_TIMESLICE_ORDER, columns=EPS_HOUR_COLUMNS)
+            vals = tbl.to_numpy(dtype=float)
+            expanded = np.full(n, np.nan)
+            ok = slice_idx.notna().to_numpy()
+            expanded[ok] = vals[slice_idx[ok].astype(int).to_numpy(), hod[ok]]
+            cf[f'CF_{tech}'] = expanded
+    cf.to_csv(os.path.join(src_dir, 'cf_hourly_source.csv'), index=False)
+
+    # ---- clustering.csv ----
+    days_by_label: Dict[str, int] = {}
+    rep_doy_by_label: Dict[str, Optional[int]] = {}
+    day_dates = ts.iloc[::24].dt.normalize().reset_index(drop=True)
+    for ts_num, eps_label in label_map.items():
+        days_by_label[eps_label] = int(
+            timeslice_metadata.loc[int(ts_num), 'days_represented'])
+        rep_doy_by_label[eps_label] = None
+        rep_raw = timeslice_metadata.loc[int(ts_num)].get('representative_date')
+        if rep_raw is not None and not pd.isna(rep_raw):
+            match = day_dates[day_dates == pd.Timestamp(rep_raw).normalize()]
+            if not match.empty:
+                rep_doy_by_label[eps_label] = int(match.index[0]) + 1
+    n_days = n // 24
+    clus = pd.DataFrame({
+        'doy': list(range(1, n_days + 1)),
+        'slice': [slice_names.iloc[(d - 1) * 24] for d in range(1, n_days + 1)],
+    })
+    slice_order = [s for s in EPS_TIMESLICE_ORDER if s in days_by_label]
+    clus['slice_name'] = pd.Series(slice_order).reindex(clus.index)
+    clus['days'] = pd.Series([days_by_label[s] for s in slice_order]).reindex(clus.index)
+    clus['rep_doy'] = pd.Series([rep_doy_by_label[s] for s in slice_order]).reindex(clus.index)
+    clus.to_csv(os.path.join(src_dir, 'clustering.csv'), index=False)
+
+    # ---- annual_category_totals.csv (informational) ----
+    totals = pd.DataFrame({
+        'column': load_cols,
+        'annual_MWh': [float(pd.to_numeric(df[c], errors='coerce').sum())
+                       for c in load_cols],
+    })
+    totals.to_csv(os.path.join(src_dir, 'annual_category_totals.csv'), index=False)
+    print(f"Workbook-source CSVs written to '{src_dir}'.")
+
+
 def run_pipeline(
     df: pd.DataFrame,
     load_col: str,
@@ -7121,6 +7736,24 @@ def run_pipeline(
             timeslice_metadata=timeslice_metadata,
             run_metadata=run_metadata,
         )
+        # Workbook-source CSVs (eps-us source-tab format) alongside the EPS
+        # CSVs. Runs after export_to_excel so the SYSHECF template CSVs exist
+        # for CF_<tech> expansion. Auxiliary output — a failure here should
+        # not kill the run, but it should be loud.
+        try:
+            eps_root = f'{os.path.splitext(output_path)[0]}_EPS'
+            if os.path.isdir(eps_root):
+                export_workbook_source_csvs(
+                    df=df,
+                    labels=labels,
+                    timestamps=timestamps,
+                    timeslice_metadata=timeslice_metadata,
+                    cf_cols=list(cf_cols),
+                    load_cols=list(load_cols),
+                    root_output_dir=eps_root,
+                )
+        except Exception as exc:  # pragma: no cover - defensive
+            print(f"WARNING: workbook-source CSV export failed: {exc!r}")
     if return_details:
         return {
             'capacity_factors': cf_df,

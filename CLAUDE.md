@@ -38,6 +38,15 @@ model, dropped into `eps-us/InputData/elec/SHELF/` and
 - **Variable techs** (solar-pv, solar-pv-dist, solar-thermal, onshore-wind, offshore-wind, hydro, pumped-hydro, nuclear, combined-cycle, natural-gas-peaker, hard-coal, biomass, geothermal, petroleum): **Cambium hourly** `*_MWh / *_MW` from the annual file.
 - **Non-variable techs** (lignite, lignite-CCS, hydrogen-CC, hydrogen-CT, SMR, MSW, steam-turbine, combined-cycle-CCS, hard-coal-CCS, heavy-or-residual-oil, crude-oil): legacy templates in eps-us, do not overwrite.
 
+### Non-US wind CF source — use Renewables.ninja *site simulation output*, NOT the 2 m weather variable
+
+For non-US presets the wind CF comes from `energy_timeslice_pipeline.py`, not Cambium. Two sources exist:
+
+- ❌ **2 m `wind_speed` weather product** (`ninja-weather-country-*-wind_speed_*.csv`), extrapolated to hub height in `compute_wind_capacity_factor_from_weather`. The MERRA-2 2 m field (U2M/V2M) has an **inverted diurnal cycle** vs hub height (afternoon max instead of overnight max) and forces huge calibration multipliers (China 7.18×). Do **not** use it for wind shape. (Solar still uses the ninja weather product — that's fine.)
+- ✅ **Per-site wind *simulation* output** — hub-height, power-curve, bias-corrected. Fetch with `scripts/fetch_ninja_sites.py` (token-auth API; sites/years editable at the top) → `data/weather/ninja_sim/<ISO2>/<site>_<year>.csv`, where `electricity` (fetched with `capacity=1`) IS the hourly CF. Averaged across sites by `load_site_wind_capacity_factors`, reduced to a **day-of-year × hour climatology**, converted UTC→preset timezone, mapped onto the run calendar, and calibrated to the **Ember** annual wind CF (`cap_redistribute`).
+
+Enable per preset with `wind_cf_source: 'ninja_sites'` (default `'weather'`). **China and South Korea** use `ninja_sites` as of 2026-07-10 (see DECISIONS.md). The wind window is **decoupled from `last_n_years`** (which governs demand + Ember): wind uses its own `wind_cf_years` (preset key; runner override `WIND_CF_YEARS` in `run_pipeline.py`), defaulting to **7** (= 2018–2024, the site archive). The loader takes the most recent `n_years` available on disk, so a preset can request 7 even if fewer years are fetched (uses what exists, reports the shortfall). Other countries still use the 2 m path pending their own site downloads. Caveats for staff review: placeholder site coordinates must be replaced with verified fleet-region coordinates; and a single blended `wind_cf` currently feeds BOTH onshore- and offshore-wind SYSHECF (per-tech site separation is a follow-up).
+
 ### EIA annual CF calibration targets
 
 **National pipeline uses EIA Table 4.8.B (national capacity-weighted) targets.** State pipeline uses **state-specific EIA CFs from EIA State Electricity Profiles** (Sheet 15 + Sheet 19, 2024 column), pulled by `scripts/fetch_eia_state_cfs.py` and stored in `data/eia_state_cfs.csv`. State pipeline auto-loads per-state targets via `state_iso2` key.

@@ -112,7 +112,8 @@
       "Bash(python \"C:/Users/CLAIRE~1/AppData/Local/Temp/claude/C--Users-Claire-Trevisan-GitHub-Global-Electricity-File-Creator/a342d72e-41b1-4ba8-b9d3-8ba11cc8cc65/scratchpad/run_china_test.py\")",
       "Bash(grep -q \"CHINA RUN COMPLETE\" \"C:/Users/CLAIRE~1/AppData/Local/Temp/claude/C--Users-Claire-Trevisan-GitHub-Global-Electricity-File-Creator/a342d72e-41b1-4ba8-b9d3-8ba11cc8cc65/scratchpad/china_plots.log\")",
       "Bash(break)",
-      "Bash(grep -iE \"wrote.*diagnostic plots|COMPLETE\" \"C:/Users/CLAIRE~1/AppData/Local/Temp/claude/C--Users-Claire-Trevisan-GitHub-Global-Electricity-File-Creator/a342d72e-41b1-4ba8-b9d3-8ba11cc8cc65/scratchpad/china_plots.log\")"
+      "Bash(grep -iE \"wrote.*diagnostic plots|COMPLETE\" \"C:/Users/CLAIRE~1/AppData/Local/Temp/claude/C--Users-Claire-Trevisan-GitHub-Global-Electricity-File-Creator/a342d72e-41b1-4ba8-b9d3-8ba11cc8cc65/scratchpad/china_plots.log\")",
+      "Bash(timeout 300 python run_pipeline.py)"
     ]
   }
 }

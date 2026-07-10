@@ -46,7 +46,7 @@ except Exception:
 #
 # Run the pipeline once to see the full preset table printed to the console.
 # Aliases work too (e.g. 'KR', 'kor', 'southkorea' all resolve to South Korea).
-COUNTRY = 'USA'
+COUNTRY = 'South Korea'
 
 # Target year for the synthetic representative-day output.
 #
@@ -198,7 +198,24 @@ SOLAR_ORIENTATION_FACTOR = 1.1
 # Surface roughness length (meters) used to scale wind speed from 10 m
 # (renewables.ninja default) to hub height. 0.03 ≈ open countryside.
 # Higher values → more wind shear → lower hub-height speeds.
+# Only used by the legacy 2 m-weather wind path (wind_cf_source='weather').
 WIND_ROUGHNESS_LENGTH = 0.03
+
+# Number of most-recent available site-years to average for wind CF, for
+# presets whose wind_cf_source='ninja_sites' (China, South Korea). This is
+# DECOUPLED from LAST_N_YEARS (which governs demand + Ember calibration): the
+# ninja per-site archive is a weather climatology and benefits from more years
+# regardless of the model target year. The pipeline reduces the selected
+# site-years to a day-of-year × hour climatology and maps it onto the run's
+# calendar.
+#
+#   None (recommended) — use the country preset's wind_cf_years (China/KR = 7).
+#   <int>              — override for this run (e.g. 3 to use the 3 most recent
+#                        available site-years). If fewer years exist on disk,
+#                        all available are used and the run reports the shortfall.
+#
+# Ignored for presets using wind_cf_source='weather' (the 2 m path).
+WIND_CF_YEARS = None
 
 # Capacity factor calibration mode for scaling synthetic solar/wind
 # capacity factors so their annual mean matches the value reported by
@@ -210,6 +227,19 @@ WIND_ROUGHNESS_LENGTH = 0.03
 #                       yield CF values > 1.0)
 #       all others    → 'cap_redistribute'
 #     A non-None value here overrides the preset for this run.
+#
+#   'speed_rescale' — calibrate WIND in wind-speed space: solve for the
+#       scalar k such that mean(power_curve(k × hub-height speed)) equals
+#       the Ember target, then recompute the wind CF series from the
+#       rescaled speeds. Bounded by the power curve (no hours pinned at
+#       1.0), and the shape distortion is physical (calm hours stay near
+#       zero; the ramp region stretches through the cubic power curve)
+#       rather than a linear stretch. Directly compensates the two
+#       dominant low-biases of area-averaged national wind speeds
+#       (site-selection bias + power-curve-of-the-mean). Solar falls back
+#       to cap_redistribute under this mode. Recommended when the implied
+#       wind multiplier is large; see HANDOFF.md → "Weather Data
+#       Improvements".
 #
 #   'cap_redistribute' — multiply, clip values >1
 #       to 1.0, then redistribute the clipped energy across unsaturated
@@ -228,7 +258,14 @@ WIND_ROUGHNESS_LENGTH = 0.03
 # synthetic shape itself needs upstream tuning (hub height, roughness
 # length, power-curve assumptions). See HANDOFF.md → "Weather Data
 # Improvements" for the full discussion.
-CF_CALIBRATION_MODE = None  # None = preset default; or 'cap_redistribute' / 'multiplicative'
+#
+# NOTE: presets with wind_cf_source='ninja_sites' (e.g. China) take their
+# wind CF from Renewables.ninja per-site simulation outputs and calibrate
+# wind to the Ember target with cap_redistribute REGARDLESS of this setting
+# (speed_rescale is inapplicable — there is no wind-speed series for site
+# CFs). This setting still governs SOLAR for those presets, and both solar
+# and wind for all 'weather'-source presets. See DECISIONS.md 2026-07-10.
+CF_CALIBRATION_MODE = None  # None = preset default; or 'speed_rescale' / 'cap_redistribute' / 'multiplicative'
 
 
 # ============================================================================
@@ -302,7 +339,8 @@ VERBOSITY = 'normal'
 # ============================================================================
 
 # When True, the pipeline writes 24 PNG plots per run (6 timeslices × 4
-# variables: net_load, solar_cf, wind_cf, normalized hourly load) under
+# variables: net_load, load, solar_cf, wind_cf — all in native units; load
+# is absolute MW, not normalized) under
 # ``output/<country>_timeslice_results_plots/``. Each plot shows every day
 # in that cluster as a thin grey line, plus a 25–75th percentile band and
 # the cluster-mean profile. On the ``net_load`` plot only, the cluster's
@@ -413,6 +451,7 @@ def main() -> None:
         'dataset': WEATHER_DATASET,
         'orientation_factor': SOLAR_ORIENTATION_FACTOR,
         'roughness_length': WIND_ROUGHNESS_LENGTH,
+        'wind_cf_years': WIND_CF_YEARS,
         'use_cache': USE_CACHE,
         'cache_dir': _effective_cache_dir(),
         'cf_calibration_mode': CF_CALIBRATION_MODE,
