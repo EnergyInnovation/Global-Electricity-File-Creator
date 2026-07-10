@@ -8,6 +8,232 @@ See `CLAUDE.md` for the canonical methodology that these decisions inform.
 
 ---
 
+## 2026-07-10 — Wind CF from Renewables.ninja per-site simulation outputs (China)
+
+### Context
+The non-US wind CF was built from the Renewables.ninja **weather** product — the 2 m
+`wind_speed` variable — extrapolated to hub height with a log-shear profile and pushed
+through a cubic power curve (`compute_wind_capacity_factor_from_weather`). QC of the raw
+2 m series (`data/weather/wind speeds qc.xlsx`; full-record check across CN/KR/US)
+confirmed the 2 m field has the **textbook near-surface diurnal cycle — afternoon max,
+pre-dawn min** — which is *inverted* relative to turbine hub height (~100 m), where land
+wind peaks overnight (nocturnal boundary-layer decoupling / low-level jet). This is a
+MERRA-2 variable-choice issue, not a bug: U2M/V2M is a 2 m diagnostic dominated by surface
+stability and carries none of the hub-height behavior. Extrapolating it up cannot recover
+the correct time-of-day shape, and the calibration multipliers it forced were large
+(China 7.18×; see 2026-07-08 entry). The area-weighting further dilutes toward non-windy
+land rather than the actual fleet.
+
+### Decision
+For wind, stop translating 2 m wind speed to CF. Instead read the Renewables.ninja **wind
+simulation output** for hand-picked sites in the main wind regions (hub-height, power-curve,
+bias-corrected), average across sites, and use the `electricity` column (fetched with
+`capacity=1`, so it IS the hourly CF) as `wind_cf`. **Solar is unchanged** (still the
+weather product). Starting with **China**.
+
+- New fetcher: `scripts/fetch_ninja_sites.py` — token-auth bulk download of the per-site
+  wind API, one CSV per (site, year), 2018–2024, cached/resumable. China sites (7 onshore
+  bases + 3 coastal offshore placeholders) live in `data/weather/ninja_sim/CN/`.
+- New loader: `energy_timeslice_pipeline.load_site_wind_capacity_factors(iso2, n_years,
+  sites_dir, country_timezone)` — selects the most recent `n_years` of site data actually
+  present on disk, averages all site×year `electricity` series at each **UTC** hour, then
+  `tz_convert`s to the preset timezone so it aligns with the localized weather.
+- **Wind window is decoupled from the demand window** (amended same day — see below): wind
+  uses its own `wind_cf_years` (default 7 = all of 2018–2024), independent of `last_n_years`
+  (demand + Ember). The multi-year series is reduced to a day-of-year × hour climatology and
+  mapped onto the run's calendar, so wind and demand need not use the same number of years.
+- New preset keys: `wind_cf_source` (`'weather'` default | `'ninja_sites'`),
+  `wind_sites_dir`, and `wind_cf_years`. **China and South Korea** set to `'ninja_sites'`
+  with `wind_cf_years=7`. Runner override: `WIND_CF_YEARS` in `run_pipeline.py`.
+- Calibration: site CF gives the **shape**; the annual mean is still calibrated to the
+  **Ember** national wind CF via `cap_redistribute` (staff decision 2026-07-10, matching the
+  US→EIA / non-US→Ember convention). The `ninja_sites` branch runs *before* the
+  `speed_rescale` dispatch and takes precedence over it (speed_rescale is inapplicable —
+  there is no wind-speed series for site CFs). Solar keeps the run's requested mode.
+
+### Rationale
+The site simulation output is the physically correct wind source: sheared to hub height and
+bias-corrected against Global Wind Atlas / observations, so its diurnal and seasonal shape
+is right where the 2 m product's is inverted. Averaging real fleet-region sites captures
+siting; Ember calibration corrects the remaining prime-site high bias in the annual level.
+UTC→local conversion keeps the wind index consistent with the localized demand/SHELF side.
+
+### Affected files / variables
+- `energy_timeslice_pipeline.py`: new `DEFAULT_WIND_SITES_DIR`,
+  `load_site_wind_capacity_factors`; `wind_cf_source` + `wind_sites_dir` params on
+  `generate_full_pipeline_for_country`; pass-through in `generate_full_pipeline_for_preset`;
+  wind-CF swap after `compute_capacity_factors_from_weather`; new leading calibration branch;
+  China preset keys.
+- `scripts/fetch_ninja_sites.py` (new), `scripts/plot_wind_sites.py` (new country-generic QC map).
+- Legacy 2 m path (`compute_wind_capacity_factor_from_weather`, `speed_rescale`) untouched
+  and still the default for every other preset (`wind_cf_source='weather'`).
+
+### Effect on model output
+Verified end-to-end China 2018 run (with `CF_CALIBRATION_MODE='speed_rescale'` deliberately
+set, to confirm the new branch overrides it). Site-averaged raw wind CF = 0.368 across 7
+onshore sites; 8 boundary hours (0.09%) filled at the tz-offset window edge; Ember
+calibration scaled the annual mean to the target 0.2181 with a **0.59× multiplier**
+(vs the old 7.18× *up*-scale), residual +0.0000, 0% of hours pinned at cap. Resulting
+onshore-wind SYSHECF now **peaks in the evening/overnight** (Summer hr 22, Fall hr 23,
+Summer-Peak hr 18) and is seasonally winter-heavy (Winter 0.374 vs Summer 0.132) — the
+correct hub-height climatology — vs the old 2 m path that peaked hr 11–15 with Spring pinned
+at CF = 1.000. days_per_timeslice = 96/65/69/119/9/7 (sums to 365). Only China is switched;
+all other presets are bit-identical. **All values are inputs for staff review** — the
+placeholder site coordinates and the keep-Ember-calibration choice should be verified
+against primary sources before use. Offshore CN sites and other countries (start with KR)
+are follow-ups.
+
+### Amendment (2026-07-10, same day) — decouple wind years via `wind_cf_years`; enable KR
+The initial cut tied the wind window to the demand `last_n_years` (China = 1 year, 2018).
+Superseded: wind now has its own `wind_cf_years` (preset key; runner override `WIND_CF_YEARS`),
+defaulting to **7** for China and South Korea, independent of `last_n_years`. The loader takes
+`n_years` and selects the most recent `n_years` **available** site-years (the ninja archive is
+a weather climatology, not anchored to the model year); the multi-year series is reduced to a
+day-of-year × hour climatology and mapped onto the run's calendar (which also removes the
+UTC↔local boundary gap — the tz-shifted year tail wraps to fill opening hours, 0 NaN).
+**South Korea** enabled with the same settings (KR currently has only 2022 on disk, so it
+uses whatever years are present until more are fetched). China's full archive is now on disk:
+**10 sites** (7 onshore + 3 offshore) × 2018–2024. Note the single blended `wind_cf` still
+feeds BOTH onshore- and offshore-wind SYSHECF tables (offshore sites are now mixed into the
+onshore table); per-tech onshore/offshore site separation is a follow-up. 7-year CN
+climatology raw wind CF ≈ 0.367; diurnal peak hr 21 / trough hr 8 (smoother than the 1-year
+cut). Affected: `load_site_wind_capacity_factors` signature (`n_years`); `wind_cf_years` param
++ climatology mapping in `generate_full_pipeline_for_country`; resolution/pass-through in
+`generate_full_pipeline_for_preset`; `WIND_CF_YEARS` in `run_pipeline.py`; China + KR presets.
+
+---
+
+## 2026-07-08 — New CF calibration mode 'speed_rescale': calibrate wind in wind-speed space
+
+### Context
+The international pipeline's wind CF calibration multipliers are large (China 7.18×,
+US 29.7×) because the synthetic wind CF is built by pushing a single **area-averaged
+national wind speed** through a cubic power curve — compounding site-selection bias and
+power-curve-of-the-mean (Jensen) averaging bias. `cap_redistribute` bounds the output but
+pins 5.8% of China's hours at CF = 1.0 and distorts the shape linearly; `multiplicative`
+produces CF > 1. HANDOFF.md → "Weather Data Improvements" ranks the causes.
+
+### Decision
+Add `cf_calibration_mode='speed_rescale'` (`calibrate_wind_cf_speed_rescale` in
+`energy_timeslice_pipeline.py`): solve for the scalar `k` such that
+`mean(power_curve(k × hub-height speed))` equals the Ember target, then recompute the wind
+CF series from the rescaled speeds. Solar falls back to `cap_redistribute` under this mode
+(its multiplier is ~1 and irradiance has no analogous "speed"). Solver detail: the mean CF
+is **not monotone in k** (extreme k pushes speeds past the 25 m/s cut-out and the mean
+collapses — for China 2018 it peaks near k≈4), so the solver grid-brackets the first upward
+crossing of the target on a log-spaced k grid, then bisects; if no k reaches the target it
+returns the max-mean series and flags `mean_unreachable`.
+
+Not made a preset default anywhere — enable per run via `CF_CALIBRATION_MODE =
+'speed_rescale'` in `run_pipeline.py` or a preset `cf_calibration_mode` field. Switching
+China (or others) to it as default is a methodology decision for staff review.
+
+### Rationale
+The calibration acts where the biases act (the speed distribution, before the power
+curve), so: output is bounded [0,1] by construction; calm hours stay near zero and the
+ramp region stretches physically through the cubic curve instead of a linear stretch or
+hour-pinning; and the remaining diagnostic (`speed_scale_k`) is interpretable as a
+wind-speed bias factor.
+
+### Affected files / variables
+- `energy_timeslice_pipeline.py`: new `calibrate_wind_cf_speed_rescale`; dispatch in
+  `generate_full_pipeline_for_country`; `speed_scale_k` added to the calibration
+  diagnostic rows in `build_run_metrics`.
+- `run_pipeline.py`: `CF_CALIBRATION_MODE` docs list the new mode.
+- Existing modes untouched; runs not using `speed_rescale` are bit-identical.
+
+### Effect on model output
+China 2018 test (scratch run, not the delivered China outputs): k = 1.555 replaces the
+7.18× CF-space multiplier; annual wind CF mean hits the Ember target 0.2181 to 3e-8;
+max CF = 1.0 with 1.7% of hours at cap (vs 5.8% under cap_redistribute); zero-CF hours
+preserved. Net-load clustering shifts as expected with the different wind shape (days
+117/78/39/98/19/14 vs 112/61/52/104/24/12). Workbook-source verification passes unchanged
+(worst 1e-16). All values remain inputs for staff review — a k of 1.55 still signals the
+area-averaged wind-speed product underestimates fleet wind speeds ~35%; per-preset hub
+height / power-curve updates and fleet-weighted weather remain the root-cause fixes
+(HANDOFF.md).
+
+---
+
+## 2026-07-07 — Pin the US preset in run_pipeline.py to master-parity behavior (per-preset overrides)
+
+### Context
+After the develop→master international merge (feature branch), a US run via `run_pipeline.py`
+produced different clustering outputs than the same run on `master` (net-load rep-day
+reconstruction NRMSE 0.486 vs master's 0.389). The clustering algorithm itself
+(`cluster_timeslices` → `cluster_days_repday`) is byte-identical between branches; the
+divergence came entirely from changed *inputs and configuration*:
+1. The US preset gained `'timezone': 'America/Chicago'`, so renewables.ninja weather was
+   localized to CST before CF computation (master kept it in UTC) — shifting solar/wind
+   hour-of-day profiles by 6 h and trimming the calibration window (17,544 → 17,538 hours).
+2. `calibrate_capacity_factors` default changed from pure `'multiplicative'` scaling (master)
+   to `'cap_redistribute'`. US wind's implied multiplier is ~29.7×, so cap-and-redistribute
+   pins ~9% of hours at CF = 1.0 — a materially different wind shape, hence different net
+   load, hence different day clusters.
+3. `run_pipeline.py` defaulted `CALIBRATION_METHOD = 'zapata_ridge_nnls'` for every country,
+   including the US (master only had level+seasonal demand calibration).
+
+### Decision
+Pin the US preset to master behavior via per-preset settings, resolved runner-override →
+preset → global default (same pattern as the EFS overrides):
+- US preset: no `'timezone'` key (weather stays UTC) + `'allow_utc_weather': True` to
+  suppress the no-timezone warning for this deliberate opt-out;
+  `'cf_calibration_mode': 'multiplicative'`; `'calibration_method': 'level_seasonal'`.
+- South Korea / China presets: explicit `'calibration_method': 'zapata_ridge_nnls'` so they
+  keep Zapata-ridge when the runner defers to preset defaults.
+- `run_pipeline.py`: `CALIBRATION_METHOD = None` and `CF_CALIBRATION_MODE = None` now mean
+  "use preset default"; non-None values still override for a run.
+All international logic (timezone localization, cap_redistribute, Zapata calibration,
+caching) is unchanged for non-US presets.
+
+### Rationale
+The US baseline from this script must stay comparable with the historical master outputs.
+The canonical US EPS inputs come from the Cambium-based national pipeline
+(`rebuild_us_national_v2.py` / `scripts/build_*_workbook.py`), not from this script, so
+physical-validity concerns with multiplicative scaling (wind CF > 1.0 at 29.7× multiplier)
+are accepted for baseline continuity here. If this script's US SYSHECF is ever handed
+downstream, revisit the multiplicative pin.
+
+### Affected files / variables
+- `energy_timeslice_pipeline.py`: US/KR/CN preset dicts; `generate_full_pipeline_for_preset`
+  (resolution of `cf_calibration_mode` / `calibration_method` / `allow_utc_weather`);
+  `generate_full_pipeline_for_country` (new `allow_utc_weather` param gating the UTC warning).
+- `run_pipeline.py`: `CALIBRATION_METHOD` / `CF_CALIBRATION_MODE` default to None (= preset).
+- No changes to `state_pipeline/` or the US national rebuild.
+
+### Effect on model output
+US run from `run_pipeline.py` now reproduces the master US workflow **exactly**. Verified
+2026-07-07 two independent ways:
+1. A/B module capture: master's `energy_timeslice_pipeline.py` (byte copy) and the branch
+   module were run side-by-side in the same environment with the clustering input DataFrame
+   and hourly slice labels captured — all 29 input columns max-abs-diff 0.0, all 8,760
+   labels identical, same days-per-timeslice (27/71/62/166/23/16). Clustering confirmed
+   deterministic (identical across repeated runs and across processes).
+2. The branch run's metric rows match the 2026-07-01 master baseline run
+   (`C:\glb-elec-master\output\UnitedStates_master_baseline_Metrics.csv`) digit-for-digit,
+   including clustering net-load NRMSE 0.5379105017265517.
+
+Provenance warnings recorded while verifying (for staff review):
+- The `UnitedStates` rows previously committed in `output/timeslice_run_metrics_summary.csv`
+  (net-load NRMSE 0.3891...) came from the `UnitedStates_EFS_test` experiment run in
+  `C:\glb-elec-master\output\`, NOT from the master baseline. Do not treat them as the
+  master reference.
+- eps-us `InputData/elec/SHELF/` (repo `eps-us`, branch as of 2026-07-07): the *committed*
+  `SHELF-days-per-timeslice.csv` is the canonical Cambium-national clustering
+  (61/121/112/50/11/10, matching the SHELF workbook's Clustering tab). The working tree has
+  *uncommitted* modifications dated 2026-07-07 09:39 changing it to 45/78/75/136/18/13 — a
+  clustering that matches no run found in either repo. Provenance unknown; verify before
+  committing or using.
+- The `run_pipeline.py` US workflow (EFS + DemandCast + renewables.ninja + Ember) is a
+  different methodology from the Cambium-based national pipeline; its clustering is not
+  expected to equal the Cambium national days (61/121/112/50/11/10). Canonical US EPS files
+  still come from the national pipeline.
+
+Non-US runs are bit-identical to before this change when the runner previously set
+zapata_ridge_nnls / cap_redistribute explicitly (now the preset defaults).
+
+---
+
 ## 2026-06-03 — Plan: integrate develop's non-US calibration layer onto master (control surface + calibration defaults)
 
 > **Status: IMPLEMENTED ON FEATURE BRANCH `feature/international-onto-master` — for staff review; NOT
