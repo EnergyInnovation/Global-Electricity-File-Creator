@@ -421,6 +421,76 @@ def _effective_cache_dir() -> "str | None":
     return os.path.join(base, 'cache')
 
 
+def _print_nrmse_report() -> None:
+    """List every NRMSE value from the run's Metrics CSV.
+
+    Reads ``<output_root>_Metrics.csv`` (written by the pipeline) and prints a
+    grouped table of all normalized-RMSE values — the demand-calibration fit,
+    the solar/wind CF calibration, and the representative-day clustering
+    reconstruction. NRMSE is dimensionless (RMSE ÷ the normalization basis
+    shown per group: mean_observed or std_observed), so values are comparable
+    across series of different magnitudes.
+
+    Skipped quietly if no Metrics CSV exists (e.g. CALIBRATION_ONLY runs, which
+    exit before metrics are written).
+    """
+    import os
+    import pandas as pd
+
+    try:
+        preset = pipeline.get_country_preset(COUNTRY)
+        region_name = preset['output_country']
+    except Exception:
+        region_name = None
+
+    resolved = pipeline.resolve_output_path(OUTPUT_PATH, country=region_name)
+    if not resolved:
+        return
+    root, _ = os.path.splitext(resolved)
+    metrics_path = f'{root}_Metrics.csv'
+    if not os.path.exists(metrics_path):
+        print(f"[NRMSE] no metrics file at {metrics_path} — nothing to list.")
+        return
+
+    df = pd.read_csv(metrics_path)
+    if 'nrmse' not in df.columns:
+        return
+    df = df[df['nrmse'].notna()].copy()
+    if df.empty:
+        print("[NRMSE] metrics file has no NRMSE values.")
+        return
+
+    country = df['country'].iloc[0] if 'country' in df.columns else region_name
+    year = df['year'].iloc[0] if 'year' in df.columns else ''
+    basis_labels = {
+        'mean_observed': 'normalized by mean of observed series',
+        'std_observed': 'normalized by std of observed series',
+    }
+
+    print()
+    print('=' * 72)
+    print(f"NRMSE summary — {country} {year}".rstrip())
+    print("(NRMSE = RMSE ÷ normalization basis; dimensionless, lower is better)")
+    print('=' * 72)
+
+    # Longest "series / stage" label for column alignment.
+    df['label'] = df['series'].astype(str) + ' / ' + df['stage'].astype(str)
+    width = min(max(df['label'].str.len().max(), 12), 64)
+
+    for group in df['metric_group'].drop_duplicates():
+        sub = df[df['metric_group'] == group]
+        bases = sub['normalization_basis'].dropna().unique() \
+            if 'normalization_basis' in sub.columns else []
+        basis_txt = ', '.join(basis_labels.get(b, str(b)) for b in bases)
+        header = f"\n{group}"
+        if basis_txt:
+            header += f"  [{basis_txt}]"
+        print(header)
+        for _, r in sub.iterrows():
+            print(f"  {r['label']:<{width}}  {r['nrmse']:>12.4f}")
+    print('=' * 72)
+
+
 def main() -> None:
     import time as _time
     pipeline.set_verbosity(VERBOSITY)
@@ -468,6 +538,8 @@ def main() -> None:
         kwargs['data_dir'] = DATA_DIR
 
     pipeline.generate_full_pipeline_for_preset(**kwargs)
+
+    _print_nrmse_report()
 
     pipeline._status('done', "run complete", t=_run_start)
 
