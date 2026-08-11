@@ -113,7 +113,28 @@
       "Bash(grep -q \"CHINA RUN COMPLETE\" \"C:/Users/CLAIRE~1/AppData/Local/Temp/claude/C--Users-Claire-Trevisan-GitHub-Global-Electricity-File-Creator/a342d72e-41b1-4ba8-b9d3-8ba11cc8cc65/scratchpad/china_plots.log\")",
       "Bash(break)",
       "Bash(grep -iE \"wrote.*diagnostic plots|COMPLETE\" \"C:/Users/CLAIRE~1/AppData/Local/Temp/claude/C--Users-Claire-Trevisan-GitHub-Global-Electricity-File-Creator/a342d72e-41b1-4ba8-b9d3-8ba11cc8cc65/scratchpad/china_plots.log\")",
-      "Bash(timeout 300 python run_pipeline.py)"
+      "Bash(timeout 300 python run_pipeline.py)",
+      "PowerShell(python -c \"import run_pipeline as rp; rp.COUNTRY='China'; rp.OUTPUT_PATH=None; rp._print_nrmse_report\\(\\)\")",
+      "Bash(echo \"=== SouthKorea EPS output ===\" ; ls \"output/SouthKorea_timeslice_results_EPS/\" 2>/dev/null ; echo \"\" ; echo \"=== workbook_sources ===\" ; ls \"output/SouthKorea_timeslice_results_EPS/workbook_sources/\" 2>/dev/null ; echo \"\" ; echo \"=== eps-southkorea/InputData/elec ===\" ; ls \"C:/Users/Claire Trevisan/GitHub/eps-southkorea/InputData/elec/\" 2>/dev/null)",
+      "PowerShell(python scripts/build_run_workbooks.py \"South Korea\" --borrow-dir \"C:\\\\Users\\\\Claire Trevisan\\\\GitHub\\\\eps-southkorea\\\\InputData\\\\elec\")",
+      "PowerShell(python scripts/verify_workbook_sources.py \"output/SouthKorea_timeslice_results_EPS\")",
+      "PowerShell(python \"C:\\\\Users\\\\CLAIRE~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-Claire-Trevisan-GitHub-Global-Electricity-File-Creator\\\\6e1cf0db-e056-4c5b-9691-c3c72edbf688\\\\scratchpad\\\\diag_appl.py\")",
+      "PowerShell(python -c \"import pandas as pd; print\\(list\\(pd.read_csv\\('output/SouthKorea_timeslice_results_EPS/workbook_sources/demand_hourly_source.csv', nrows=1\\).columns\\)\\)\")",
+      "PowerShell(python \"C:\\\\Users\\\\CLAIRE~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-Claire-Trevisan-GitHub-Global-Electricity-File-Creator\\\\6e1cf0db-e056-4c5b-9691-c3c72edbf688\\\\scratchpad\\\\check_borrow.py\")",
+      "PowerShell(python -c \"import pandas as pd; c=pd.read_csv\\('output/China_timeslice_results_EPS/workbook_sources/cf_hourly_source.csv', nrows=1\\); print\\('CF cols:', [x for x in c.columns if not x.startswith\\('CF_'\\)]\\); print\\(\\); d=pd.read_csv\\('output/China_timeslice_results_EPS/workbook_sources/demand_hourly_source.csv', nrows=1\\); print\\('DEMAND cols:', list\\(d.columns\\)\\)\")",
+      "PowerShell(python \"C:\\\\Users\\\\CLAIRE~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-Claire-Trevisan-GitHub-Global-Electricity-File-Creator\\\\6e1cf0db-e056-4c5b-9691-c3c72edbf688\\\\scratchpad\\\\diurnal.py\")",
+      "PowerShell(python \"C:\\\\Users\\\\CLAIRE~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-Claire-Trevisan-GitHub-Global-Electricity-File-Creator\\\\6e1cf0db-e056-4c5b-9691-c3c72edbf688\\\\scratchpad\\\\diurnal.py\" 2>&1)",
+      "PowerShell(python \"C:\\\\Users\\\\CLAIRE~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-Claire-Trevisan-GitHub-Global-Electricity-File-Creator\\\\6e1cf0db-e056-4c5b-9691-c3c72edbf688\\\\scratchpad\\\\season_mag.py\")",
+      "mcp__visualize__read_me",
+      "mcp__visualize__show_widget",
+      "PowerShell(python \"C:\\\\Users\\\\CLAIRE~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-Claire-Trevisan-GitHub-Global-Electricity-File-Creator\\\\6e1cf0db-e056-4c5b-9691-c3c72edbf688\\\\scratchpad\\\\cluster_season.py\")",
+      "Bash(ls \"C:/Users/Claire Trevisan/GitHub/EPS Structure Testing/InputData/elec/SHELF/\" 2>/dev/null | head -40)",
+      "PowerShell(python -c \"import importlib; [print\\(m, 'OK' if importlib.util.find_spec\\(m\\) else 'MISSING'\\) for m in ['formulas','pycel','xlcalculator']]\"; Write-Output \"soffice:\"; \\(Get-Command soffice -ErrorAction SilentlyContinue\\).Source)",
+      "PowerShell(python scripts/verify_run_workbooks.py \"South Korea\" --borrow-dir \"C:\\\\Users\\\\Claire Trevisan\\\\GitHub\\\\eps-southkorea\\\\InputData\\\\elec\")",
+      "PowerShell(python scripts/build_run_workbooks.py China --borrow-dir \"C:\\\\Users\\\\Claire Trevisan\\\\GitHub\\\\eps-china-igdp\\\\InputData\\\\elec\")",
+      "PowerShell(python scripts/verify_run_workbooks.py China --borrow-dir \"C:\\\\Users\\\\Claire Trevisan\\\\GitHub\\\\eps-china-igdp\\\\InputData\\\\elec\")",
+      "PowerShell(python \"C:\\\\Users\\\\CLAIRE~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-Claire-Trevisan-GitHub-Global-Electricity-File-Creator\\\\6e1cf0db-e056-4c5b-9691-c3c72edbf688\\\\scratchpad\\\\test_lf_plots.py\")",
+      "PowerShell(python \"C:\\\\Users\\\\CLAIRE~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-Claire-Trevisan-GitHub-Global-Electricity-File-Creator\\\\6e1cf0db-e056-4c5b-9691-c3c72edbf688\\\\scratchpad\\\\gen_lf_plots.py\")"
     ]
   }
 }

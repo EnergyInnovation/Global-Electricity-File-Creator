@@ -3315,6 +3315,163 @@ def make_cluster_diagnostic_plots(
     return paths_written
 
 
+# Canonical Zapata end-use categories (the demand-shape basis columns).
+ZAPATA_END_USE_CATEGORIES = [
+    'residential_cooling', 'residential_heating', 'residential_lighting',
+    'residential_waterheating', 'residential_other',
+    'service_cooling', 'service_heating', 'service_waterheating', 'service_other',
+    'industry', 'transport',
+]
+
+
+def make_enduse_lf_plots(
+    df: pd.DataFrame,
+    labels: pd.Series,
+    timeslice_metadata: pd.DataFrame,
+    output_dir: str,
+    country: str = '',
+) -> "list[str]":
+    """Plot the SHELF load factors of each Zapata end-use category, faceted
+    per timeslice.
+
+    One PNG per timeslice (``LF_by_timeslice_<Slice>.png``) — Winter, Spring,
+    Summer, Fall, Summer Peak, Winter Peak. Each figure is a grid of panels,
+    one per Zapata end-use category. Within a panel, the x-axis is hour of day
+    (0–23) and, in that timeslice's color:
+
+        * thin dotted lines — every day assigned to this timeslice, as its
+          own hourly load-factor profile (LF = day demand / category annual);
+        * one thick solid line — the MEAN load factor over all those days
+          (the average day-shape of the timeslice, not the representative day).
+
+    The y-axis is shared across all panels in a figure so category peakiness is
+    comparable. A category with zero annual demand (e.g. a calibration
+    zero-flip) shows as a flat zero panel.
+
+    matplotlib is imported lazily so a missing install just skips the plots.
+    """
+    try:
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
+        from matplotlib.lines import Line2D
+    except ImportError:
+        import warnings
+        warnings.warn(
+            "matplotlib is not installed; end-use LF plots will be skipped."
+        )
+        return []
+
+    if df is None or df.empty or labels is None or len(labels) == 0:
+        return []
+
+    cats = [c for c in ZAPATA_END_USE_CATEGORIES if c in df.columns]
+    if not cats:
+        return []
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    try:
+        eps_label_map = build_eps_timeslice_label_map(timeslice_metadata)
+    except Exception:
+        eps_label_map = pd.Series(
+            {int(i): f'Timeslice_{int(i)}' for i in pd.unique(labels)}
+        )
+
+    slice_order = ['Winter', 'Spring', 'Summer', 'Fall', 'Summer Peak', 'Winter Peak']
+    slice_color = {
+        'Winter': '#1f77b4', 'Spring': '#2ca02c', 'Summer': '#ff7f0e',
+        'Fall': '#8c564b', 'Summer Peak': '#d62728', 'Winter Peak': '#9467bd',
+    }
+
+    idx = pd.to_datetime(df.index)
+    day = idx.floor('D')
+    hour = idx.hour
+
+    # Slice name per calendar day (all hours of a day share one timeslice id).
+    ts_per_hour = pd.Series(labels).reset_index(drop=True).to_numpy()
+    day_ts = pd.DataFrame({'day': day, 'ts': ts_per_hour}).groupby('day')['ts'].first()
+    day_slice = day_ts.map(
+        lambda t: str(eps_label_map.get(int(t), f'Timeslice_{int(t)}'))
+    )
+
+    # Per-category day x hour load-factor matrices (computed once, reused per figure).
+    lf_wide: Dict[str, pd.DataFrame] = {}
+    for cat in cats:
+        tmp = pd.DataFrame({'day': day, 'hour': hour,
+                            'v': pd.to_numeric(df[cat], errors='coerce').to_numpy()})
+        wide = tmp.pivot_table(index='day', columns='hour', values='v',
+                               aggfunc='first').reindex(columns=range(24))
+        annual = float(np.nansum(tmp['v'].to_numpy()))
+        lf_wide[cat] = wide / annual if annual > 0 else wide * 0.0
+
+    ncols = 3
+    nrows = -(-len(cats) // ncols)  # ceil
+    paths_written: "list[str]" = []
+
+    for sl in slice_order:
+        days_s = day_slice.index[day_slice == sl]
+        if len(days_s) == 0:
+            continue
+        color = slice_color.get(sl, '0.3')
+
+        # Shared y-limit across this figure's panels (include per-day spread).
+        ymax = 0.0
+        for cat in cats:
+            sub = lf_wide[cat].reindex(index=days_s)
+            if sub.size:
+                m = np.nanmax(sub.to_numpy())
+                if np.isfinite(m):
+                    ymax = max(ymax, float(m))
+        if ymax <= 0:
+            ymax = 1.0
+
+        fig, axes = plt.subplots(nrows, ncols, figsize=(4.0 * ncols, 2.6 * nrows),
+                                 sharex=True, sharey=True)
+        axes = np.atleast_1d(axes).flatten()
+        for i, cat in enumerate(cats):
+            ax = axes[i]
+            sub = lf_wide[cat].reindex(index=days_s)
+            for _, row_vals in sub.iterrows():
+                ax.plot(range(24), row_vals.to_numpy(), color=color,
+                        linewidth=0.5, alpha=0.25, linestyle=':')
+            ax.plot(range(24), sub.mean(axis=0).to_numpy(), color=color,
+                    linewidth=2.4, solid_capstyle='round')
+            ax.set_title(cat, fontsize=9)
+            ax.set_xlim(0, 23)
+            ax.set_xticks(range(0, 24, 6))
+            ax.grid(True, alpha=0.3)
+        for j in range(len(cats), len(axes)):
+            axes[j].axis('off')
+        axes[0].set_ylim(0, ymax * 1.05)  # sharey propagates to all panels
+
+        country_suffix = f" — {country}" if country else ""
+        fig.suptitle(f"{sl} — SHELF load factors by end use{country_suffix}"
+                     f"   ({len(days_s)} days)\n"
+                     "thin dotted = each assigned day; thick solid = timeslice mean",
+                     fontsize=12)
+        try:
+            fig.supxlabel('Hour of day (local)')
+            fig.supylabel('Load factor (share of annual demand)')
+        except AttributeError:
+            axes[0].set_ylabel('Load factor (share of annual demand)')
+        legend_handles = [
+            Line2D([0], [0], color=color, linewidth=2.4, label='timeslice mean'),
+            Line2D([0], [0], color=color, linewidth=0.8, linestyle=':', label='individual day'),
+        ]
+        fig.legend(handles=legend_handles, loc='lower right', fontsize='small',
+                   framealpha=0.85)
+        fig.tight_layout(rect=(0, 0, 1, 0.96))
+
+        sl_safe = sl.replace(' ', '_')
+        out_path = os.path.join(output_dir, f'LF_by_timeslice_{sl_safe}.png')
+        fig.savefig(out_path, dpi=110)
+        plt.close(fig)
+        paths_written.append(out_path)
+
+    return paths_written
+
+
 def make_calibration_overview_plot(
     df_calibrated: pd.DataFrame,
     real_demand: pd.Series,
@@ -4356,6 +4513,21 @@ def generate_full_pipeline_for_country(
                 'plots',
                 "diagnostic plots skipped (matplotlib unavailable or no data)",
                 level='verbose',
+            )
+
+        # Per-timeslice SHELF load-factor plots: one faceted PNG per timeslice
+        # (category panels), each day dotted + the timeslice mean solid.
+        lf_plot_paths = make_enduse_lf_plots(
+            df=df_with_gen,
+            labels=labels,
+            timeslice_metadata=_ts_metadata_for_plots,
+            output_dir=plots_dir,
+            country=region_name,
+        )
+        if lf_plot_paths:
+            _status(
+                'plots',
+                f"wrote {len(lf_plot_paths)} end-use load-factor plots → {plots_dir}/",
             )
 
         # The calibration-overview plot is now generated earlier (right after

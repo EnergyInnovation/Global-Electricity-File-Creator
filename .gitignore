@@ -11,3 +11,6 @@ data/cache/
 
 # Renewables.ninja API token (never commit)
 data/.ninja_token
+
+# outputs
+*output/

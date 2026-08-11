@@ -45,7 +45,7 @@ CAMBIUM_HOURLY = ROOT / "data" / "cambium24_midcase_national" / "Cambium24_MidCa
 CAMBIUM_ANNUAL = ROOT / "data" / "cambium24_midcase_national" / "Cambium24_MidCase_annual_national.csv"
 EIA_408B       = ROOT / "data" / "epa_04_08_b.xlsx"
 OUT = Path(
-    r"C:\Users\RobbieOrvis\Models\US\Models\eps-us\InputData\elec\SYSHECF"
+    r"C:\Users\Claire Trevisan\GitHub\eps-us\InputData\elec\SYSHECF"
     r"\Start Year Seasonal Expected Hourly Electricity Capacity Factors.xlsx"
 )
 

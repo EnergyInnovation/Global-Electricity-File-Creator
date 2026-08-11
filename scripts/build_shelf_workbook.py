@@ -48,7 +48,7 @@ COMSTOCK_ROOT  = Path(r"C:\Users\RobbieOrvis\Models\ResStock SHELF\ComStock_tmy_
 CACHE_DIR = ROOT / "data" / "national_aggregated"
 
 OUT = Path(
-    r"C:\Users\RobbieOrvis\Models\US\Models\eps-us\InputData\elec\SHELF"
+    r"C:\Users\Claire Trevisan\GitHub\eps-us\InputData\elec\SHELF"
     r"\Seasonal Hourly Equipment Load Factors by End Use.xlsx"
 )
 

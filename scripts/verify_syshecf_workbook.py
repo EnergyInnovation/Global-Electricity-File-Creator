@@ -19,7 +19,7 @@ from state_pipeline.builders.clustering_repday import cluster_days_repday
 
 CAMBIUM_HOURLY = ROOT / "data" / "cambium24_midcase_national" / "Cambium24_MidCase_hourly_usa_2025.csv"
 CAMBIUM_ANNUAL = ROOT / "data" / "cambium24_midcase_national" / "Cambium24_MidCase_annual_national.csv"
-SYSHECF_DIR    = Path(r"C:\Users\RobbieOrvis\Models\US\Models\eps-us\InputData\elec\SYSHECF")
+SYSHECF_DIR    = Path(r"C:\Users\Claire Trevisan\GitHub\eps-us\InputData\elec\SYSHECF")
 
 EIA_CF_TARGETS = {
     'solar-pv':      0.232,
@@ -32,15 +32,30 @@ EIA_CF_TARGETS = {
 TECHS = [
     ('solar-pv',          'upv_MWh',       'upv_MW'),
     ('solar-pv-dist',     'distpv_MWh',    'distpv_MW'),
+    ('solar-thermal',     'csp_MWh',       'csp_MW'),
     ('onshore-wind',      'wind-ons_MWh',  'wind-ons_MW'),
     ('offshore-wind',     'wind-ofs_MWh',  'wind-ofs_MW'),
     ('hydro',             'hydro_MWh',     'hydro_MW'),
+    ('pumped-hydro',      'phs_MWh',       'phs_MW'),
     ('nuclear',           'nuclear_MWh',   'nuclear_MW'),
     ('combined-cycle',    'gas-cc_MWh',    'gas-cc_MW'),
     ('natural-gas-peaker', 'gas-ct_MWh',   'gas-ct_MW'),
     ('hard-coal',         'coal_MWh',      'coal_MW'),
     ('biomass',           'biomass_MWh',   'biomass_MW'),
+    ('geothermal',        'geothermal_MWh', 'geothermal_MW'),
+    ('petroleum',         'o-g-s_MWh',     'o-g-s_MW'),
 ]
+
+TEMPLATE_TECHS = {
+    'lignite': 0.70, 'lignite-CCS': 0.70, 'combined-cycle-CCS': 0.60,
+    'hard-coal-CCS': 0.55, 'biomass-CCS': 0.55, 'heavy-or-residual-oil': 0.10,
+    'crude-oil': 0.10, 'SMR': 0.85, 'MSW': 0.60, 'steam-turbine': 0.50,
+}
+
+MIRROR_TECHS = {
+    'hydrogen-CT': 'natural-gas-peaker',
+    'hydrogen-CC': 'combined-cycle',
+}
 
 SLICES = ['Winter', 'Spring', 'Summer', 'Fall', 'Summer Peak', 'Winter Peak']
 
@@ -143,6 +158,51 @@ def main():
         overall_max = max(overall_max, max_d)
         verdict = 'OK' if max_d < 1e-6 else ('CLOSE' if max_d < 1e-3 else 'MISMATCH')
         print(f"{tech:<22}{max_d:>14.2e}{mean_d:>16.2e}{verdict:>14}")
+
+    print()
+    for tech, cf in TEMPLATE_TECHS.items():
+        csv_path = SYSHECF_DIR / f"SYSHECF-{tech}.csv"
+        if not csv_path.exists():
+            print(f"{tech:<22}  CSV missing")
+            continue
+        with open(csv_path) as f:
+            rows = list(csv.reader(f))
+        diffs = []
+        for r in rows[1:]:
+            if not r or r[0] not in SLICES:
+                continue
+            for h in range(24):
+                try:
+                    diffs.append(abs(cf - float(r[1 + h])))
+                except (ValueError, IndexError):
+                    pass
+        max_d = max(diffs) if diffs else float('nan')
+        overall_max = max(overall_max, max_d)
+        verdict = 'OK' if max_d < 1e-6 else ('CLOSE' if max_d < 1e-3 else 'MISMATCH')
+        print(f"{tech:<22}{max_d:>14.2e}{'(template, cf=' + str(cf) + ')':>16}{verdict:>14}")
+
+    print()
+    for tech, source_tech in MIRROR_TECHS.items():
+        src_path = SYSHECF_DIR / f"SYSHECF-{source_tech}.csv"
+        csv_path = SYSHECF_DIR / f"SYSHECF-{tech}.csv"
+        if not src_path.exists() or not csv_path.exists():
+            print(f"{tech:<22}  CSV missing")
+            continue
+        with open(src_path) as f:
+            src_rows = {r[0]: r[1:] for r in csv.reader(f) if r and r[0] in SLICES}
+        with open(csv_path) as f:
+            mirror_rows = {r[0]: r[1:] for r in csv.reader(f) if r and r[0] in SLICES}
+        diffs = []
+        for sl in SLICES:
+            for h in range(24):
+                try:
+                    diffs.append(abs(float(src_rows[sl][h]) - float(mirror_rows[sl][h])))
+                except (KeyError, ValueError, IndexError):
+                    pass
+        max_d = max(diffs) if diffs else float('nan')
+        overall_max = max(overall_max, max_d)
+        verdict = 'OK' if max_d < 1e-6 else ('CLOSE' if max_d < 1e-3 else 'MISMATCH')
+        print(f"{tech:<22}{max_d:>14.2e}{'(mirrors ' + source_tech + ')':>16}{verdict:>14}")
 
     print(f"\nOverall max abs diff across all techs: {overall_max:.2e}")
     print("Verdict:", "OK (workbook formulas match CSV values)" if overall_max < 1e-6
