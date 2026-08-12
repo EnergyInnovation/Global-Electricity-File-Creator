@@ -33,11 +33,9 @@ from fetch_ninja_sites import SITES as NINJA_SITES  # canonical site list  # noq
 # ---------------------------------------------------------------------------
 COUNTRY = "KR"
 
-CACHE = Path(
-    r"C:\Users\CLAIRE~1\AppData\Local\Temp\claude"
-    r"\C--Users-Claire-Trevisan-GitHub-Global-Electricity-File-Creator"
-    r"\a342d72e-41b1-4ba8-b9d3-8ba11cc8cc65\scratchpad"
-)
+# Boundary cache lives in the project so the map reproduces on any machine
+# (the previous per-session temp path only existed for whoever first ran this).
+CACHE = PROJECT_ROOT / "data" / "cache" / "naturalearth"
 NE_URL = "https://naciscdn.org/naturalearth/50m/cultural/ne_50m_admin_0_countries.zip"
 COLORS = {"onshore": "#1f77b4", "offshore": "#d62728"}
 

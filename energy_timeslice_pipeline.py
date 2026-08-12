@@ -336,9 +336,11 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         # 2026-07-10. Sites in data/weather/ninja_sim/KR/ (fetch with
         # scripts/fetch_ninja_sites.py --country KR). Averaged across sites over
         # wind_cf_years, calibrated to the Ember annual wind CF. Solar still uses
-        # the ninja weather product. Sites are classified onshore (Gangwon,
-        # Jeju) vs offshore (Buan, Sinan, Ulsan) by the fetcher's SITES table, so
-        # SYSHECF-onshore-wind and SYSHECF-offshore-wind get separate CF tables.
+        # the ninja weather product. Sites are classified onshore (Gangwon ridge,
+        # Gyeongbuk coast, Gyeongnam mountains, Jeju) vs offshore (Buan, Sinan,
+        # Ulsan) by the fetcher's SITES table, so SYSHECF-onshore-wind and
+        # SYSHECF-offshore-wind get separate CF tables. The loader uses whichever
+        # site files are on disk, so newly added sites take effect once fetched.
         'wind_cf_source': 'ninja_sites',
         'wind_sites_dir': None,  # None → data/weather/ninja_sim
         'wind_cf_years': 7,      # most-recent 7 available site-years (decoupled from last_n_years)

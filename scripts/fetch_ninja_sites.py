@@ -94,8 +94,14 @@ SITES = [
     {"country": "CN", "name": "Guangdong_Yangjiang_OSW","lat": 21.5, "lon": 111.8, "type": "offshore"},
     {"country": "CN", "name": "Fujian_Putian_OSW",      "lat": 25.2, "lon": 119.4, "type": "offshore"},
 
-    # ---- South Korea (onshore Gangwon ridge + southwest offshore) ----
+    # ---- South Korea (onshore mountain/island clusters + southwest offshore) ----
+    # Onshore coverage spans the four regimes that hold most of KR's onshore
+    # fleet: the Gangwon (Taebaek) ridge, the Gyeongbuk east coast, the inland
+    # southern (Sobaek) mountains, and Jeju. Onshore is ~95% of start-year wind
+    # capacity, so it carries the blended CF -- worth more than two points.
     {"country": "KR", "name": "Gangwon_Daegwallyeong",  "lat": 37.7, "lon": 128.7, "type": "onshore"},
+    {"country": "KR", "name": "Gyeongbuk_Yeongdeok",   "lat": 36.4, "lon": 129.4, "type": "onshore"},
+    {"country": "KR", "name": "Gyeongnam_Geochang",    "lat": 35.7, "lon": 127.9, "type": "onshore"},
     {"country": "KR", "name": "Jeonbuk_Buan_OSW",       "lat": 35.6, "lon": 126.3, "type": "offshore"},
     {"country": "KR", "name": "Jeonnam_Sinan_OSW",      "lat": 34.8, "lon": 126.1, "type": "offshore"},
     {"country": "KR", "name": "Ulsan_Offshore",         "lat": 35.4, "lon": 129.6, "type": "offshore"},
