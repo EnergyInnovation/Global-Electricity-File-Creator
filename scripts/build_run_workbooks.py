@@ -35,7 +35,7 @@ ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
 from energy_timeslice_pipeline import (  # noqa: E402
-    EPS_SYSHECF_FILE_MAP, get_country_preset,
+    EPS_SYSHECF_FILE_MAP, get_country_preset, resolve_direct_cf_spec,
 )
 from scripts.build_us_run_workbooks import (  # noqa: E402
     HOUR_COLS, OUTPUT_TAB_COLOR, SHELF_UNIT, SLICES,
@@ -139,7 +139,11 @@ def cf_sources_for(country_key: str, preset: dict | None = None,
                     'averaged across the sites in data/weather/ninja_sim/<ISO2>/, UTC then '
                     'converted to the preset timezone. This REPLACES the 2 m wind-speed → '
                     'power-curve estimate, whose diurnal cycle is inverted vs hub height '
-                    '(see DECISIONS.md 2026-07-10). Both are pasted into the "CF hourly '
+                    '(see DECISIONS.md 2026-07-10). Sites are classified onshore vs offshore '
+                    '(their type in scripts/fetch_ninja_sites.py), so onshore-wind and '
+                    'offshore-wind derive from separate site-type CF series, each scaled by '
+                    'the factor the blended series needed to hit the Ember fleet-wide wind CF '
+                    '(see DECISIONS.md 2026-08-11). Both are pasted into the "CF hourly '
                     'source" tab, with derived CF_<tech> columns for every SYSHECF technology.',
         }
     else:
@@ -347,13 +351,16 @@ def build_syshecf(eps_dir: Path, country_key: str, preset: dict,
         borrow_csv = borrow_dir / 'SYSHECF' / f'{file_name}.csv'
         borrow_tbl = read_eps_table(borrow_csv) if borrow_csv.exists() else None
         header = borrow_tbl.index.name if borrow_tbl is not None else SYSHECF_UNIT
-        derived = (isinstance(spec, dict) and spec.get('mode') == 'direct'
-                   and spec.get('column') in cf.columns)
-        if derived:
+        # Onshore/offshore wind resolve through a 'first_available' spec (their
+        # own site-type CF column when the run has one, else the blended
+        # wind_cf), so ask the pipeline which column the spec lands on rather
+        # than pattern-matching 'direct' here.
+        resolved = resolve_direct_cf_spec(spec, cf.columns)
+        if resolved is not None:
             # VRE tech — derived from the CF hourly source (never borrowed).
+            column, mult = resolved
             ws = _out_tab_shell(wb, file_name, header)
-            col_l = col_letters[spec['column']]
-            mult = float(spec.get('multiplier', 1.0))
+            col_l = col_letters[column]
             rng = f"'{SRC}'!${col_l}$2:${col_l}${n + 1}"
             doy = f"'{SRC}'!${doy_l}$2:${doy_l}${n + 1}"
             hr = f"'{SRC}'!${hour_l}$2:${hour_l}${n + 1}"

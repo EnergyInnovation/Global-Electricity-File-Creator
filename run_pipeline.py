@@ -217,6 +217,16 @@ WIND_ROUGHNESS_LENGTH = 0.03
 # Ignored for presets using wind_cf_source='weather' (the 2 m path).
 WIND_CF_YEARS = None
 
+# Onshore vs offshore wind (no setting here — data-driven, documented for
+# reference). For 'ninja_sites' presets each site is classified onshore or
+# offshore from its `type` in scripts/fetch_ninja_sites.py::SITES, and
+# SYSHECF-onshore-wind / SYSHECF-offshore-wind get separate capacity-factor
+# tables. Net load and clustering use the blended wind_cf, weighted by the
+# region's EPS start-year wind capacities from data/eps_wind_capacity_split.csv
+# (refresh with scripts/fetch_eps_wind_capacity_split.py when a model's
+# start-year capacities change). See CLAUDE.md → "Onshore vs offshore wind are
+# separate SYSHECF series" and DECISIONS.md 2026-08-11 / 2026-08-12.
+
 # Capacity factor calibration mode for scaling synthetic solar/wind
 # capacity factors so their annual mean matches the value reported by
 # Ember.

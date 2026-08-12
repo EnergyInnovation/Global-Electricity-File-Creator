@@ -45,7 +45,34 @@ For non-US presets the wind CF comes from `energy_timeslice_pipeline.py`, not Ca
 - ❌ **2 m `wind_speed` weather product** (`ninja-weather-country-*-wind_speed_*.csv`), extrapolated to hub height in `compute_wind_capacity_factor_from_weather`. The MERRA-2 2 m field (U2M/V2M) has an **inverted diurnal cycle** vs hub height (afternoon max instead of overnight max) and forces huge calibration multipliers (China 7.18×). Do **not** use it for wind shape. (Solar still uses the ninja weather product — that's fine.)
 - ✅ **Per-site wind *simulation* output** — hub-height, power-curve, bias-corrected. Fetch with `scripts/fetch_ninja_sites.py` (token-auth API; sites/years editable at the top) → `data/weather/ninja_sim/<ISO2>/<site>_<year>.csv`, where `electricity` (fetched with `capacity=1`) IS the hourly CF. Averaged across sites by `load_site_wind_capacity_factors`, reduced to a **day-of-year × hour climatology**, converted UTC→preset timezone, mapped onto the run calendar, and calibrated to the **Ember** annual wind CF (`cap_redistribute`).
 
-Enable per preset with `wind_cf_source: 'ninja_sites'` (default `'weather'`). **China and South Korea** use `ninja_sites` as of 2026-07-10 (see DECISIONS.md). The wind window is **decoupled from `last_n_years`** (which governs demand + Ember): wind uses its own `wind_cf_years` (preset key; runner override `WIND_CF_YEARS` in `run_pipeline.py`), defaulting to **7** (= 2018–2024, the site archive). The loader takes the most recent `n_years` available on disk, so a preset can request 7 even if fewer years are fetched (uses what exists, reports the shortfall). Other countries still use the 2 m path pending their own site downloads. Caveats for staff review: placeholder site coordinates must be replaced with verified fleet-region coordinates; and a single blended `wind_cf` currently feeds BOTH onshore- and offshore-wind SYSHECF (per-tech site separation is a follow-up).
+Enable per preset with `wind_cf_source: 'ninja_sites'` (default `'weather'`). **China and South Korea** use `ninja_sites` as of 2026-07-10 (see DECISIONS.md). The wind window is **decoupled from `last_n_years`** (which governs demand + Ember): wind uses its own `wind_cf_years` (preset key; runner override `WIND_CF_YEARS` in `run_pipeline.py`), defaulting to **7** (= 2018–2024, the site archive). The loader takes the most recent `n_years` available on disk, so a preset can request 7 even if fewer years are fetched (uses what exists, reports the shortfall). Other countries still use the 2 m path pending their own site downloads. Caveat for staff review: the placeholder site coordinates must be replaced with verified fleet-region coordinates.
+
+#### Onshore vs offshore wind are separate SYSHECF series (2026-08-11)
+
+Every site is classified onshore or offshore, so the two EPS wind technologies get **different** CF tables. This applies to any region on the `ninja_sites` path — CN and KR today, new presets automatically.
+
+- **Classification** — `classify_wind_site(iso2, site_name)` reads the `type` field from `scripts/fetch_ninja_sites.py::SITES`, the same table that chose each site's turbine and hub height (onshore `Vestas V112 3000` @ 100 m, offshore `V164 8000` @ 140 m). That table is the **single source of truth**; a site missing from it falls back to a filename marker (`_OSW`, `Offshore`) and, failing that, to onshore. When you add sites, set `type` there — nothing else needs editing.
+- **Series** — `load_site_wind_capacity_factors` returns a DataFrame: `wind_cf` (blended — this is what net load and clustering use), `wind_onshore_cf`, `wind_offshore_cf`.
+- **Export** — `EPS_SYSHECF_FILE_MAP` gives onshore/offshore wind a `first_available` spec: the site-type column when the run has one, else the blended `wind_cf`. So legacy 2 m-weather presets still get identical tables, as before.
+- **Calibration** — Ember publishes only a fleet-wide wind CF, so the *blend* is the anchored quantity. Each per-type series is calibrated to `raw_type_mean × (Ember_target ÷ raw_blend_mean)` — the same scale factor the blend needed — which preserves the offshore/onshore CF ratio the site simulations imply. Do **not** calibrate each type to the fleet target; that forces them to the same annual mean and throws away the level difference.
+- **Blend weights come from each region's EPS start-year wind capacities.** Ember gives only one fleet-wide wind CF, so `CF_fleet = w_on·CF_on + w_off·CF_off` is underdetermined — the site sims supply the CF *ratio*, and the capacity split `w` has to come from outside. It is read from `data/eps_wind_capacity_split.csv`, built by `scripts/fetch_eps_wind_capacity_split.py` from each regional EPS model's `InputData/elec/BHRaSYC/BHRaSYC-StartYearCapacities.csv` (**sum across all vintage columns** = that technology's start-year capacity). Using the model's own start-year fleet means the anchor matches the capacity mix the EPS run actually dispatches. Resolution order: explicit preset key `wind_capacity_split` → this CSV (by `iso2`) → site-count weighting (a fetch-list artifact; only a last resort).
+
+  | Region | onshore MW | offshore MW | shares | source model |
+  |---|---|---|---|---|
+  | CN | 404,977 | 36,770 | 0.9168 / 0.0832 | `eps-china-igdp` (vintages 1998–2023) |
+  | KR | 1,708 | 94 | 0.9476 / 0.0524 | `eps-southkorea` (vintages 2016–2021) |
+
+  Refresh after a model's start-year capacities change (paths differ per machine, so they're passed in):
+
+  ```bash
+  python scripts/fetch_eps_wind_capacity_split.py --model CN="<path>/eps-china-igdp" --model KR="<path>/eps-southkorea"
+  ```
+
+  The weights set the *level* of both per-type series (via the calibration anchor) and the *shape* of the blended `wind_cf`, so they also move net load and clustering. They do **not** affect the per-type shapes.
+
+Anything reading `EPS_SYSHECF_FILE_MAP` to decide whether a tech is pipeline-derived must call `resolve_direct_cf_spec(spec, available_columns)` rather than testing `spec['mode'] == 'direct'` — the wind entries are `first_available`. `scripts/build_run_workbooks.py` and `scripts/verify_run_workbooks.py` already do.
+
+Verified for CN and KR (2026-08-12, capacity-weighted): hourly annual means onshore/offshore = 0.2175 / 0.2253 (CN, Ember fleet target 0.2181) and 0.1867 / 0.1700 (KR, target 0.1861); the two tables differ by up to 0.146 (CN) / 0.050 (KR) CF, and both reproduce exactly from a rep-day reconstruction of `workbook_sources/cf_hourly_source.csv`. Note the pre-existing rep-day sampling gap — a 6-representative-day table's days-weighted annual CF is not the hourly annual mean — which is larger for offshore because its seasonal cycle is stronger.
 
 ### EIA annual CF calibration targets
 

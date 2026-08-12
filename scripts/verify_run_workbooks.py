@@ -35,7 +35,9 @@ import openpyxl
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
-from energy_timeslice_pipeline import EPS_SYSHECF_FILE_MAP, get_country_preset  # noqa: E402
+from energy_timeslice_pipeline import (  # noqa: E402
+    EPS_SYSHECF_FILE_MAP, get_country_preset, resolve_direct_cf_spec,
+)
 from scripts.build_run_workbooks import SHELF_MAP, SHELF_NAME, SYSHECF_NAME  # noqa: E402
 from scripts.build_us_run_workbooks import HOUR_COLS, SLICES, read_eps_table  # noqa: E402
 
@@ -94,20 +96,21 @@ def check_syshecf(eps_dir: Path, cf: pd.DataFrame, borrow_dir: Path) -> int:
             fails += 1
             continue
         ws = wb[file_name]
-        derived = (isinstance(spec, dict) and spec.get('mode') == 'direct'
-                   and spec.get('column') in cf.columns)
+        # Same resolver the builder uses, so 'first_available' specs (onshore /
+        # offshore wind) are checked against the column they actually land on.
+        resolved = resolve_direct_cf_spec(spec, cf.columns)
         cells = [ws.cell(2 + r, 2 + h).value for r in range(6) for h in range(24)]
-        if derived:
+        if resolved is not None:
+            want, multiplier = resolved
             refs = {m.group(1) for c in cells if isinstance(c, str)
                     for m in [AVGIFS_RE.search(c)] if m}
             names = {letter2name.get(l) for l in refs}
-            want = spec['column']
             ok = names == {want}
             # multiplier check for distributed PV
-            if 'multiplier' in spec:
+            if multiplier != 1.0:
                 mults = {m.group(1) for c in cells if isinstance(c, str)
                          for m in [MULT_RE.search(c)] if m}
-                ok = ok and (mults == {str(spec['multiplier'])})
+                ok = ok and (mults == {str(multiplier)})
             print(f'  {file_name:32s} derived -> {want:10s} {"OK" if ok else "FAIL"}')
             fails += not ok
         else:

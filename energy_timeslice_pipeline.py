@@ -268,14 +268,31 @@ EPS_SYSHECF_FILE_MAP: Dict[str, Any] = {
     'SYSHECF-combined-cycle': None,
     'SYSHECF-nuclear': None,
     'SYSHECF-hydro': None,
-    'SYSHECF-onshore-wind': {'mode': 'direct', 'column': 'wind_cf'},
+    # Onshore and offshore wind take their own site-type-specific CF series when
+    # the wind source is the Renewables.ninja per-site simulation output
+    # (wind_cf_source='ninja_sites'), which classifies every site onshore vs
+    # offshore. Presets on the legacy 2 m-weather path have no site split and
+    # fall back to the single blended wind_cf for both techs.
+    'SYSHECF-onshore-wind': {
+        'mode': 'first_available',
+        'options': [
+            {'mode': 'direct', 'column': 'wind_onshore_cf'},
+            {'mode': 'direct', 'column': 'wind_cf'},
+        ],
+    },
     'SYSHECF-solar-pv': {'mode': 'direct', 'column': 'solar_cf'},
     'SYSHECF-solar-thermal': None,
     'SYSHECF-biomass': None,
     'SYSHECF-geothermal': None,
     'SYSHECF-petroleum': None,
     'SYSHECF-natural-gas-peaker': None,
-    'SYSHECF-offshore-wind': {'mode': 'direct', 'column': 'wind_cf'},
+    'SYSHECF-offshore-wind': {
+        'mode': 'first_available',
+        'options': [
+            {'mode': 'direct', 'column': 'wind_offshore_cf'},
+            {'mode': 'direct', 'column': 'wind_cf'},
+        ],
+    },
     'SYSHECF-lignite': None,
     'SYSHECF-MSW': None,
     'SYSHECF-crude-oil': None,
@@ -319,11 +336,17 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         # 2026-07-10. Sites in data/weather/ninja_sim/KR/ (fetch with
         # scripts/fetch_ninja_sites.py --country KR). Averaged across sites over
         # wind_cf_years, calibrated to the Ember annual wind CF. Solar still uses
-        # the ninja weather product. NOTE: only 2022 site data is on disk so far;
-        # the loader uses whatever years are available until more are fetched.
+        # the ninja weather product. Sites are classified onshore (Gangwon,
+        # Jeju) vs offshore (Buan, Sinan, Ulsan) by the fetcher's SITES table, so
+        # SYSHECF-onshore-wind and SYSHECF-offshore-wind get separate CF tables.
         'wind_cf_source': 'ninja_sites',
         'wind_sites_dir': None,  # None → data/weather/ninja_sim
         'wind_cf_years': 7,      # most-recent 7 available site-years (decoupled from last_n_years)
+        # The onshore/offshore weights for the BLENDED wind_cf (net load,
+        # clustering, Ember calibration anchor) come from eps-southkorea's
+        # start-year capacities via data/eps_wind_capacity_split.csv — no preset
+        # key needed. Set 'wind_capacity_split' here only to override that
+        # lookup: {'onshore': …, 'offshore': …}.
         'status': 'verified',
     },
     'china': {
@@ -354,12 +377,21 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         # scripts/fetch_ninja_sites.py). They are averaged across sites over the
         # calibration window, then calibrated to the Ember annual wind CF. Solar
         # still uses the ninja weather product. See DECISIONS.md 2026-07-10.
+        # Sites are classified onshore (the seven "Three North" base sites) vs
+        # offshore (Rudong, Yangjiang, Putian — the *_OSW files) by the fetcher's
+        # SITES table, so SYSHECF-onshore-wind and SYSHECF-offshore-wind get
+        # separate CF tables.
         'wind_cf_source': 'ninja_sites',
         'wind_sites_dir': None,  # None → data/weather/ninja_sim
         # Wind averages its own multi-year window of the site archive, decoupled
         # from last_n_years (demand). 7 = all of 2018–2024 downloaded for CN.
         # Runner can override via WIND_CF_YEARS in run_pipeline.py.
         'wind_cf_years': 7,
+        # The onshore/offshore weights for the BLENDED wind_cf (net load,
+        # clustering, Ember calibration anchor) come from eps-china-igdp's
+        # start-year capacities via data/eps_wind_capacity_split.csv — no preset
+        # key needed. Set 'wind_capacity_split' here only to override that
+        # lookup: {'onshore': …, 'offshore': …}.
         'status': 'verified',
     },
     'united states': {
@@ -1908,6 +1940,7 @@ def generate_full_pipeline_for_preset(
         wind_cf_source=preset.get('wind_cf_source', 'weather'),
         wind_sites_dir=preset.get('wind_sites_dir'),
         wind_cf_years=resolved_wind_cf_years,
+        wind_capacity_split=preset.get('wind_capacity_split'),
         calibration_method=resolved_calibration_method,
         latitude_deg=preset.get('latitude_deg'),
         eps_prior_path=preset.get('eps_prior_path'),
@@ -2169,14 +2202,128 @@ def compute_capacity_factors_from_weather(
 
 DEFAULT_WIND_SITES_DIR = os.path.join(DEFAULT_DATA_DIR, 'weather', 'ninja_sim')
 
+# Wind-site types, and the CF column each one produces. 'wind_cf' stays the
+# blended (fleet-wide) series used for net load and clustering; the per-type
+# columns feed SYSHECF-onshore-wind / SYSHECF-offshore-wind.
+WIND_SITE_TYPES: Tuple[str, ...] = ('onshore', 'offshore')
+WIND_SITE_TYPE_CF_COLUMNS: Dict[str, str] = {
+    'onshore': 'wind_onshore_cf',
+    'offshore': 'wind_offshore_cf',
+}
+# Fallback classifier: filename markers used for offshore sites. Only consulted
+# for site files that are not in the fetcher's SITES table.
+_OFFSHORE_SITE_NAME_MARKERS: Tuple[str, ...] = ('osw', 'offshore', 'off-shore', 'off_shore')
+
+
+def _fetcher_wind_site_types() -> Dict[Tuple[str, str], str]:
+    """``(ISO2, site_name) → 'onshore'|'offshore'`` from the fetcher's SITES table.
+
+    ``scripts/fetch_ninja_sites.py`` is the single source of truth for site
+    classification: its ``SITES`` entries carry the ``type`` that selected the
+    turbine and hub height for each download, so the same table decides which
+    SYSHECF technology a site's output belongs to. Returns ``{}`` if the fetcher
+    module cannot be imported, leaving the filename fallback in charge.
+    """
+    cached = getattr(_fetcher_wind_site_types, '_cache', None)
+    if cached is not None:
+        return cached
+    types: Dict[Tuple[str, str], str] = {}
+    scripts_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'scripts')
+    try:
+        if scripts_dir not in sys.path:
+            sys.path.insert(0, scripts_dir)
+        sites = importlib.import_module('fetch_ninja_sites').SITES
+    except Exception:  # noqa: BLE001 — classification degrades to the name fallback
+        sites = []
+    for site in sites:
+        site_type = str(site.get('type', '')).strip().lower()
+        if site_type in WIND_SITE_TYPES:
+            types[(str(site.get('country', '')).upper(), str(site.get('name', '')))] = site_type
+    _fetcher_wind_site_types._cache = types  # type: ignore[attr-defined]
+    return types
+
+
+def classify_wind_site(country_iso2: str, site_name: str) -> str:
+    """Classify a Renewables.ninja wind site as ``'onshore'`` or ``'offshore'``.
+
+    Primary source is the fetcher's ``SITES`` table (see
+    :func:`_fetcher_wind_site_types`). Sites missing from it fall back to a
+    filename marker (``_OSW``, ``Offshore``, …); anything unmarked is treated as
+    onshore, which is the safe default because onshore dominates every fleet in
+    the current preset list.
+    """
+    declared = _fetcher_wind_site_types().get((str(country_iso2).upper(), site_name))
+    if declared:
+        return declared
+    lowered = site_name.lower()
+    if any(marker in lowered for marker in _OFFSHORE_SITE_NAME_MARKERS):
+        return 'offshore'
+    return 'onshore'
+
+
+DEFAULT_WIND_CAPACITY_SPLIT_CSV = os.path.join(DEFAULT_DATA_DIR, 'eps_wind_capacity_split.csv')
+
+
+def load_eps_wind_capacity_split(
+    country_iso2: str,
+    csv_path: Optional[str] = None,
+) -> Optional[Dict[str, float]]:
+    """Onshore/offshore wind capacity shares for a region, or ``None`` if unknown.
+
+    Reads ``data/eps_wind_capacity_split.csv``, produced by
+    ``scripts/fetch_eps_wind_capacity_split.py`` from each regional EPS model's
+    ``InputData/elec/BHRaSYC/BHRaSYC-StartYearCapacities.csv`` (the sum over
+    vintage columns is that technology's start-year capacity). Using the model's
+    own start-year fleet means the blended ``wind_cf`` — and therefore the Ember
+    calibration anchor behind the onshore/offshore SYSHECF tables — is weighted
+    by the same capacity mix the EPS run will dispatch.
+
+    Returns ``{'onshore': share, 'offshore': share}``, or ``None`` when the
+    region has no row (the caller then falls back to site-count weighting).
+    Refresh the CSV after a model's start-year capacities change.
+    """
+    path = csv_path or DEFAULT_WIND_CAPACITY_SPLIT_CSV
+    if not os.path.exists(path):
+        return None
+    try:
+        table = pd.read_csv(path)
+    except Exception as exc:  # noqa: BLE001 — a bad lookup must not kill the run
+        _status('cf', f"  wind capacity split: could not read {path} ({exc}); "
+                      "falling back to site-count weighting")
+        return None
+    if 'iso2' not in table.columns:
+        return None
+    match = table[table['iso2'].astype(str).str.upper() == str(country_iso2).upper()]
+    if match.empty:
+        return None
+    row = match.iloc[-1]
+    try:
+        onshore = float(row['onshore_share'])
+        offshore = float(row['offshore_share'])
+    except (KeyError, TypeError, ValueError):
+        return None
+    if not (np.isfinite(onshore) and np.isfinite(offshore)) or onshore + offshore <= 0:
+        return None
+    _status(
+        'cf',
+        f"  wind capacity split for {str(country_iso2).upper()}: "
+        f"onshore={onshore:.4f}  offshore={offshore:.4f}  "
+        f"({float(row.get('onshore_mw', float('nan'))):,.0f} / "
+        f"{float(row.get('offshore_mw', float('nan'))):,.0f} MW start-year capacity, "
+        f"{row.get('source_model', 'unknown model')} "
+        f"{row.get('source_file', '')}, retrieved {row.get('retrieved', 'n/a')})",
+    )
+    return {'onshore': onshore, 'offshore': offshore}
+
 
 def load_site_wind_capacity_factors(
     country_iso2: str,
     n_years: int,
     sites_dir: Optional[str] = None,
     country_timezone: Optional[str] = None,
-) -> pd.Series:
-    """Average Renewables.ninja per-site wind SIMULATION output into an hourly CF series.
+    capacity_split: Optional[Dict[str, float]] = None,
+) -> pd.DataFrame:
+    """Average Renewables.ninja per-site wind SIMULATION output into hourly CF series.
 
     Reads ``<sites_dir>/<ISO2>/<site>_<year>.csv`` files produced by
     ``scripts/fetch_ninja_sites.py``, keeps the most recent ``n_years`` of
@@ -2184,6 +2331,17 @@ def load_site_wind_capacity_factors(
     ``electricity`` columns at each hour. Because the fetch uses ``capacity=1``,
     ``electricity`` IS the hourly capacity factor (0-1) at hub height — sheared
     and bias-corrected by Renewables.ninja's simulation.
+
+    Every site is classified onshore vs offshore (:func:`classify_wind_site`),
+    so the return carries **three** series where both types are present:
+
+    * ``wind_cf``          — blended / fleet-wide, used for net load + clustering
+    * ``wind_onshore_cf``  — mean over onshore sites   → SYSHECF-onshore-wind
+    * ``wind_offshore_cf`` — mean over offshore sites  → SYSHECF-offshore-wind
+
+    The blend is capacity-weighted when ``capacity_split`` is supplied and
+    site-count-weighted otherwise (see that parameter). Countries whose site set
+    is all one type get only ``wind_cf`` plus that type's column.
 
     This REPLACES the legacy 2 m-wind-speed → log-shear → power-curve estimate
     (:func:`compute_wind_capacity_factor_from_weather`). The 2 m ninja *weather*
@@ -2219,12 +2377,24 @@ def load_site_wind_capacity_factors(
         ``data/weather/ninja_sim``.
     country_timezone : str, optional
         IANA timezone to convert the UTC index into. ``None`` leaves it in UTC.
+    capacity_split : dict, optional
+        Installed-capacity weights for the blended ``wind_cf`` column, e.g.
+        ``{'onshore': 0.92, 'offshore': 0.08}`` (preset key
+        ``wind_capacity_split``; renormalized internally, so MW work as well as
+        shares). Only used when both site types are present. When omitted the
+        blend is the plain mean over all site-years — i.e. weighted by how many
+        sites of each type were downloaded, which is an artifact of the fetch
+        list rather than of the fleet. Supply it when the onshore/offshore
+        capacity mix is known; the status line reports which weighting was used.
 
     Returns
     -------
-    pandas.Series
-        Hourly wind capacity factor named ``'wind_cf'``, tz-aware index,
-        spanning the selected site-years.
+    pandas.DataFrame
+        Hourly wind capacity factors on a tz-aware index spanning the selected
+        site-years: ``'wind_cf'`` (blended) plus ``'wind_onshore_cf'`` and/or
+        ``'wind_offshore_cf'`` for the site types present.
+        ``df.attrs['wind_site_types']`` maps each site name to its class and
+        ``df.attrs['wind_blend_weights']`` records the weights used.
     """
     import glob as _glob
 
@@ -2261,7 +2431,8 @@ def load_site_wind_capacity_factors(
         )
 
     frames: List[pd.Series] = []
-    used_sites: set = set()
+    frames_by_type: Dict[str, List[pd.Series]] = {t: [] for t in WIND_SITE_TYPES}
+    site_types: Dict[str, str] = {}
     used_years: set = set()
     for path, site, yr in parsed:
         if yr not in sel_years:
@@ -2277,36 +2448,95 @@ def load_site_wind_capacity_factors(
             index=pd.to_datetime(df['time'], utc=True),
             name='wind_cf',
         )
+        site_type = classify_wind_site(country_iso2, site)
         frames.append(s)
-        used_sites.add(site)
+        frames_by_type[site_type].append(s)
+        site_types[site] = site_type
         used_years.add(yr)
 
     if not frames:
         raise FileNotFoundError(
-            f"No site-wind CSVs for {country_iso2!r} in years {sorted(wanted_years)} "
+            f"No site-wind CSVs for {country_iso2!r} in years {sorted(sel_years)} "
             f"under {country_dir!r}. Fetch them with scripts/fetch_ninja_sites.py."
         )
 
-    # Average across all site-year series at each UTC timestamp. Concatenating
-    # then grouping by the (duplicated) timestamp index means each hour is the
-    # mean over whatever sites are present for that hour — robust to a site
-    # missing a year.
-    combined = pd.concat(frames)
-    wind_cf = combined.groupby(level=0).mean().sort_index()
-    wind_cf.name = 'wind_cf'
+    def _mean_over(series_list: List[pd.Series]) -> pd.Series:
+        """Mean across site-year series at each UTC timestamp.
+
+        Concatenating then grouping by the (duplicated) timestamp index means
+        each hour is the mean over whatever sites are present for that hour —
+        robust to a site missing a year.
+        """
+        return pd.concat(series_list).groupby(level=0).mean().sort_index()
+
+    by_type: Dict[str, pd.Series] = {
+        t: _mean_over(frames_by_type[t]) for t in WIND_SITE_TYPES if frames_by_type[t]
+    }
+    out = pd.DataFrame({WIND_SITE_TYPE_CF_COLUMNS[t]: s for t, s in by_type.items()})
+
+    # Blended (fleet-wide) series. With both types present the blend weights
+    # decide how much each type's shape contributes; capacity shares are the
+    # physically meaningful weights, and the all-site mean (site-count
+    # weighting) is the fallback when the split is unknown. Weights are applied
+    # NaN-aware (renormalized over the types that have data in a given hour) so
+    # a type missing a year cannot blank out the blend.
+    weights: Dict[str, float] = {}
+    if len(by_type) == 1:
+        only_type = next(iter(by_type))
+        weights = {only_type: 1.0}
+        wind_cf = by_type[only_type].copy()
+        weight_basis = f'{only_type}-only site set'
+    elif capacity_split:
+        raw_w = {t: float(capacity_split.get(t, 0.0) or 0.0) for t in by_type}
+        total_w = sum(raw_w.values())
+        if total_w <= 0:
+            raise ValueError(
+                f"capacity_split {capacity_split!r} gives zero total weight for the "
+                f"site types present ({sorted(by_type)})."
+            )
+        weights = {t: w / total_w for t, w in raw_w.items()}
+        w_frame = pd.DataFrame(
+            {WIND_SITE_TYPE_CF_COLUMNS[t]: w for t, w in weights.items()},
+            index=out.index,
+        ).where(out.notna())
+        wind_cf = (out * w_frame).sum(axis=1) / w_frame.sum(axis=1)
+        weight_basis = 'capacity-weighted (' + ', '.join(
+            f'{t}={weights[t]:.3f}' for t in sorted(weights)
+        ) + ')'
+    else:
+        wind_cf = _mean_over(frames)
+        n_by_type = {t: len(frames_by_type[t]) for t in by_type}
+        n_total = sum(n_by_type.values())
+        weights = {t: n / n_total for t, n in n_by_type.items()}
+        weight_basis = 'site-count-weighted (no wind_capacity_split preset key)'
+    out.insert(0, 'wind_cf', wind_cf.reindex(out.index))
 
     # Localize UTC → country timezone so the index aligns with the localized
     # weather elsewhere in the pipeline (instant preserved, labels shift).
     if country_timezone:
-        wind_cf.index = wind_cf.index.tz_convert(country_timezone)
+        out.index = out.index.tz_convert(country_timezone)
 
+    n_sites_by_type = {t: sum(1 for v in site_types.values() if v == t) for t in by_type}
     _status(
         'cf',
-        f"wind_cf source = ninja site outputs: averaged {len(used_sites)} site(s) "
-        f"× years {sorted(used_years)} ({len(wind_cf):,} hours)  "
-        f"raw annual-mean CF={float(wind_cf.mean()):.4f}",
+        f"wind_cf source = ninja site outputs: averaged {len(site_types)} site(s) "
+        f"({', '.join(f'{n} {t}' for t, n in sorted(n_sites_by_type.items()))}) "
+        f"× years {sorted(used_years)} ({len(out):,} hours)  "
+        f"raw annual-mean CF={float(out['wind_cf'].mean()):.4f}",
     )
-    return wind_cf
+    for site_type in sorted(by_type):
+        members = sorted(s for s, t in site_types.items() if t == site_type)
+        _status(
+            'cf',
+            f"  {WIND_SITE_TYPE_CF_COLUMNS[site_type]}: raw annual-mean CF="
+            f"{float(out[WIND_SITE_TYPE_CF_COLUMNS[site_type]].mean()):.4f}  "
+            f"from {', '.join(members)}",
+        )
+    _status('cf', f"  blended wind_cf weighting: {weight_basis}")
+
+    out.attrs['wind_site_types'] = site_types
+    out.attrs['wind_blend_weights'] = weights
+    return out
 
 
 def load_ember_annual_capacity_factors(
@@ -3671,6 +3901,7 @@ def generate_full_pipeline_for_country(
     wind_cf_source: str = 'weather',
     wind_sites_dir: Optional[str] = None,
     wind_cf_years: Optional[int] = None,
+    wind_capacity_split: Optional[Dict[str, float]] = None,
     make_plots: bool = True,
     compare_pinned_unpinned: bool = False,
     calibration_only: bool = False,
@@ -4172,34 +4403,51 @@ def generate_full_pipeline_for_country(
     # it onto cf_df's calendar. This also removes the UTC↔local boundary gap: a
     # single site-year's tz-shifted tail wraps around to fill the year's opening
     # hours, so every (doy, hour) cell is populated.
+    #
+    # The loader classifies each site onshore vs offshore, so alongside the
+    # blended wind_cf it returns wind_onshore_cf / wind_offshore_cf. Those feed
+    # SYSHECF-onshore-wind / SYSHECF-offshore-wind (EPS_SYSHECF_FILE_MAP);
+    # wind_cf stays the blended series behind net load and clustering.
+    _wind_type_cf_cols: List[str] = []
     if wind_cf_source == 'ninja_sites':
         _wind_years = wind_cf_years if wind_cf_years is not None else last_n_years
-        site_wind_cf = load_site_wind_capacity_factors(
+        # Blend weights: explicit preset key wins; otherwise fall back to the
+        # region's EPS start-year wind capacities (data/eps_wind_capacity_split.csv,
+        # built by scripts/fetch_eps_wind_capacity_split.py) and, failing that, to
+        # site-count weighting inside the loader.
+        _capacity_split = wind_capacity_split
+        if _capacity_split is None:
+            _capacity_split = load_eps_wind_capacity_split(country_iso2)
+        site_wind = load_site_wind_capacity_factors(
             country_iso2, _wind_years,
             sites_dir=wind_sites_dir, country_timezone=country_timezone,
+            capacity_split=_capacity_split,
         )
-        _sidx = site_wind_cf.index
-        clim = site_wind_cf.groupby([_sidx.dayofyear, _sidx.hour]).mean()
+        _sidx = site_wind.index
         _keys = list(zip(cf_df.index.dayofyear, cf_df.index.hour))
-        aligned = pd.Series(clim.reindex(_keys).to_numpy(), index=cf_df.index)
-        n_missing = int(aligned.isna().sum())
-        if n_missing:
-            # Only possible if a (doy, hour) cell is entirely absent across all
-            # selected site-years (e.g. cf_df includes leap-day Feb 29 but no
-            # site-year is a leap year). Fill by time-interpolation.
-            aligned = aligned.interpolate(method='time', limit_direction='both').ffill().bfill()
-            _status(
-                'cf',
-                f"  wind_cf: filled {n_missing} (doy,hour) cell(s) "
-                f"({100 * n_missing / len(aligned):.2f}%) absent from the site-year climatology",
-            )
-        cf_df['wind_cf'] = aligned.to_numpy()
+        for _col in site_wind.columns:
+            clim = site_wind[_col].groupby([_sidx.dayofyear, _sidx.hour]).mean()
+            aligned = pd.Series(clim.reindex(_keys).to_numpy(), index=cf_df.index)
+            n_missing = int(aligned.isna().sum())
+            if n_missing:
+                # Only possible if a (doy, hour) cell is entirely absent across all
+                # selected site-years (e.g. cf_df includes leap-day Feb 29 but no
+                # site-year is a leap year). Fill by time-interpolation.
+                aligned = aligned.interpolate(method='time', limit_direction='both').ffill().bfill()
+                _status(
+                    'cf',
+                    f"  {_col}: filled {n_missing} (doy,hour) cell(s) "
+                    f"({100 * n_missing / len(aligned):.2f}%) absent from the site-year climatology",
+                )
+            cf_df[_col] = aligned.to_numpy()
+        _wind_type_cf_cols = [c for c in site_wind.columns if c != 'wind_cf']
         _wind_raw_mean = float(pd.to_numeric(cf_df['wind_cf'], errors='coerce').mean())
         _status(
             'cf',
             f"replaced weather-derived wind_cf with ninja site outputs "
             f"(wind_cf_years={_wind_years}, doy×hour climatology; "
-            f"raw annual-mean CF={_wind_raw_mean:.4f})",
+            f"raw annual-mean CF={_wind_raw_mean:.4f}; "
+            f"site-type series: {', '.join(_wind_type_cf_cols) or 'none'})",
         )
 
     # Step 4: Calibrate capacity factors using Ember statistics
@@ -4228,25 +4476,49 @@ def generate_full_pipeline_for_country(
         )
         _wind_target = observed_cf.get('Wind')
         if _wind_target is not None and np.isfinite(float(_wind_target)):
-            _wind_cal = calibrate_capacity_factors(
-                cf_df,
-                {'Wind': float(_wind_target)},
-                rename_map={'Wind': 'wind_cf'},
-                mode='cap_redistribute',
-            )
-            cf_scaled['wind_cf'] = _wind_cal['wind_cf']
             _diags = dict(cf_scaled.attrs.get('calibration_diagnostics', {}))
-            _wd = _wind_cal.attrs.get('calibration_diagnostics', {}).get('wind_cf')
-            if _wd:
-                _diags['wind_cf'] = _wd
+            # Ember publishes one fleet-wide wind CF, so the blended series is
+            # the only anchorable quantity. Calibrate it to the target, then
+            # scale the onshore/offshore series by the SAME factor the blend
+            # needed (target ÷ raw blended mean) rather than calibrating each to
+            # the fleet target — that keeps the offshore-vs-onshore CF ratio the
+            # site simulations imply, while leaving the capacity-weighted blend
+            # on target. Each type still goes through cap_redistribute so it
+            # stays bounded in [0, 1].
+            _wind_raw_blend = float(pd.to_numeric(cf_df['wind_cf'], errors='coerce').mean())
+            _wind_scale = (
+                float(_wind_target) / _wind_raw_blend if _wind_raw_blend > 0 else float('nan')
+            )
+            for _col, _tgt in [('wind_cf', float(_wind_target))] + [
+                (c, float(pd.to_numeric(cf_df[c], errors='coerce').mean()) * _wind_scale)
+                for c in _wind_type_cf_cols
+            ]:
+                if not np.isfinite(_tgt):
+                    cf_scaled[_col] = cf_df[_col]
+                    continue
+                _cal = calibrate_capacity_factors(
+                    cf_df, {_col: _tgt}, rename_map={_col: _col}, mode='cap_redistribute',
+                )
+                cf_scaled[_col] = _cal[_col]
+                _cd = _cal.attrs.get('calibration_diagnostics', {}).get(_col)
+                if _cd:
+                    _diags[_col] = _cd
             cf_scaled.attrs['calibration_diagnostics'] = _diags
             _status(
                 'cf',
                 f"  wind_cf: site-output CF calibrated to Ember target "
                 f"{float(_wind_target):.4f} (cap_redistribute)",
             )
+            for _col in _wind_type_cf_cols:
+                _status(
+                    'cf',
+                    f"  {_col}: calibrated to {float(cf_scaled[_col].mean()):.4f} "
+                    f"(raw × {_wind_scale:.3f}, the blend's Ember scale — preserves the "
+                    f"site-implied onshore/offshore ratio)",
+                )
         else:
-            cf_scaled['wind_cf'] = cf_df['wind_cf']
+            for _col in ['wind_cf', *_wind_type_cf_cols]:
+                cf_scaled[_col] = cf_df[_col]
             _status('cf', "  wind_cf: site-output CF used uncalibrated (no Ember wind target)")
     elif cf_calibration_mode == 'speed_rescale':
         # Wind is calibrated in wind-speed space (physical shape, bounded by
@@ -4307,9 +4579,13 @@ def generate_full_pipeline_for_country(
         f"installed capacity (Ember avg over {last_n_years}y): "
         f"solar={solar_cap/1000:.1f} GW  wind={wind_cap/1000:.1f} GW",
     )
+    # Wind generation (and hence net load) uses the blended wind_cf; the
+    # site-type series ride along so they reach the SYSHECF export on the same
+    # calendar. Both end in '_cf' so the load-column filter below skips them.
+    _carry_cf_cols = ['solar_cf', 'wind_cf', *[c for c in _wind_type_cf_cols if c in cf_scaled.columns]]
     gen_df = pd.DataFrame(index=cf_scaled.index)
-    gen_df['solar_cf'] = cf_scaled['solar_cf']
-    gen_df['wind_cf'] = cf_scaled['wind_cf']
+    for _col in _carry_cf_cols:
+        gen_df[_col] = cf_scaled[_col]
     gen_df['solar_gen'] = cf_scaled['solar_cf'] * solar_cap
     gen_df['wind_gen'] = cf_scaled['wind_cf'] * wind_cap
     # Align generation with synthetic demand index (synthetic year).  We align by time of year.
@@ -4317,7 +4593,7 @@ def generate_full_pipeline_for_country(
     gen_df['doy'] = gen_df.index.dayofyear
     gen_df['hour'] = gen_df.index.hour
     # Average generation for each DOY and hour
-    gen_avg = gen_df.groupby(['doy', 'hour']).mean()[['solar_cf', 'wind_cf', 'solar_gen', 'wind_gen']]
+    gen_avg = gen_df.groupby(['doy', 'hour']).mean()[[*_carry_cf_cols, 'solar_gen', 'wind_gen']]
     # Construct generation series for the synthetic year
     synthetic_year_dates = df_calibrated.index
     doy = synthetic_year_dates.dayofyear
@@ -4326,8 +4602,8 @@ def generate_full_pipeline_for_country(
     gen_interp.index = synthetic_year_dates
     # Add generation columns to the calibrated demand DataFrame
     df_with_gen = df_calibrated.copy()
-    df_with_gen['solar_cf'] = gen_interp['solar_cf'].values
-    df_with_gen['wind_cf'] = gen_interp['wind_cf'].values
+    for _col in _carry_cf_cols:
+        df_with_gen[_col] = gen_interp[_col].values
     df_with_gen['solar_gen'] = gen_interp['solar_gen'].values
     df_with_gen['wind_gen'] = gen_interp['wind_gen'].values
     # Step 6: Compute net load by subtracting generation
@@ -4341,7 +4617,7 @@ def generate_full_pipeline_for_country(
     )
     # Use net load for clustering; pass generation columns for subtraction in run_pipeline
     gen_cols = ['solar_gen', 'wind_gen']
-    cf_cols = ['solar_cf', 'wind_cf']
+    cf_cols = list(_carry_cf_cols)
     # Determine which load columns to include for load factor computation
     load_cols = [
         col for col in df_with_gen.columns
@@ -7230,6 +7506,41 @@ def _write_eps_csv(path: str, table: pd.DataFrame, unit_label: str) -> None:
     out.to_csv(path)
 
 
+def resolve_direct_cf_spec(
+    spec: Any,
+    available_columns: Iterable[str],
+) -> Optional[Tuple[str, float]]:
+    """Reduce an export spec to ``(column, multiplier)`` if it is a direct read.
+
+    Returns ``None`` for specs that are not a plain hourly-column read (``sum``,
+    ``template_split``, ``uniform_annual_share``, ``None``) or whose column is
+    absent from ``available_columns``. ``first_available`` is walked in order and
+    resolves to its first usable option — which is what lets the wind techs
+    prefer their site-type series (``wind_onshore_cf`` / ``wind_offshore_cf``)
+    and fall back to the blended ``wind_cf``.
+
+    The workbook builders use this to decide which SYSHECF tabs are *derived*
+    from the hourly CF source tab (formula-driven) rather than pasted in, so
+    they must agree with :func:`_build_eps_table_from_spec` about which column a
+    spec resolves to.
+    """
+    columns = set(available_columns)
+    if isinstance(spec, str):
+        spec = {'mode': 'direct', 'column': spec}
+    if not isinstance(spec, dict):
+        return None
+    mode = spec.get('mode', 'direct')
+    if mode == 'first_available':
+        for option in spec.get('options', []):
+            resolved = resolve_direct_cf_spec(option, columns)
+            if resolved is not None:
+                return resolved
+        return None
+    if mode == 'direct' and spec.get('column') in columns:
+        return str(spec['column']), float(spec.get('multiplier', 1.0))
+    return None
+
+
 def _build_eps_table_from_spec(
     file_name: str,
     spec: Any,
@@ -7360,7 +7671,7 @@ def _build_methodology_sheet(
             '3. Utility-scale solar PV maps directly from the calibrated solar capacity factor profile.',
             '4. Distributed solar PV uses the same hourly shape as utility-scale solar, multiplied by a rooftop derate factor.',
             f'5. The current distributed PV derate is {DISTRIBUTED_SOLAR_CF_DERATE:.2f}, based on an inference from NREL ATB utility-scale vs distributed PV average performance assumptions.',
-            '6. Onshore and offshore wind currently use the calibrated wind profile; other non-variable technologies remain template-based unless a specific derivation is added.',
+            '6. Onshore and offshore wind use separate calibrated wind profiles where the run has per-site simulation data classified onshore vs offshore, and the same blended wind profile otherwise; other non-variable technologies remain template-based unless a specific derivation is added.',
             '7. Coverage and file provenance are documented on the Coverage sheet.',
         ]
     if run_metadata:
@@ -7727,10 +8038,11 @@ def export_workbook_source_csvs(
     )
     for file_name, spec in EPS_SYSHECF_FILE_MAP.items():
         tech = file_name[len('SYSHECF-'):]
-        if isinstance(spec, dict) and spec.get('mode') == 'direct' \
-                and spec.get('column') in df.columns:
-            series = pd.to_numeric(df[spec['column']], errors='coerce').to_numpy()
-            cf[f'CF_{tech}'] = series * float(spec.get('multiplier', 1.0))
+        resolved = resolve_direct_cf_spec(spec, df.columns)
+        if resolved is not None:
+            column, multiplier = resolved
+            series = pd.to_numeric(df[column], errors='coerce').to_numpy()
+            cf[f'CF_{tech}'] = series * multiplier
         else:
             csv_path = os.path.join(root_output_dir, 'SYSHECF', f'{file_name}.csv')
             if not os.path.exists(csv_path):
