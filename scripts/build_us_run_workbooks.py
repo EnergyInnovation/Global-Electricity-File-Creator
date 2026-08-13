@@ -3,12 +3,14 @@ international pipeline (run_pipeline.py), following the build-input-xlsx
 pattern: raw hourly source data pasted into source tabs, all output values
 derived via Excel formulas, About tab documenting sources + methodology.
 
-The math mirrors the pipeline's EPS export exactly (representative-day
-profiles):
-  SHELF   LF[slice, hour] = <col value at (rep-day of slice, hour)> / SUM(col)
-  SYSHECF CF[slice, hour] = <cf value at (rep-day of slice, hour)>  (x0.70 dist)
+The math mirrors the pipeline's EPS export exactly (SLICE MEANS — the form
+CLAUDE.md §6 specifies and the canonical eps-us workbooks use; see
+DECISIONS.md 2026-08-12 for why representative-day picks were replaced):
+  SHELF   LF[slice, hour] = AVERAGEIFS(col, slice, hour) / SUM(col)
+  SYSHECF CF[slice, hour] = AVERAGEIFS(cf, slice, hour), clamped [0,1]
+                            (x0.70 dist PV)
   template_split cats     = aggregate LF x peer-template weight per cell
-  'sum' cats (HDVs)       = (v1@rep + v2@rep) / (SUM(v1) + SUM(v2))
+  'sum' cats (HDVs)       = (avg1 + avg2) / (SUM(v1) + SUM(v2))
 
 Inputs (created from the verified 2026-07-07 master-parity run captures if the
 workbook_sources CSVs don't exist yet):
@@ -351,14 +353,45 @@ def _out_tab_shell(wb, title: str, first_cell: str):
 # SHELF workbook
 # ---------------------------------------------------------------------------
 
-def _repday_lf(src: str, col_letter: str, doy_l: str, hour_l: str, n: int,
-               slice_cell: str, h: int) -> str:
-    """rep-day value / annual sum for one column."""
+def _slice_mean_lf(src: str, col_letter: str, slice_l: str, hour_l: str, n: int,
+                   slice_cell: str, h: int) -> tuple[str, str]:
+    """Slice-mean load factor for one column: (numerator, denominator).
+
+    numerator   = AVERAGEIFS(col, slice, <slice>, hour_of_day, <h>)
+                  — mean demand over every hour assigned to that (slice, hour)
+    denominator = SUM(col) — annual demand
+
+    This is the definition in CLAUDE.md §6 and the form used by the canonical
+    eps-us workbooks. It is also the only form that satisfies the SHELF balance
+    Σ_slices days × Σ_hours LF = 1 exactly: summing the slice means over 24
+    hours and weighting by the slice's day count reconstructs the slice's total
+    energy, and summing over slices reconstructs the annual total.
+
+    Superseded the representative-day form (SUMIFS on the slice's one rep day),
+    which broke that balance — see DECISIONS.md 2026-08-12.
+    """
     rng = f"'{src}'!${col_letter}$2:${col_letter}${n + 1}"
-    doy = f"'{src}'!${doy_l}$2:${doy_l}${n + 1}"
+    slc = f"'{src}'!${slice_l}$2:${slice_l}${n + 1}"
     hr = f"'{src}'!${hour_l}$2:${hour_l}${n + 1}"
-    pick = f'SUMIFS({rng},{doy},{_rep_doy_formula(slice_cell)},{hr},{h})'
-    return pick, f'SUM({rng})'
+    return f'AVERAGEIFS({rng},{slc},{slice_cell},{hr},{h})', f'SUM({rng})'
+
+
+def _slice_mean_cf(src: str, col_letter: str, slice_l: str, hour_l: str, n: int,
+                   slice_cell: str, h: int) -> str:
+    """Slice-mean capacity factor: AVERAGEIFS(col, slice, <slice>, hour, <h>).
+
+    Callers clamp to [0, 1] and wrap in IFERROR, matching the eps-us cells.
+    """
+    rng = f"'{src}'!${col_letter}$2:${col_letter}${n + 1}"
+    slc = f"'{src}'!${slice_l}$2:${slice_l}${n + 1}"
+    hr = f"'{src}'!${hour_l}$2:${hour_l}${n + 1}"
+    return f'AVERAGEIFS({rng},{slc},{slice_cell},{hr},{h})'
+
+
+def _cf_cell(avg: str, mult: float) -> str:
+    """Wrap a CF expression the way the eps-us SYSHECF cells do."""
+    mult_txt = '' if mult == 1.0 else f'*{mult}'
+    return f'=IFERROR(MAX(0,MIN(1,{avg}{mult_txt})),0)'
 
 
 def add_split_templates_tab(wb) -> dict[str, tuple[str, int]]:
@@ -462,8 +495,8 @@ def build_shelf_workbook(demand: pd.DataFrame, clus: pd.DataFrame):
     add_clustering_tab(wb, clus)
     split_anchors = add_split_templates_tab(wb)
     col_letters = add_hourly_source_tab(wb, 'Demand hourly source', demand)
-    doy_l = col_letters['day_of_year']
     hour_l = col_letters['hour_of_day']
+    slice_l = col_letters['slice']
     SRC = 'Demand hourly source'
 
     for cat, kind, arg in SHELF_SPECS:
@@ -487,12 +520,12 @@ def build_shelf_workbook(demand: pd.DataFrame, clus: pd.DataFrame):
                 elif kind == 'flat':
                     ws.cell(2 + r_off, 2 + h, 1.0 / 8760.0)
                 elif kind == 'direct':
-                    pick, tot = _repday_lf(SRC, col_letters[arg], doy_l, hour_l, n, slice_cell, h)
+                    pick, tot = _slice_mean_lf(SRC, col_letters[arg], slice_l, hour_l, n, slice_cell, h)
                     ws.cell(2 + r_off, 2 + h, f'=IFERROR({pick}/{tot},0)')
                 elif kind == 'sum':
                     c1, c2 = arg
-                    p1, t1 = _repday_lf(SRC, col_letters[c1], doy_l, hour_l, n, slice_cell, h)
-                    p2, t2 = _repday_lf(SRC, col_letters[c2], doy_l, hour_l, n, slice_cell, h)
+                    p1, t1 = _slice_mean_lf(SRC, col_letters[c1], slice_l, hour_l, n, slice_cell, h)
+                    p2, t2 = _slice_mean_lf(SRC, col_letters[c2], slice_l, hour_l, n, slice_cell, h)
                     ws.cell(2 + r_off, 2 + h, f'=IFERROR(({p1}+{p2})/({t1}+{t2}),0)')
                 elif kind == 'split':
                     # Aggregate LF = sum of each column's OWN load factor
@@ -502,7 +535,7 @@ def build_shelf_workbook(demand: pd.DataFrame, clus: pd.DataFrame):
                     agg_cols, peers = SPLIT_GROUPS[cat]
                     terms = []
                     for c in agg_cols:
-                        p, t = _repday_lf(SRC, col_letters[c], doy_l, hour_l, n, slice_cell, h)
+                        p, t = _slice_mean_lf(SRC, col_letters[c], slice_l, hour_l, n, slice_cell, h)
                         terms.append(f'{p}/{t}')
                     agg = f"({'+'.join(terms)})"
                     cell_col = get_column_letter(2 + h)
@@ -590,8 +623,8 @@ def build_syshecf_workbook(cf: pd.DataFrame, clus: pd.DataFrame):
     add_about_tab(wb, 'SYSHECF', SYSHECF_OUT.stem, sources, notes)
     add_clustering_tab(wb, clus)
     col_letters = add_hourly_source_tab(wb, 'CF hourly source', cf)
-    doy_l = col_letters['day_of_year']
     hour_l = col_letters['hour_of_day']
+    slice_l = col_letters['slice']
     SRC = 'CF hourly source'
 
     for tech, kind, arg in SYSHECF_ORDER:
@@ -606,16 +639,12 @@ def build_syshecf_workbook(cf: pd.DataFrame, clus: pd.DataFrame):
                     ws.cell(2 + r_off, 2 + h, float(tbl.loc[sl, HOUR_COLS[h]]))
         else:
             src_col, mult = arg
-            col_l = col_letters[src_col]
-            rng = f"'{SRC}'!${col_l}$2:${col_l}${n + 1}"
-            doy = f"'{SRC}'!${doy_l}$2:${doy_l}${n + 1}"
-            hr = f"'{SRC}'!${hour_l}$2:${hour_l}${n + 1}"
             for r_off, sl in enumerate(SLICES):
                 slice_cell = f'$A{2 + r_off}'
                 for h in range(24):
-                    avg = (f'AVERAGEIFS({rng},{doy},{_rep_doy_formula(slice_cell)},{hr},{h})')
-                    mult_txt = '' if mult == 1.0 else f'*{mult}'
-                    ws.cell(2 + r_off, 2 + h, f'=IFERROR({avg}{mult_txt},0)')
+                    avg = _slice_mean_cf(SRC, col_letters[src_col], slice_l, hour_l,
+                                         n, slice_cell, h)
+                    ws.cell(2 + r_off, 2 + h, _cf_cell(avg, mult))
 
     try:
         wb.save(SYSHECF_OUT)

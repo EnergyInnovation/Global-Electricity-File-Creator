@@ -235,8 +235,8 @@ Cambium vintage still differs: state pipeline uses Cambium 2022 per-state; natio
 - One file per category, 22 files total.
 - Header row: `Unit: dimensionless (ratio of electricity demand in this hour to annual demand),Hour0,Hour1,...,Hour23`
 - 6 data rows: `Winter`, `Spring`, `Summer`, `Fall`, `Summer Peak`, `Winter Peak`
-- Values are LF where `LF[slice, hour] = (mean demand in slice at that hour) / annual demand`
-- **Balance check:** `sum_slices(sum_hours(LF[slice, hour]) × days_per_slice[slice]) = 1.0` for non-zero categories.
+- Values are LF where `LF[slice, hour] = (mean demand in slice at that hour) / annual demand` — a **slice mean**, i.e. `AVERAGEIFS(col, slice, <slice>, hour_of_day, <hour>) / SUM(col)` in the workbooks. **Not** the value on the slice's representative day: rep-day selection is the *clustering* objective only, and using it for the exported values breaks the balance below (0.84–2.24 by category on the KR run). Enforced 2026-08-12 — see DECISIONS.md.
+- **Balance check:** `sum_slices(sum_hours(LF[slice, hour]) × days_per_slice[slice]) = 1.0` for non-zero categories. Slice means satisfy this by construction. The SHELF workbook's `Checker` tab computes it live in Excel (one column per category, `Check` row = `SUMPRODUCT(days, slice sums)`), and `scripts/verify_run_workbooks.py` asserts it.
 - 8 categories are intentionally zero (see table above).
 - Days-per-timeslice file: `SHELF-days-per-timeslice.csv` — 6 rows of `slice,days`.
 
@@ -244,8 +244,8 @@ Cambium vintage still differs: state pipeline uses Cambium 2022 per-state; natio
 - One file per tech, 25 files total (lots of templates for non-Cambium techs).
 - Header row: `<tech display name>,Hour0,...,Hour23` (display name like "natural gas combined cycle")
 - 6 data rows (same slices as SHELF)
-- Values are capacity factors (0–1).
-- **VRE techs are EIA-calibrated:** the table's annual-weighted CF = EIA target.
+- Values are capacity factors (0–1), also **slice means** — `AVERAGEIFS(cf col, slice, <slice>, hour_of_day, <hour>)`, clamped with `IFERROR(MAX(0,MIN(1,…)),0)` as in the eps-us workbook.
+- **VRE techs are EIA-calibrated:** the table's annual-weighted CF = EIA target. This only holds under slice means; the previous rep-day export missed the calibrated annual mean by −22% to +24% (KR).
 - Non-variable techs preserved as legacy templates.
 
 ---
@@ -303,6 +303,35 @@ The model's gross SP slice peak should be within ~5% of 745 GW (i.e., 710–780 
 - [x] ~~**Consolidate clustering across US + non-US pipelines.**~~ Done 2026-05-22. `energy_timeslice_pipeline.cluster_timeslices` now wraps `state_pipeline.builders.clustering_repday.cluster_days_repday`. Added Southern Hemisphere support via `_hemisphere_season_months(country)` + `SOUTHERN_HEMISPHERE_COUNTRIES` set. See DECISIONS.md 2026-05-22 entry.
 
 ### Open — to pick up next (loosely highest-leverage first)
+
+- [ ] **Decide how the calibration should treat a zero EPS prior.** `eps_prior_KR.csv` has
+  `residential_other = 0.0` for every year — confirmed real, not stale, by a fresh clean-HEAD
+  re-extraction on 2026-08-13. `align_basis_to_prior`
+  ([energy_timeslice_pipeline.py:6063](energy_timeslice_pipeline.py:6063)) gives a *missing*
+  end-use a median fallback magnitude but scales a *present-and-zero* one to `s = 0`, which
+  zeroes the basis column and makes `SHELF-residential-other.csv` export blank. Two sub-questions,
+  both needing modeling-team input: (a) should a zero prior be treated as "not tracked" —
+  the one-line `if col not in prior or prior[col] <= 0` change? (b) is the underlying
+  eps-southkorea residential end-use split right at all? `residential_lighting` and
+  `residential_cooling` are *exactly* equal there (12,803,180 MWh), which reads like a
+  placeholder allocation that left "other component" empty. Knock-on: with `residential_other`
+  at zero, `SHELF-residential-appliances` gets only its template share (0.522) of the
+  water-heating aggregate and the remaining 0.478 is dropped entirely.
+
+- [ ] **Refresh `data/eps_wind_capacity_split.csv` for CN.** It was built from the 4.0.0 *parent*
+  `eps-china-igdp` (404,977 / 36,770 MW onshore/offshore, shares 0.9168 / 0.0832). The inner
+  4.0.5 clone — now the source of `eps_prior_CN.csv` — has 480,647 / 40,750 MW at its 2024 base
+  year (shares 0.9218 / 0.0782). Deliberately not changed on 2026-08-13 because these weights set
+  the level of both per-type wind CF series *and* the shape of the blended `wind_cf`, so they move
+  net load and clustering. Refresh with
+  `python scripts/fetch_eps_wind_capacity_split.py --model CN="<path>/eps-china-igdp/eps-china-igdp"`
+  then re-run CN and diff. KR is nearly reconciled already (1,772 vs 1,708 MW onshore, +3.7%;
+  offshore exact) — worth understanding the 64 MW gap before assuming the run value is right.
+
+- [ ] **China preset `default_year: 2018` no longer has prior coverage.** `eps_prior_CN.csv` now
+  spans 2024–2060, so `load_eps_magnitude_prior` falls back to nearest-year 2024 (it warns). The
+  mismatch predates this change (the old prior started 2019) but is now 6 years wide. Decide
+  whether the China run year should move or the prior should be extended backwards.
 
 - [ ] **Run a full end-to-end non-US pipeline to verify the clustering consolidation.** China, South Korea, Brazil, or Australia would be the smoke test. Needs external data: DemandCast (real demand), Mendeley dataset (end-use shapes), Ember (annual CFs), Renewables.ninja (weather → VRE). Entry point: `energy_timeslice_pipeline.generate_full_pipeline_for_preset(country='Brazil', ...)`. The clustering layer is consolidated (single canonical algorithm with hemisphere awareness) but no non-US run has been executed since the consolidation. **Quickest validation:** pick Brazil (smallest data footprint of the SH presets) and run a single year end-to-end. Verify (1) no exceptions, (2) Summer Peak DOYs fall in Dec–Feb (SH summer), (3) days_per_timeslice sums to 365.
 

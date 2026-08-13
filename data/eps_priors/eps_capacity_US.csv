@@ -1,0 +1,1264 @@
+# EPS prior — BAU electricity generation capacity by technology (MW)
+# region:            US
+# source_model:       eps-us
+# source_model_path:  C:/Users/<user>/GitHub/eps-us
+# model_version:      4.0.5
+# base_year:          2025
+# final_year:         2050
+# git_branch:         main
+# git_commit:         9b3a6514
+# git_commit_date:    2026-07-07
+# git_remote:         https://github.com/Energy-Innovation/eps-us.git
+# working_tree:       clean
+# extracted:          2026-08-13
+# extracted_by:       data/eps_priors/parse_eps_extract.py
+# vensim:             C:/Program Files/Vensim/vendss64.exe
+tech,year,eps_mw
+biomass es,2025,3904.45
+biomass es,2026,3914.45
+biomass es,2027,3957.25
+biomass es,2028,3957.25
+biomass es,2029,3957.25
+biomass es,2030,3941.25
+biomass es,2031,3941.25
+biomass es,2032,3941.25
+biomass es,2033,3941.25
+biomass es,2034,3941.25
+biomass es,2035,3941.25
+biomass es,2036,3941.25
+biomass es,2037,3941.25
+biomass es,2038,3941.25
+biomass es,2039,3960.25
+biomass es,2040,3960.25
+biomass es,2041,3960.25
+biomass es,2042,3960.25
+biomass es,2043,3960.25
+biomass es,2044,3960.25
+biomass es,2045,3960.25
+biomass es,2046,3960.25
+biomass es,2047,3960.25
+biomass es,2048,3960.25
+biomass es,2049,3960.25
+biomass es,2050,3960.25
+biomass es (distributed),2025,0.0
+biomass es (distributed),2026,0.0
+biomass es (distributed),2027,0.0
+biomass es (distributed),2028,0.0
+biomass es (distributed),2029,0.0
+biomass es (distributed),2030,0.0
+biomass es (distributed),2031,0.0
+biomass es (distributed),2032,0.0
+biomass es (distributed),2033,0.0
+biomass es (distributed),2034,0.0
+biomass es (distributed),2035,0.0
+biomass es (distributed),2036,0.0
+biomass es (distributed),2037,0.0
+biomass es (distributed),2038,0.0
+biomass es (distributed),2039,0.0
+biomass es (distributed),2040,0.0
+biomass es (distributed),2041,0.0
+biomass es (distributed),2042,0.0
+biomass es (distributed),2043,0.0
+biomass es (distributed),2044,0.0
+biomass es (distributed),2045,0.0
+biomass es (distributed),2046,0.0
+biomass es (distributed),2047,0.0
+biomass es (distributed),2048,0.0
+biomass es (distributed),2049,0.0
+biomass es (distributed),2050,0.0
+biomass w CCS es,2025,0.0
+biomass w CCS es,2026,0.0
+biomass w CCS es,2027,0.0
+biomass w CCS es,2028,0.0
+biomass w CCS es,2029,0.0
+biomass w CCS es,2030,0.0
+biomass w CCS es,2031,0.0
+biomass w CCS es,2032,0.0
+biomass w CCS es,2033,0.0
+biomass w CCS es,2034,0.0
+biomass w CCS es,2035,0.0
+biomass w CCS es,2036,0.0
+biomass w CCS es,2037,0.0
+biomass w CCS es,2038,0.0
+biomass w CCS es,2039,0.0
+biomass w CCS es,2040,0.0
+biomass w CCS es,2041,0.0
+biomass w CCS es,2042,0.0
+biomass w CCS es,2043,0.0
+biomass w CCS es,2044,0.0
+biomass w CCS es,2045,0.0
+biomass w CCS es,2046,0.0
+biomass w CCS es,2047,0.0
+biomass w CCS es,2048,0.0
+biomass w CCS es,2049,0.0
+biomass w CCS es,2050,0.0
+biomass w CCS es (distributed),2025,0.0
+biomass w CCS es (distributed),2026,0.0
+biomass w CCS es (distributed),2027,0.0
+biomass w CCS es (distributed),2028,0.0
+biomass w CCS es (distributed),2029,0.0
+biomass w CCS es (distributed),2030,0.0
+biomass w CCS es (distributed),2031,0.0
+biomass w CCS es (distributed),2032,0.0
+biomass w CCS es (distributed),2033,0.0
+biomass w CCS es (distributed),2034,0.0
+biomass w CCS es (distributed),2035,0.0
+biomass w CCS es (distributed),2036,0.0
+biomass w CCS es (distributed),2037,0.0
+biomass w CCS es (distributed),2038,0.0
+biomass w CCS es (distributed),2039,0.0
+biomass w CCS es (distributed),2040,0.0
+biomass w CCS es (distributed),2041,0.0
+biomass w CCS es (distributed),2042,0.0
+biomass w CCS es (distributed),2043,0.0
+biomass w CCS es (distributed),2044,0.0
+biomass w CCS es (distributed),2045,0.0
+biomass w CCS es (distributed),2046,0.0
+biomass w CCS es (distributed),2047,0.0
+biomass w CCS es (distributed),2048,0.0
+biomass w CCS es (distributed),2049,0.0
+biomass w CCS es (distributed),2050,0.0
+crude oil es,2025,6.0
+crude oil es,2026,6.0
+crude oil es,2027,6.0
+crude oil es,2028,6.0
+crude oil es,2029,6.0
+crude oil es,2030,6.0
+crude oil es,2031,6.0
+crude oil es,2032,6.0
+crude oil es,2033,6.0
+crude oil es,2034,6.0
+crude oil es,2035,6.0
+crude oil es,2036,6.0
+crude oil es,2037,6.0
+crude oil es,2038,6.0
+crude oil es,2039,6.0
+crude oil es,2040,6.0
+crude oil es,2041,6.0
+crude oil es,2042,6.0
+crude oil es,2043,6.0
+crude oil es,2044,6.0
+crude oil es,2045,6.0
+crude oil es,2046,6.0
+crude oil es,2047,6.0
+crude oil es,2048,6.0
+crude oil es,2049,6.0
+crude oil es,2050,6.0
+crude oil es (distributed),2025,0.0
+crude oil es (distributed),2026,0.0
+crude oil es (distributed),2027,0.0
+crude oil es (distributed),2028,0.0
+crude oil es (distributed),2029,0.0
+crude oil es (distributed),2030,0.0
+crude oil es (distributed),2031,0.0
+crude oil es (distributed),2032,0.0
+crude oil es (distributed),2033,0.0
+crude oil es (distributed),2034,0.0
+crude oil es (distributed),2035,0.0
+crude oil es (distributed),2036,0.0
+crude oil es (distributed),2037,0.0
+crude oil es (distributed),2038,0.0
+crude oil es (distributed),2039,0.0
+crude oil es (distributed),2040,0.0
+crude oil es (distributed),2041,0.0
+crude oil es (distributed),2042,0.0
+crude oil es (distributed),2043,0.0
+crude oil es (distributed),2044,0.0
+crude oil es (distributed),2045,0.0
+crude oil es (distributed),2046,0.0
+crude oil es (distributed),2047,0.0
+crude oil es (distributed),2048,0.0
+crude oil es (distributed),2049,0.0
+crude oil es (distributed),2050,0.0
+geothermal es,2025,2695.5
+geothermal es,2026,2725.5
+geothermal es,2027,2785.5
+geothermal es,2028,2786.5
+geothermal es,2029,2786.5
+geothermal es,2030,2786.5
+geothermal es,2031,2786.5
+geothermal es,2032,2786.5
+geothermal es,2033,2786.5
+geothermal es,2034,2786.5
+geothermal es,2035,2786.5
+geothermal es,2036,2786.5
+geothermal es,2037,2786.5
+geothermal es,2038,2786.5
+geothermal es,2039,2786.5
+geothermal es,2040,2786.5
+geothermal es,2041,2786.5
+geothermal es,2042,2786.5
+geothermal es,2043,2786.5
+geothermal es,2044,2786.5
+geothermal es,2045,2786.5
+geothermal es,2046,2786.5
+geothermal es,2047,2786.5
+geothermal es,2048,2786.5
+geothermal es,2049,2786.5
+geothermal es,2050,2786.5
+geothermal es (distributed),2025,0.0
+geothermal es (distributed),2026,0.0
+geothermal es (distributed),2027,0.0
+geothermal es (distributed),2028,0.0
+geothermal es (distributed),2029,0.0
+geothermal es (distributed),2030,0.0
+geothermal es (distributed),2031,0.0
+geothermal es (distributed),2032,0.0
+geothermal es (distributed),2033,0.0
+geothermal es (distributed),2034,0.0
+geothermal es (distributed),2035,0.0
+geothermal es (distributed),2036,0.0
+geothermal es (distributed),2037,0.0
+geothermal es (distributed),2038,0.0
+geothermal es (distributed),2039,0.0
+geothermal es (distributed),2040,0.0
+geothermal es (distributed),2041,0.0
+geothermal es (distributed),2042,0.0
+geothermal es (distributed),2043,0.0
+geothermal es (distributed),2044,0.0
+geothermal es (distributed),2045,0.0
+geothermal es (distributed),2046,0.0
+geothermal es (distributed),2047,0.0
+geothermal es (distributed),2048,0.0
+geothermal es (distributed),2049,0.0
+geothermal es (distributed),2050,0.0
+hard coal es,2025,159671.0
+hard coal es,2026,156130.0
+hard coal es,2027,149098.0
+hard coal es,2028,132547.0
+hard coal es,2029,125993.0
+hard coal es,2030,120663.0
+hard coal es,2031,113947.0
+hard coal es,2032,107048.0
+hard coal es,2033,101776.0
+hard coal es,2034,97530.3
+hard coal es,2035,95730.3
+hard coal es,2036,94791.3
+hard coal es,2037,94191.3
+hard coal es,2038,92952.3
+hard coal es,2039,92052.3
+hard coal es,2040,90075.3
+hard coal es,2041,88875.3
+hard coal es,2042,87375.3
+hard coal es,2043,85875.3
+hard coal es,2044,84075.3
+hard coal es,2045,80645.3
+hard coal es,2046,78545.3
+hard coal es,2047,76445.3
+hard coal es,2048,74045.3
+hard coal es,2049,71645.3
+hard coal es,2050,69245.3
+hard coal es (distributed),2025,0.0
+hard coal es (distributed),2026,0.0
+hard coal es (distributed),2027,0.0
+hard coal es (distributed),2028,0.0
+hard coal es (distributed),2029,0.0
+hard coal es (distributed),2030,0.0
+hard coal es (distributed),2031,0.0
+hard coal es (distributed),2032,0.0
+hard coal es (distributed),2033,0.0
+hard coal es (distributed),2034,0.0
+hard coal es (distributed),2035,0.0
+hard coal es (distributed),2036,0.0
+hard coal es (distributed),2037,0.0
+hard coal es (distributed),2038,0.0
+hard coal es (distributed),2039,0.0
+hard coal es (distributed),2040,0.0
+hard coal es (distributed),2041,0.0
+hard coal es (distributed),2042,0.0
+hard coal es (distributed),2043,0.0
+hard coal es (distributed),2044,0.0
+hard coal es (distributed),2045,0.0
+hard coal es (distributed),2046,0.0
+hard coal es (distributed),2047,0.0
+hard coal es (distributed),2048,0.0
+hard coal es (distributed),2049,0.0
+hard coal es (distributed),2050,0.0
+hard coal w CCS es,2025,0.0
+hard coal w CCS es,2026,0.0
+hard coal w CCS es,2027,0.0
+hard coal w CCS es,2028,0.0
+hard coal w CCS es,2029,0.0
+hard coal w CCS es,2030,0.0
+hard coal w CCS es,2031,0.0
+hard coal w CCS es,2032,0.0
+hard coal w CCS es,2033,0.0
+hard coal w CCS es,2034,0.0
+hard coal w CCS es,2035,0.0
+hard coal w CCS es,2036,0.0
+hard coal w CCS es,2037,0.0
+hard coal w CCS es,2038,0.0
+hard coal w CCS es,2039,0.0
+hard coal w CCS es,2040,0.0
+hard coal w CCS es,2041,0.0
+hard coal w CCS es,2042,0.0
+hard coal w CCS es,2043,0.0
+hard coal w CCS es,2044,0.0
+hard coal w CCS es,2045,0.0
+hard coal w CCS es,2046,0.0
+hard coal w CCS es,2047,0.0
+hard coal w CCS es,2048,0.0
+hard coal w CCS es,2049,0.0
+hard coal w CCS es,2050,0.0
+hard coal w CCS es (distributed),2025,0.0
+hard coal w CCS es (distributed),2026,0.0
+hard coal w CCS es (distributed),2027,0.0
+hard coal w CCS es (distributed),2028,0.0
+hard coal w CCS es (distributed),2029,0.0
+hard coal w CCS es (distributed),2030,0.0
+hard coal w CCS es (distributed),2031,0.0
+hard coal w CCS es (distributed),2032,0.0
+hard coal w CCS es (distributed),2033,0.0
+hard coal w CCS es (distributed),2034,0.0
+hard coal w CCS es (distributed),2035,0.0
+hard coal w CCS es (distributed),2036,0.0
+hard coal w CCS es (distributed),2037,0.0
+hard coal w CCS es (distributed),2038,0.0
+hard coal w CCS es (distributed),2039,0.0
+hard coal w CCS es (distributed),2040,0.0
+hard coal w CCS es (distributed),2041,0.0
+hard coal w CCS es (distributed),2042,0.0
+hard coal w CCS es (distributed),2043,0.0
+hard coal w CCS es (distributed),2044,0.0
+hard coal w CCS es (distributed),2045,0.0
+hard coal w CCS es (distributed),2046,0.0
+hard coal w CCS es (distributed),2047,0.0
+hard coal w CCS es (distributed),2048,0.0
+hard coal w CCS es (distributed),2049,0.0
+hard coal w CCS es (distributed),2050,0.0
+heavy or residual fuel oil es,2025,0.0
+heavy or residual fuel oil es,2026,0.0
+heavy or residual fuel oil es,2027,0.0
+heavy or residual fuel oil es,2028,0.0
+heavy or residual fuel oil es,2029,0.0
+heavy or residual fuel oil es,2030,0.0
+heavy or residual fuel oil es,2031,0.0
+heavy or residual fuel oil es,2032,0.0
+heavy or residual fuel oil es,2033,0.0
+heavy or residual fuel oil es,2034,0.0
+heavy or residual fuel oil es,2035,0.0
+heavy or residual fuel oil es,2036,0.0
+heavy or residual fuel oil es,2037,0.0
+heavy or residual fuel oil es,2038,0.0
+heavy or residual fuel oil es,2039,0.0
+heavy or residual fuel oil es,2040,0.0
+heavy or residual fuel oil es,2041,0.0
+heavy or residual fuel oil es,2042,0.0
+heavy or residual fuel oil es,2043,0.0
+heavy or residual fuel oil es,2044,0.0
+heavy or residual fuel oil es,2045,0.0
+heavy or residual fuel oil es,2046,0.0
+heavy or residual fuel oil es,2047,0.0
+heavy or residual fuel oil es,2048,0.0
+heavy or residual fuel oil es,2049,0.0
+heavy or residual fuel oil es,2050,0.0
+heavy or residual fuel oil es (distributed),2025,0.0
+heavy or residual fuel oil es (distributed),2026,0.0
+heavy or residual fuel oil es (distributed),2027,0.0
+heavy or residual fuel oil es (distributed),2028,0.0
+heavy or residual fuel oil es (distributed),2029,0.0
+heavy or residual fuel oil es (distributed),2030,0.0
+heavy or residual fuel oil es (distributed),2031,0.0
+heavy or residual fuel oil es (distributed),2032,0.0
+heavy or residual fuel oil es (distributed),2033,0.0
+heavy or residual fuel oil es (distributed),2034,0.0
+heavy or residual fuel oil es (distributed),2035,0.0
+heavy or residual fuel oil es (distributed),2036,0.0
+heavy or residual fuel oil es (distributed),2037,0.0
+heavy or residual fuel oil es (distributed),2038,0.0
+heavy or residual fuel oil es (distributed),2039,0.0
+heavy or residual fuel oil es (distributed),2040,0.0
+heavy or residual fuel oil es (distributed),2041,0.0
+heavy or residual fuel oil es (distributed),2042,0.0
+heavy or residual fuel oil es (distributed),2043,0.0
+heavy or residual fuel oil es (distributed),2044,0.0
+heavy or residual fuel oil es (distributed),2045,0.0
+heavy or residual fuel oil es (distributed),2046,0.0
+heavy or residual fuel oil es (distributed),2047,0.0
+heavy or residual fuel oil es (distributed),2048,0.0
+heavy or residual fuel oil es (distributed),2049,0.0
+heavy or residual fuel oil es (distributed),2050,0.0
+hydro es,2025,79618.3
+hydro es,2026,79629.3
+hydro es,2027,79620.7
+hydro es,2028,79617.3
+hydro es,2029,79617.3
+hydro es,2030,79613.5
+hydro es,2031,79612.1
+hydro es,2032,79612.1
+hydro es,2033,79611.7
+hydro es,2034,79611.7
+hydro es,2035,79611.7
+hydro es,2036,79611.7
+hydro es,2037,79611.7
+hydro es,2038,79611.7
+hydro es,2039,79611.7
+hydro es,2040,79611.7
+hydro es,2041,79611.7
+hydro es,2042,79611.7
+hydro es,2043,79611.7
+hydro es,2044,79611.7
+hydro es,2045,79611.7
+hydro es,2046,79611.7
+hydro es,2047,79611.7
+hydro es,2048,79611.7
+hydro es,2049,79611.7
+hydro es,2050,79611.7
+hydro es (distributed),2025,0.0
+hydro es (distributed),2026,0.0
+hydro es (distributed),2027,0.0
+hydro es (distributed),2028,0.0
+hydro es (distributed),2029,0.0
+hydro es (distributed),2030,0.0
+hydro es (distributed),2031,0.0
+hydro es (distributed),2032,0.0
+hydro es (distributed),2033,0.0
+hydro es (distributed),2034,0.0
+hydro es (distributed),2035,0.0
+hydro es (distributed),2036,0.0
+hydro es (distributed),2037,0.0
+hydro es (distributed),2038,0.0
+hydro es (distributed),2039,0.0
+hydro es (distributed),2040,0.0
+hydro es (distributed),2041,0.0
+hydro es (distributed),2042,0.0
+hydro es (distributed),2043,0.0
+hydro es (distributed),2044,0.0
+hydro es (distributed),2045,0.0
+hydro es (distributed),2046,0.0
+hydro es (distributed),2047,0.0
+hydro es (distributed),2048,0.0
+hydro es (distributed),2049,0.0
+hydro es (distributed),2050,0.0
+hydrogen combined cycle es,2025,0.0
+hydrogen combined cycle es,2026,0.0
+hydrogen combined cycle es,2027,0.0
+hydrogen combined cycle es,2028,0.0
+hydrogen combined cycle es,2029,0.0
+hydrogen combined cycle es,2030,0.0
+hydrogen combined cycle es,2031,0.0
+hydrogen combined cycle es,2032,0.0
+hydrogen combined cycle es,2033,0.0
+hydrogen combined cycle es,2034,0.0
+hydrogen combined cycle es,2035,0.0
+hydrogen combined cycle es,2036,0.0
+hydrogen combined cycle es,2037,0.0
+hydrogen combined cycle es,2038,0.0
+hydrogen combined cycle es,2039,0.0
+hydrogen combined cycle es,2040,0.0
+hydrogen combined cycle es,2041,0.0
+hydrogen combined cycle es,2042,0.0
+hydrogen combined cycle es,2043,0.0
+hydrogen combined cycle es,2044,0.0
+hydrogen combined cycle es,2045,0.0
+hydrogen combined cycle es,2046,0.0
+hydrogen combined cycle es,2047,0.0
+hydrogen combined cycle es,2048,0.0
+hydrogen combined cycle es,2049,0.0
+hydrogen combined cycle es,2050,0.0
+hydrogen combined cycle es (distributed),2025,0.0
+hydrogen combined cycle es (distributed),2026,0.0
+hydrogen combined cycle es (distributed),2027,0.0
+hydrogen combined cycle es (distributed),2028,0.0
+hydrogen combined cycle es (distributed),2029,0.0
+hydrogen combined cycle es (distributed),2030,0.0
+hydrogen combined cycle es (distributed),2031,0.0
+hydrogen combined cycle es (distributed),2032,0.0
+hydrogen combined cycle es (distributed),2033,0.0
+hydrogen combined cycle es (distributed),2034,0.0
+hydrogen combined cycle es (distributed),2035,0.0
+hydrogen combined cycle es (distributed),2036,0.0
+hydrogen combined cycle es (distributed),2037,0.0
+hydrogen combined cycle es (distributed),2038,0.0
+hydrogen combined cycle es (distributed),2039,0.0
+hydrogen combined cycle es (distributed),2040,0.0
+hydrogen combined cycle es (distributed),2041,0.0
+hydrogen combined cycle es (distributed),2042,0.0
+hydrogen combined cycle es (distributed),2043,0.0
+hydrogen combined cycle es (distributed),2044,0.0
+hydrogen combined cycle es (distributed),2045,0.0
+hydrogen combined cycle es (distributed),2046,0.0
+hydrogen combined cycle es (distributed),2047,0.0
+hydrogen combined cycle es (distributed),2048,0.0
+hydrogen combined cycle es (distributed),2049,0.0
+hydrogen combined cycle es (distributed),2050,0.0
+hydrogen combustion turbine es,2025,0.0
+hydrogen combustion turbine es,2026,0.0
+hydrogen combustion turbine es,2027,0.0
+hydrogen combustion turbine es,2028,0.0
+hydrogen combustion turbine es,2029,0.0
+hydrogen combustion turbine es,2030,0.0
+hydrogen combustion turbine es,2031,0.0
+hydrogen combustion turbine es,2032,0.0
+hydrogen combustion turbine es,2033,0.0
+hydrogen combustion turbine es,2034,0.0
+hydrogen combustion turbine es,2035,0.0
+hydrogen combustion turbine es,2036,0.0
+hydrogen combustion turbine es,2037,0.0
+hydrogen combustion turbine es,2038,0.0
+hydrogen combustion turbine es,2039,0.0
+hydrogen combustion turbine es,2040,0.0
+hydrogen combustion turbine es,2041,0.0
+hydrogen combustion turbine es,2042,0.0
+hydrogen combustion turbine es,2043,0.0
+hydrogen combustion turbine es,2044,150.0
+hydrogen combustion turbine es,2045,250.0
+hydrogen combustion turbine es,2046,250.0
+hydrogen combustion turbine es,2047,250.0
+hydrogen combustion turbine es,2048,250.0
+hydrogen combustion turbine es,2049,250.0
+hydrogen combustion turbine es,2050,250.0
+hydrogen combustion turbine es (distributed),2025,0.0
+hydrogen combustion turbine es (distributed),2026,0.0
+hydrogen combustion turbine es (distributed),2027,0.0
+hydrogen combustion turbine es (distributed),2028,0.0
+hydrogen combustion turbine es (distributed),2029,0.0
+hydrogen combustion turbine es (distributed),2030,0.0
+hydrogen combustion turbine es (distributed),2031,0.0
+hydrogen combustion turbine es (distributed),2032,0.0
+hydrogen combustion turbine es (distributed),2033,0.0
+hydrogen combustion turbine es (distributed),2034,0.0
+hydrogen combustion turbine es (distributed),2035,0.0
+hydrogen combustion turbine es (distributed),2036,0.0
+hydrogen combustion turbine es (distributed),2037,0.0
+hydrogen combustion turbine es (distributed),2038,0.0
+hydrogen combustion turbine es (distributed),2039,0.0
+hydrogen combustion turbine es (distributed),2040,0.0
+hydrogen combustion turbine es (distributed),2041,0.0
+hydrogen combustion turbine es (distributed),2042,0.0
+hydrogen combustion turbine es (distributed),2043,0.0
+hydrogen combustion turbine es (distributed),2044,0.0
+hydrogen combustion turbine es (distributed),2045,0.0
+hydrogen combustion turbine es (distributed),2046,0.0
+hydrogen combustion turbine es (distributed),2047,0.0
+hydrogen combustion turbine es (distributed),2048,0.0
+hydrogen combustion turbine es (distributed),2049,0.0
+hydrogen combustion turbine es (distributed),2050,0.0
+lignite es,2025,5591.4
+lignite es,2026,5591.4
+lignite es,2027,5591.4
+lignite es,2028,5591.4
+lignite es,2029,5591.4
+lignite es,2030,5591.4
+lignite es,2031,5591.4
+lignite es,2032,5291.4
+lignite es,2033,4991.4
+lignite es,2034,4991.4
+lignite es,2035,4991.4
+lignite es,2036,4991.4
+lignite es,2037,4991.4
+lignite es,2038,4991.4
+lignite es,2039,4991.4
+lignite es,2040,4991.4
+lignite es,2041,4991.4
+lignite es,2042,4991.4
+lignite es,2043,4991.4
+lignite es,2044,4991.4
+lignite es,2045,4991.4
+lignite es,2046,4991.4
+lignite es,2047,4991.4
+lignite es,2048,4991.4
+lignite es,2049,4991.4
+lignite es,2050,4991.4
+lignite es (distributed),2025,0.0
+lignite es (distributed),2026,0.0
+lignite es (distributed),2027,0.0
+lignite es (distributed),2028,0.0
+lignite es (distributed),2029,0.0
+lignite es (distributed),2030,0.0
+lignite es (distributed),2031,0.0
+lignite es (distributed),2032,0.0
+lignite es (distributed),2033,0.0
+lignite es (distributed),2034,0.0
+lignite es (distributed),2035,0.0
+lignite es (distributed),2036,0.0
+lignite es (distributed),2037,0.0
+lignite es (distributed),2038,0.0
+lignite es (distributed),2039,0.0
+lignite es (distributed),2040,0.0
+lignite es (distributed),2041,0.0
+lignite es (distributed),2042,0.0
+lignite es (distributed),2043,0.0
+lignite es (distributed),2044,0.0
+lignite es (distributed),2045,0.0
+lignite es (distributed),2046,0.0
+lignite es (distributed),2047,0.0
+lignite es (distributed),2048,0.0
+lignite es (distributed),2049,0.0
+lignite es (distributed),2050,0.0
+lignite w CCS es,2025,0.0
+lignite w CCS es,2026,0.0
+lignite w CCS es,2027,0.0
+lignite w CCS es,2028,0.0
+lignite w CCS es,2029,0.0
+lignite w CCS es,2030,0.0
+lignite w CCS es,2031,0.0
+lignite w CCS es,2032,0.0
+lignite w CCS es,2033,0.0
+lignite w CCS es,2034,0.0
+lignite w CCS es,2035,0.0
+lignite w CCS es,2036,0.0
+lignite w CCS es,2037,0.0
+lignite w CCS es,2038,0.0
+lignite w CCS es,2039,0.0
+lignite w CCS es,2040,0.0
+lignite w CCS es,2041,0.0
+lignite w CCS es,2042,0.0
+lignite w CCS es,2043,0.0
+lignite w CCS es,2044,0.0
+lignite w CCS es,2045,0.0
+lignite w CCS es,2046,0.0
+lignite w CCS es,2047,0.0
+lignite w CCS es,2048,0.0
+lignite w CCS es,2049,0.0
+lignite w CCS es,2050,0.0
+lignite w CCS es (distributed),2025,0.0
+lignite w CCS es (distributed),2026,0.0
+lignite w CCS es (distributed),2027,0.0
+lignite w CCS es (distributed),2028,0.0
+lignite w CCS es (distributed),2029,0.0
+lignite w CCS es (distributed),2030,0.0
+lignite w CCS es (distributed),2031,0.0
+lignite w CCS es (distributed),2032,0.0
+lignite w CCS es (distributed),2033,0.0
+lignite w CCS es (distributed),2034,0.0
+lignite w CCS es (distributed),2035,0.0
+lignite w CCS es (distributed),2036,0.0
+lignite w CCS es (distributed),2037,0.0
+lignite w CCS es (distributed),2038,0.0
+lignite w CCS es (distributed),2039,0.0
+lignite w CCS es (distributed),2040,0.0
+lignite w CCS es (distributed),2041,0.0
+lignite w CCS es (distributed),2042,0.0
+lignite w CCS es (distributed),2043,0.0
+lignite w CCS es (distributed),2044,0.0
+lignite w CCS es (distributed),2045,0.0
+lignite w CCS es (distributed),2046,0.0
+lignite w CCS es (distributed),2047,0.0
+lignite w CCS es (distributed),2048,0.0
+lignite w CCS es (distributed),2049,0.0
+lignite w CCS es (distributed),2050,0.0
+municipal solid waste es,2025,979.1
+municipal solid waste es,2026,979.1
+municipal solid waste es,2027,943.1
+municipal solid waste es,2028,943.1
+municipal solid waste es,2029,904.1
+municipal solid waste es,2030,904.1
+municipal solid waste es,2031,904.1
+municipal solid waste es,2032,904.1
+municipal solid waste es,2033,904.1
+municipal solid waste es,2034,904.1
+municipal solid waste es,2035,904.1
+municipal solid waste es,2036,904.1
+municipal solid waste es,2037,904.1
+municipal solid waste es,2038,904.1
+municipal solid waste es,2039,904.1
+municipal solid waste es,2040,904.1
+municipal solid waste es,2041,904.1
+municipal solid waste es,2042,904.1
+municipal solid waste es,2043,904.1
+municipal solid waste es,2044,904.1
+municipal solid waste es,2045,904.1
+municipal solid waste es,2046,904.1
+municipal solid waste es,2047,904.1
+municipal solid waste es,2048,904.1
+municipal solid waste es,2049,904.1
+municipal solid waste es,2050,904.1
+municipal solid waste es (distributed),2025,0.0
+municipal solid waste es (distributed),2026,0.0
+municipal solid waste es (distributed),2027,0.0
+municipal solid waste es (distributed),2028,0.0
+municipal solid waste es (distributed),2029,0.0
+municipal solid waste es (distributed),2030,0.0
+municipal solid waste es (distributed),2031,0.0
+municipal solid waste es (distributed),2032,0.0
+municipal solid waste es (distributed),2033,0.0
+municipal solid waste es (distributed),2034,0.0
+municipal solid waste es (distributed),2035,0.0
+municipal solid waste es (distributed),2036,0.0
+municipal solid waste es (distributed),2037,0.0
+municipal solid waste es (distributed),2038,0.0
+municipal solid waste es (distributed),2039,0.0
+municipal solid waste es (distributed),2040,0.0
+municipal solid waste es (distributed),2041,0.0
+municipal solid waste es (distributed),2042,0.0
+municipal solid waste es (distributed),2043,0.0
+municipal solid waste es (distributed),2044,0.0
+municipal solid waste es (distributed),2045,0.0
+municipal solid waste es (distributed),2046,0.0
+municipal solid waste es (distributed),2047,0.0
+municipal solid waste es (distributed),2048,0.0
+municipal solid waste es (distributed),2049,0.0
+municipal solid waste es (distributed),2050,0.0
+natural gas combined cycle es,2025,285162.0
+natural gas combined cycle es,2026,288769.0
+natural gas combined cycle es,2027,291819.0
+natural gas combined cycle es,2028,300337.0
+natural gas combined cycle es,2029,309099.0
+natural gas combined cycle es,2030,325862.0
+natural gas combined cycle es,2031,327575.0
+natural gas combined cycle es,2032,327388.0
+natural gas combined cycle es,2033,327388.0
+natural gas combined cycle es,2034,328388.0
+natural gas combined cycle es,2035,336718.0
+natural gas combined cycle es,2036,345558.0
+natural gas combined cycle es,2037,359328.0
+natural gas combined cycle es,2038,372418.0
+natural gas combined cycle es,2039,383808.0
+natural gas combined cycle es,2040,394688.0
+natural gas combined cycle es,2041,404208.0
+natural gas combined cycle es,2042,411688.0
+natural gas combined cycle es,2043,417161.0
+natural gas combined cycle es,2044,426001.0
+natural gas combined cycle es,2045,440820.0
+natural gas combined cycle es,2046,450510.0
+natural gas combined cycle es,2047,461390.0
+natural gas combined cycle es,2048,471080.0
+natural gas combined cycle es,2049,479750.0
+natural gas combined cycle es,2050,490460.0
+natural gas combined cycle es (distributed),2025,18508.5049997
+natural gas combined cycle es (distributed),2026,22542.105
+natural gas combined cycle es (distributed),2027,26560.789005
+natural gas combined cycle es (distributed),2028,30578.602005
+natural gas combined cycle es (distributed),2029,40597.115005
+natural gas combined cycle es (distributed),2030,50617.828996000004
+natural gas combined cycle es (distributed),2031,50638.415996
+natural gas combined cycle es (distributed),2032,50660.037001000004
+natural gas combined cycle es (distributed),2033,50682.208999999995
+natural gas combined cycle es (distributed),2034,50706.801999999996
+natural gas combined cycle es (distributed),2035,50728.715
+natural gas combined cycle es (distributed),2036,50751.528000000006
+natural gas combined cycle es (distributed),2037,50776.741
+natural gas combined cycle es (distributed),2038,50800.254
+natural gas combined cycle es (distributed),2039,50823.068
+natural gas combined cycle es (distributed),2040,50844.981999999996
+natural gas combined cycle es (distributed),2041,50865.298
+natural gas combined cycle es (distributed),2042,50887.919
+natural gas combined cycle es (distributed),2043,50908.047999999995
+natural gas combined cycle es (distributed),2044,50928.094
+natural gas combined cycle es (distributed),2045,50947.073
+natural gas combined cycle es (distributed),2046,50966.511
+natural gas combined cycle es (distributed),2047,50987.149000000005
+natural gas combined cycle es (distributed),2048,51007.488
+natural gas combined cycle es (distributed),2049,51026.528
+natural gas combined cycle es (distributed),2050,51046.769
+natural gas combined cycle w CCS es,2025,0.0
+natural gas combined cycle w CCS es,2026,0.0
+natural gas combined cycle w CCS es,2027,0.0
+natural gas combined cycle w CCS es,2028,0.0
+natural gas combined cycle w CCS es,2029,0.0
+natural gas combined cycle w CCS es,2030,0.0
+natural gas combined cycle w CCS es,2031,0.0
+natural gas combined cycle w CCS es,2032,0.0
+natural gas combined cycle w CCS es,2033,0.0
+natural gas combined cycle w CCS es,2034,0.0
+natural gas combined cycle w CCS es,2035,0.0
+natural gas combined cycle w CCS es,2036,0.0
+natural gas combined cycle w CCS es,2037,0.0
+natural gas combined cycle w CCS es,2038,0.0
+natural gas combined cycle w CCS es,2039,0.0
+natural gas combined cycle w CCS es,2040,0.0
+natural gas combined cycle w CCS es,2041,0.0
+natural gas combined cycle w CCS es,2042,0.0
+natural gas combined cycle w CCS es,2043,0.0
+natural gas combined cycle w CCS es,2044,0.0
+natural gas combined cycle w CCS es,2045,0.0
+natural gas combined cycle w CCS es,2046,0.0
+natural gas combined cycle w CCS es,2047,0.0
+natural gas combined cycle w CCS es,2048,0.0
+natural gas combined cycle w CCS es,2049,0.0
+natural gas combined cycle w CCS es,2050,0.0
+natural gas combined cycle w CCS es (distributed),2025,0.0
+natural gas combined cycle w CCS es (distributed),2026,0.0
+natural gas combined cycle w CCS es (distributed),2027,0.0
+natural gas combined cycle w CCS es (distributed),2028,0.0
+natural gas combined cycle w CCS es (distributed),2029,0.0
+natural gas combined cycle w CCS es (distributed),2030,0.0
+natural gas combined cycle w CCS es (distributed),2031,0.0
+natural gas combined cycle w CCS es (distributed),2032,0.0
+natural gas combined cycle w CCS es (distributed),2033,0.0
+natural gas combined cycle w CCS es (distributed),2034,0.0
+natural gas combined cycle w CCS es (distributed),2035,0.0
+natural gas combined cycle w CCS es (distributed),2036,0.0
+natural gas combined cycle w CCS es (distributed),2037,0.0
+natural gas combined cycle w CCS es (distributed),2038,0.0
+natural gas combined cycle w CCS es (distributed),2039,0.0
+natural gas combined cycle w CCS es (distributed),2040,0.0
+natural gas combined cycle w CCS es (distributed),2041,0.0
+natural gas combined cycle w CCS es (distributed),2042,0.0
+natural gas combined cycle w CCS es (distributed),2043,0.0
+natural gas combined cycle w CCS es (distributed),2044,0.0
+natural gas combined cycle w CCS es (distributed),2045,0.0
+natural gas combined cycle w CCS es (distributed),2046,0.0
+natural gas combined cycle w CCS es (distributed),2047,0.0
+natural gas combined cycle w CCS es (distributed),2048,0.0
+natural gas combined cycle w CCS es (distributed),2049,0.0
+natural gas combined cycle w CCS es (distributed),2050,0.0
+natural gas peaker es,2025,133361.0
+natural gas peaker es,2026,136029.0
+natural gas peaker es,2027,141716.0
+natural gas peaker es,2028,147263.0
+natural gas peaker es,2029,149521.0
+natural gas peaker es,2030,149234.0
+natural gas peaker es,2031,148069.0
+natural gas peaker es,2032,147399.0
+natural gas peaker es,2033,146849.0
+natural gas peaker es,2034,146849.0
+natural gas peaker es,2035,147242.0
+natural gas peaker es,2036,147242.0
+natural gas peaker es,2037,147292.0
+natural gas peaker es,2038,147342.0
+natural gas peaker es,2039,147842.0
+natural gas peaker es,2040,149451.0
+natural gas peaker es,2041,153301.0
+natural gas peaker es,2042,157401.0
+natural gas peaker es,2043,161951.0
+natural gas peaker es,2044,169151.0
+natural gas peaker es,2045,171284.0
+natural gas peaker es,2046,178034.0
+natural gas peaker es,2047,185082.0
+natural gas peaker es,2048,191132.0
+natural gas peaker es,2049,194932.0
+natural gas peaker es,2050,199122.0
+natural gas peaker es (distributed),2025,0.0
+natural gas peaker es (distributed),2026,0.0
+natural gas peaker es (distributed),2027,0.0
+natural gas peaker es (distributed),2028,0.0
+natural gas peaker es (distributed),2029,0.0
+natural gas peaker es (distributed),2030,0.0
+natural gas peaker es (distributed),2031,0.0
+natural gas peaker es (distributed),2032,0.0
+natural gas peaker es (distributed),2033,0.0
+natural gas peaker es (distributed),2034,0.0
+natural gas peaker es (distributed),2035,0.0
+natural gas peaker es (distributed),2036,0.0
+natural gas peaker es (distributed),2037,0.0
+natural gas peaker es (distributed),2038,0.0
+natural gas peaker es (distributed),2039,0.0
+natural gas peaker es (distributed),2040,0.0
+natural gas peaker es (distributed),2041,0.0
+natural gas peaker es (distributed),2042,0.0
+natural gas peaker es (distributed),2043,0.0
+natural gas peaker es (distributed),2044,0.0
+natural gas peaker es (distributed),2045,0.0
+natural gas peaker es (distributed),2046,0.0
+natural gas peaker es (distributed),2047,0.0
+natural gas peaker es (distributed),2048,0.0
+natural gas peaker es (distributed),2049,0.0
+natural gas peaker es (distributed),2050,0.0
+natural gas steam turbine es,2025,71216.4
+natural gas steam turbine es,2026,68490.4
+natural gas steam turbine es,2027,65000.4
+natural gas steam turbine es,2028,62936.6
+natural gas steam turbine es,2029,59955.2
+natural gas steam turbine es,2030,57881.6
+natural gas steam turbine es,2031,55558.7
+natural gas steam turbine es,2032,54063.2
+natural gas steam turbine es,2033,51944.7
+natural gas steam turbine es,2034,50832.0
+natural gas steam turbine es,2035,50125.5
+natural gas steam turbine es,2036,49893.5
+natural gas steam turbine es,2037,49893.5
+natural gas steam turbine es,2038,49893.5
+natural gas steam turbine es,2039,49893.5
+natural gas steam turbine es,2040,49893.5
+natural gas steam turbine es,2041,49893.5
+natural gas steam turbine es,2042,49893.5
+natural gas steam turbine es,2043,49893.5
+natural gas steam turbine es,2044,49893.5
+natural gas steam turbine es,2045,49871.6
+natural gas steam turbine es,2046,49871.6
+natural gas steam turbine es,2047,49871.6
+natural gas steam turbine es,2048,49871.6
+natural gas steam turbine es,2049,49871.6
+natural gas steam turbine es,2050,49871.6
+natural gas steam turbine es (distributed),2025,0.0
+natural gas steam turbine es (distributed),2026,0.0
+natural gas steam turbine es (distributed),2027,0.0
+natural gas steam turbine es (distributed),2028,0.0
+natural gas steam turbine es (distributed),2029,0.0
+natural gas steam turbine es (distributed),2030,0.0
+natural gas steam turbine es (distributed),2031,0.0
+natural gas steam turbine es (distributed),2032,0.0
+natural gas steam turbine es (distributed),2033,0.0
+natural gas steam turbine es (distributed),2034,0.0
+natural gas steam turbine es (distributed),2035,0.0
+natural gas steam turbine es (distributed),2036,0.0
+natural gas steam turbine es (distributed),2037,0.0
+natural gas steam turbine es (distributed),2038,0.0
+natural gas steam turbine es (distributed),2039,0.0
+natural gas steam turbine es (distributed),2040,0.0
+natural gas steam turbine es (distributed),2041,0.0
+natural gas steam turbine es (distributed),2042,0.0
+natural gas steam turbine es (distributed),2043,0.0
+natural gas steam turbine es (distributed),2044,0.0
+natural gas steam turbine es (distributed),2045,0.0
+natural gas steam turbine es (distributed),2046,0.0
+natural gas steam turbine es (distributed),2047,0.0
+natural gas steam turbine es (distributed),2048,0.0
+natural gas steam turbine es (distributed),2049,0.0
+natural gas steam turbine es (distributed),2050,0.0
+nuclear es,2025,98391.2
+nuclear es,2026,97151.2
+nuclear es,2027,97151.2
+nuclear es,2028,97151.2
+nuclear es,2029,96530.3
+nuclear es,2030,93336.5
+nuclear es,2031,89947.5
+nuclear es,2032,87531.4
+nuclear es,2033,87531.4
+nuclear es,2034,86762.9
+nuclear es,2035,85021.5
+nuclear es,2036,83283.2
+nuclear es,2037,80382.4
+nuclear es,2038,80382.4
+nuclear es,2039,80382.4
+nuclear es,2040,80382.4
+nuclear es,2041,79243.5
+nuclear es,2042,79243.5
+nuclear es,2043,77996.5
+nuclear es,2044,72413.9
+nuclear es,2045,66278.6
+nuclear es,2046,61790.6
+nuclear es,2047,56467.3
+nuclear es,2048,51689.3
+nuclear es,2049,50409.3
+nuclear es,2050,46836.5
+nuclear es (distributed),2025,0.0
+nuclear es (distributed),2026,0.0
+nuclear es (distributed),2027,0.0
+nuclear es (distributed),2028,0.0
+nuclear es (distributed),2029,0.0
+nuclear es (distributed),2030,0.0
+nuclear es (distributed),2031,0.0
+nuclear es (distributed),2032,0.0
+nuclear es (distributed),2033,0.0
+nuclear es (distributed),2034,0.0
+nuclear es (distributed),2035,0.0
+nuclear es (distributed),2036,0.0
+nuclear es (distributed),2037,0.0
+nuclear es (distributed),2038,0.0
+nuclear es (distributed),2039,0.0
+nuclear es (distributed),2040,0.0
+nuclear es (distributed),2041,0.0
+nuclear es (distributed),2042,0.0
+nuclear es (distributed),2043,0.0
+nuclear es (distributed),2044,0.0
+nuclear es (distributed),2045,0.0
+nuclear es (distributed),2046,0.0
+nuclear es (distributed),2047,0.0
+nuclear es (distributed),2048,0.0
+nuclear es (distributed),2049,0.0
+nuclear es (distributed),2050,0.0
+offshore wind es,2025,171.3
+offshore wind es,2026,1686.3
+offshore wind es,2027,6060.3
+offshore wind es,2028,6060.3
+offshore wind es,2029,6060.3
+offshore wind es,2030,6060.3
+offshore wind es,2031,6060.3
+offshore wind es,2032,6060.3
+offshore wind es,2033,6060.3
+offshore wind es,2034,6060.3
+offshore wind es,2035,6060.3
+offshore wind es,2036,6060.3
+offshore wind es,2037,6060.3
+offshore wind es,2038,6060.3
+offshore wind es,2039,6060.3
+offshore wind es,2040,6060.3
+offshore wind es,2041,6060.3
+offshore wind es,2042,6060.3
+offshore wind es,2043,6060.3
+offshore wind es,2044,6060.3
+offshore wind es,2045,6060.3
+offshore wind es,2046,6060.3
+offshore wind es,2047,6060.3
+offshore wind es,2048,6060.3
+offshore wind es,2049,6060.3
+offshore wind es,2050,6060.3
+offshore wind es (distributed),2025,0.0
+offshore wind es (distributed),2026,0.0
+offshore wind es (distributed),2027,0.0
+offshore wind es (distributed),2028,0.0
+offshore wind es (distributed),2029,0.0
+offshore wind es (distributed),2030,0.0
+offshore wind es (distributed),2031,0.0
+offshore wind es (distributed),2032,0.0
+offshore wind es (distributed),2033,0.0
+offshore wind es (distributed),2034,0.0
+offshore wind es (distributed),2035,0.0
+offshore wind es (distributed),2036,0.0
+offshore wind es (distributed),2037,0.0
+offshore wind es (distributed),2038,0.0
+offshore wind es (distributed),2039,0.0
+offshore wind es (distributed),2040,0.0
+offshore wind es (distributed),2041,0.0
+offshore wind es (distributed),2042,0.0
+offshore wind es (distributed),2043,0.0
+offshore wind es (distributed),2044,0.0
+offshore wind es (distributed),2045,0.0
+offshore wind es (distributed),2046,0.0
+offshore wind es (distributed),2047,0.0
+offshore wind es (distributed),2048,0.0
+offshore wind es (distributed),2049,0.0
+offshore wind es (distributed),2050,0.0
+onshore wind es,2025,157859.0
+onshore wind es,2026,167265.0
+onshore wind es,2027,174674.0
+onshore wind es,2028,181491.0
+onshore wind es,2029,189008.0
+onshore wind es,2030,193807.0
+onshore wind es,2031,194361.0
+onshore wind es,2032,194361.0
+onshore wind es,2033,194361.0
+onshore wind es,2034,196105.0
+onshore wind es,2035,202768.0
+onshore wind es,2036,209840.0
+onshore wind es,2037,219224.0
+onshore wind es,2038,229328.0
+onshore wind es,2039,239232.0
+onshore wind es,2040,247888.0
+onshore wind es,2041,251848.0
+onshore wind es,2042,252584.0
+onshore wind es,2043,252512.0
+onshore wind es,2044,252512.0
+onshore wind es,2045,252512.0
+onshore wind es,2046,252512.0
+onshore wind es,2047,252512.0
+onshore wind es,2048,252512.0
+onshore wind es,2049,252528.0
+onshore wind es,2050,252608.0
+onshore wind es (distributed),2025,745.9052
+onshore wind es (distributed),2026,746.7102
+onshore wind es (distributed),2027,748.2149
+onshore wind es (distributed),2028,748.5881999999999
+onshore wind es (distributed),2029,749.4830999999999
+onshore wind es (distributed),2030,751.0984
+onshore wind es (distributed),2031,752.4673
+onshore wind es (distributed),2032,754.6624
+onshore wind es (distributed),2033,757.6904
+onshore wind es (distributed),2034,761.0635
+onshore wind es (distributed),2035,764.7271
+onshore wind es (distributed),2036,768.6237
+onshore wind es (distributed),2037,773.0771
+onshore wind es (distributed),2038,777.7233
+onshore wind es (distributed),2039,782.6107
+onshore wind es (distributed),2040,787.8322999999999
+onshore wind es (distributed),2041,793.2715000000001
+onshore wind es (distributed),2042,799.7016
+onshore wind es (distributed),2043,805.8137
+onshore wind es (distributed),2044,812.0236
+onshore wind es (distributed),2045,818.2959000000001
+onshore wind es (distributed),2046,825.1911
+onshore wind es (distributed),2047,832.7042
+onshore wind es (distributed),2048,840.9901
+onshore wind es (distributed),2049,849.1495
+onshore wind es (distributed),2050,857.4248
+petroleum es,2025,26170.3
+petroleum es,2026,26167.6
+petroleum es,2027,26163.6
+petroleum es,2028,26125.2
+petroleum es,2029,26125.2
+petroleum es,2030,25681.1
+petroleum es,2031,25681.1
+petroleum es,2032,25681.1
+petroleum es,2033,25524.1
+petroleum es,2034,25507.1
+petroleum es,2035,25507.1
+petroleum es,2036,25507.1
+petroleum es,2037,25507.1
+petroleum es,2038,25507.1
+petroleum es,2039,25507.1
+petroleum es,2040,25507.1
+petroleum es,2041,25507.1
+petroleum es,2042,25507.1
+petroleum es,2043,25507.1
+petroleum es,2044,25507.1
+petroleum es,2045,25471.7
+petroleum es,2046,25471.7
+petroleum es,2047,25471.7
+petroleum es,2048,25471.7
+petroleum es,2049,25471.7
+petroleum es,2050,25471.7
+petroleum es (distributed),2025,14.146
+petroleum es (distributed),2026,14.146
+petroleum es (distributed),2027,14.146
+petroleum es (distributed),2028,14.146
+petroleum es (distributed),2029,14.146
+petroleum es (distributed),2030,14.146
+petroleum es (distributed),2031,14.146
+petroleum es (distributed),2032,14.146
+petroleum es (distributed),2033,14.146
+petroleum es (distributed),2034,14.146
+petroleum es (distributed),2035,14.146
+petroleum es (distributed),2036,14.146
+petroleum es (distributed),2037,14.146
+petroleum es (distributed),2038,14.146
+petroleum es (distributed),2039,14.146
+petroleum es (distributed),2040,14.146
+petroleum es (distributed),2041,14.146
+petroleum es (distributed),2042,14.146
+petroleum es (distributed),2043,14.146
+petroleum es (distributed),2044,14.146
+petroleum es (distributed),2045,14.146
+petroleum es (distributed),2046,14.146
+petroleum es (distributed),2047,14.146
+petroleum es (distributed),2048,14.146
+petroleum es (distributed),2049,14.146
+petroleum es (distributed),2050,14.146
+small modular reactor es,2025,0.0
+small modular reactor es,2026,0.0
+small modular reactor es,2027,0.0
+small modular reactor es,2028,0.0
+small modular reactor es,2029,0.0
+small modular reactor es,2030,0.0
+small modular reactor es,2031,0.0
+small modular reactor es,2032,0.0
+small modular reactor es,2033,0.0
+small modular reactor es,2034,0.0
+small modular reactor es,2035,0.0
+small modular reactor es,2036,0.0
+small modular reactor es,2037,0.0
+small modular reactor es,2038,0.0
+small modular reactor es,2039,0.0
+small modular reactor es,2040,0.0
+small modular reactor es,2041,0.0
+small modular reactor es,2042,0.0
+small modular reactor es,2043,0.0
+small modular reactor es,2044,0.0
+small modular reactor es,2045,0.0
+small modular reactor es,2046,0.0
+small modular reactor es,2047,0.0
+small modular reactor es,2048,0.0
+small modular reactor es,2049,0.0
+small modular reactor es,2050,0.0
+small modular reactor es (distributed),2025,0.0
+small modular reactor es (distributed),2026,0.0
+small modular reactor es (distributed),2027,0.0
+small modular reactor es (distributed),2028,0.0
+small modular reactor es (distributed),2029,0.0
+small modular reactor es (distributed),2030,0.0
+small modular reactor es (distributed),2031,0.0
+small modular reactor es (distributed),2032,0.0
+small modular reactor es (distributed),2033,0.0
+small modular reactor es (distributed),2034,0.0
+small modular reactor es (distributed),2035,0.0
+small modular reactor es (distributed),2036,0.0
+small modular reactor es (distributed),2037,0.0
+small modular reactor es (distributed),2038,0.0
+small modular reactor es (distributed),2039,0.0
+small modular reactor es (distributed),2040,0.0
+small modular reactor es (distributed),2041,0.0
+small modular reactor es (distributed),2042,0.0
+small modular reactor es (distributed),2043,0.0
+small modular reactor es (distributed),2044,0.0
+small modular reactor es (distributed),2045,0.0
+small modular reactor es (distributed),2046,0.0
+small modular reactor es (distributed),2047,0.0
+small modular reactor es (distributed),2048,0.0
+small modular reactor es (distributed),2049,0.0
+small modular reactor es (distributed),2050,0.0
+solar PV es,2025,148157.0
+solar PV es,2026,186214.0
+solar PV es,2027,223254.0
+solar PV es,2028,265119.0
+solar PV es,2029,306423.0
+solar PV es,2030,320501.0
+solar PV es,2031,320599.0
+solar PV es,2032,321715.0
+solar PV es,2033,325439.0
+solar PV es,2034,348625.0
+solar PV es,2035,389305.0
+solar PV es,2036,435363.0
+solar PV es,2037,486029.0
+solar PV es,2038,541761.0
+solar PV es,2039,603065.0
+solar PV es,2040,660166.0
+solar PV es,2041,684172.0
+solar PV es,2042,687034.0
+solar PV es,2043,687034.0
+solar PV es,2044,687034.0
+solar PV es,2045,687032.0
+solar PV es,2046,687032.0
+solar PV es,2047,688007.0
+solar PV es,2048,697061.0
+solar PV es,2049,723350.0
+solar PV es,2050,764026.0
+solar PV es (distributed),2025,66325.69
+solar PV es (distributed),2026,73250.79000000001
+solar PV es (distributed),2027,79895.73
+solar PV es (distributed),2028,84775.53
+solar PV es (distributed),2029,88844.20000000001
+solar PV es (distributed),2030,93215.2
+solar PV es (distributed),2031,97508.29999999999
+solar PV es (distributed),2032,101611.0
+solar PV es (distributed),2033,105977.1
+solar PV es (distributed),2034,111025.0
+solar PV es (distributed),2035,116097.9
+solar PV es (distributed),2036,121195.2
+solar PV es (distributed),2037,127305.79999999999
+solar PV es (distributed),2038,133579.1
+solar PV es (distributed),2039,140474.4
+solar PV es (distributed),2040,147260.1
+solar PV es (distributed),2041,153502.1
+solar PV es (distributed),2042,160393.3
+solar PV es (distributed),2043,166822.2
+solar PV es (distributed),2044,173574.9
+solar PV es (distributed),2045,180312.4
+solar PV es (distributed),2046,187606.5
+solar PV es (distributed),2047,195347.7
+solar PV es (distributed),2048,203398.1
+solar PV es (distributed),2049,211224.3
+solar PV es (distributed),2050,219614.0
+solar thermal es,2025,1392.0
+solar thermal es,2026,1392.0
+solar thermal es,2027,1392.0
+solar thermal es,2028,1392.0
+solar thermal es,2029,1392.0
+solar thermal es,2030,1392.0
+solar thermal es,2031,1392.0
+solar thermal es,2032,1392.0
+solar thermal es,2033,1392.0
+solar thermal es,2034,1392.0
+solar thermal es,2035,1392.0
+solar thermal es,2036,1392.0
+solar thermal es,2037,1392.0
+solar thermal es,2038,1392.0
+solar thermal es,2039,1392.0
+solar thermal es,2040,1392.0
+solar thermal es,2041,1392.0
+solar thermal es,2042,1392.0
+solar thermal es,2043,1392.0
+solar thermal es,2044,1392.0
+solar thermal es,2045,1392.0
+solar thermal es,2046,1392.0
+solar thermal es,2047,1392.0
+solar thermal es,2048,1392.0
+solar thermal es,2049,1392.0
+solar thermal es,2050,1392.0
+solar thermal es (distributed),2025,0.0
+solar thermal es (distributed),2026,0.0
+solar thermal es (distributed),2027,0.0
+solar thermal es (distributed),2028,0.0
+solar thermal es (distributed),2029,0.0
+solar thermal es (distributed),2030,0.0
+solar thermal es (distributed),2031,0.0
+solar thermal es (distributed),2032,0.0
+solar thermal es (distributed),2033,0.0
+solar thermal es (distributed),2034,0.0
+solar thermal es (distributed),2035,0.0
+solar thermal es (distributed),2036,0.0
+solar thermal es (distributed),2037,0.0
+solar thermal es (distributed),2038,0.0
+solar thermal es (distributed),2039,0.0
+solar thermal es (distributed),2040,0.0
+solar thermal es (distributed),2041,0.0
+solar thermal es (distributed),2042,0.0
+solar thermal es (distributed),2043,0.0
+solar thermal es (distributed),2044,0.0
+solar thermal es (distributed),2045,0.0
+solar thermal es (distributed),2046,0.0
+solar thermal es (distributed),2047,0.0
+solar thermal es (distributed),2048,0.0
+solar thermal es (distributed),2049,0.0
+solar thermal es (distributed),2050,0.0

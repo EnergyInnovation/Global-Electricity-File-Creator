@@ -5,14 +5,20 @@ the AUTHORITATIVE mapping from the Demand/CF hourly source (Zapata end-use
 classifications) to the EPS output tabs; it does NOT read the pipeline's
 per-category SHELF-*.csv / SYSHECF-*.csv exports.
 
-SHELF: every category maps 1:1 to a Demand hourly source column via
-representative-day load factors (see SHELF_MAP below) — no template splits.
-  LF[slice, hour] = <col at (rep-day of slice, hour)> / SUM(col)
+SHELF: every category maps 1:1 to a Demand hourly source column via SLICE-MEAN
+load factors (see SHELF_MAP below) — no template splits.
+  LF[slice, hour] = AVERAGEIFS(col, slice, <slice>, hour_of_day, <hour>) / SUM(col)
 
 SYSHECF: the VRE techs (solar-pv, solar-pv-dist, onshore-wind, offshore-wind)
 are derived from the CF hourly source; every other ("non-VRE") tech table is
 borrowed verbatim from the country's own EPS model files (--borrow-dir).
-  CF[slice, hour] = <cf col at (rep-day of slice, hour)> x multiplier
+  CF[slice, hour] = AVERAGEIFS(cf col, slice, <slice>, hour_of_day, <hour>)
+                    x multiplier, clamped to [0, 1]
+
+Slice means (not representative-day picks) are what CLAUDE.md §6 specifies and
+what the canonical eps-us workbooks use. They are also the only form for which
+the Checker tab's balance, Σ_slices days × Σ_hours LF, equals 1 for every
+category — see DECISIONS.md 2026-08-12.
 
 --borrow-dir is REQUIRED: it supplies the non-VRE SYSHECF tables.
 
@@ -30,6 +36,8 @@ from pathlib import Path
 
 import pandas as pd
 import openpyxl
+from openpyxl.styles import Font
+from openpyxl.utils import get_column_letter
 
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
@@ -39,7 +47,7 @@ from energy_timeslice_pipeline import (  # noqa: E402
 )
 from scripts.build_us_run_workbooks import (  # noqa: E402
     HOUR_COLS, OUTPUT_TAB_COLOR, SHELF_UNIT, SLICES,
-    _out_tab_shell, _rep_doy_formula, _repday_lf,
+    _cf_cell, _out_tab_shell, _slice_mean_cf, _slice_mean_lf,
     add_about_tab, add_clustering_tab, add_hourly_source_tab, read_eps_table,
 )
 
@@ -50,10 +58,10 @@ SYSHECF_UNIT = 'Unit: dimensionless (capacity factor)'
 # ---------------------------------------------------------------------------
 # SHELF mapping — Zapata (Demand hourly source) column -> EPS SHELF tab.
 # Reclassified 2026-07-14 per staff direction: every category is a direct 1:1
-# rep-day load factor of one Demand hourly source column (NO template splits,
+# slice-mean load factor of one Demand hourly source column (NO template splits,
 # no dependence on the untraceable "EPS Structure Testing" templates). Edit
 # here to change how end uses map to EPS categories.
-#   ('direct', <demand col>) : LF = rep-day value / annual sum of that column
+#   ('direct', <demand col>) : LF = slice-hour mean / annual sum of that column
 #   ('zeros',  None)         : all-zero table (EPS envelope convention)
 #   ('flat',   None)         : uniform 1/8760 in every cell (datacenters)
 # ---------------------------------------------------------------------------
@@ -261,6 +269,49 @@ def run_notes(family: str, country_key: str, preset: dict, days_txt: str) -> lis
 # SHELF
 # ---------------------------------------------------------------------------
 
+def add_checker_tab(wb, categories: list[str]):
+    """Energy-balance check: one column per SHELF category, one row per slice.
+
+    Each cell sums a category tab's 24 hourly load factors for that slice; the
+    'Check' row is SUMPRODUCT(days, slice sums) — the share of annual demand the
+    six timeslices actually reproduce. **This must equal 1.0** for every non-zero
+    category, or EPS will allocate more or less than the category's annual
+    demand across the year.
+
+    Reads the category tabs through INDIRECT on the header row, so adding a
+    category means adding a column header and nothing else.
+    """
+    ws = wb.create_sheet('Checker', 0)
+    ws.sheet_properties.tabColor = OUTPUT_TAB_COLOR
+    ws.column_dimensions['A'].width = 22
+    ws.column_dimensions['B'].width = 26
+    ws.cell(1, 2, 'Days per Electricity Timeslice').font = Font(bold=True)
+    for j, cat in enumerate(categories):
+        col = 3 + j
+        ws.column_dimensions[get_column_letter(col)].width = 30
+        ws.cell(1, col, f'SHELF-{cat}').font = Font(bold=True)
+    for i, sl in enumerate(SLICES):
+        row = 2 + i
+        ws.cell(row, 1, sl)
+        ws.cell(row, 2, f"='SHELF-days-per-timeslice'!B{row}")
+        for j in range(len(categories)):
+            letter = get_column_letter(3 + j)
+            ws.cell(row, 3 + j,
+                    f'=SUM(INDIRECT("\'"&{letter}$1&"\'!B"&ROW($A{row})&":Y"&ROW($A{row})))')
+    check_row = 2 + len(SLICES) + 1  # blank spacer row between slices and Check
+    ws.cell(check_row, 1, 'Check').font = Font(bold=True)
+    for j in range(len(categories)):
+        letter = get_column_letter(3 + j)
+        cell = ws.cell(check_row, 3 + j,
+                       f'=ROUND(SUMPRODUCT($B2:$B7,{letter}2:{letter}7),10)')
+        cell.font = Font(bold=True)
+    ws.cell(check_row + 2, 1, 'Each Check must equal 1.0 for every non-zero category — '
+                              'it is the fraction of annual demand the six timeslices '
+                              'reproduce. Zero categories (envelopes) read 0.')
+    ws.freeze_panes = 'C2'
+    return ws
+
+
 def build_shelf(eps_dir: Path, country_key: str, preset: dict,
                 demand: pd.DataFrame, clus: pd.DataFrame):
     out_path = eps_dir / SHELF_NAME
@@ -275,8 +326,8 @@ def build_shelf(eps_dir: Path, country_key: str, preset: dict,
                   run_notes('SHELF', country_key, preset, days_txt))
     add_clustering_tab(wb, clus)
     col_letters = add_hourly_source_tab(wb, 'Demand hourly source', demand)
-    doy_l = col_letters['day_of_year']
     hour_l = col_letters['hour_of_day']
+    slice_l = col_letters['slice']
     SRC = 'Demand hourly source'
 
     # days-per-timeslice
@@ -304,9 +355,11 @@ def build_shelf(eps_dir: Path, country_key: str, preset: dict,
                 elif kind == 'flat':
                     ws.cell(2 + r_off, 2 + h, 1.0 / 8760.0)
                 elif kind == 'direct':
-                    pick, tot = _repday_lf(SRC, col_letters[payload], doy_l, hour_l,
-                                           n, slice_cell, h)
+                    pick, tot = _slice_mean_lf(SRC, col_letters[payload], slice_l,
+                                               hour_l, n, slice_cell, h)
                     ws.cell(2 + r_off, 2 + h, f'=IFERROR({pick}/{tot},0)')
+
+    add_checker_tab(wb, [cat for cat, _ in SHELF_MAP])
 
     try:
         wb.save(out_path)
@@ -339,8 +392,8 @@ def build_syshecf(eps_dir: Path, country_key: str, preset: dict,
                   run_notes('SYSHECF', country_key, preset, days_txt))
     add_clustering_tab(wb, clus)
     col_letters = add_hourly_source_tab(wb, 'CF hourly source', cf)
-    doy_l = col_letters['day_of_year']
     hour_l = col_letters['hour_of_day']
+    slice_l = col_letters['slice']
     SRC = 'CF hourly source'
 
     derived_techs: list[str] = []
@@ -360,16 +413,12 @@ def build_syshecf(eps_dir: Path, country_key: str, preset: dict,
             # VRE tech — derived from the CF hourly source (never borrowed).
             column, mult = resolved
             ws = _out_tab_shell(wb, file_name, header)
-            col_l = col_letters[column]
-            rng = f"'{SRC}'!${col_l}$2:${col_l}${n + 1}"
-            doy = f"'{SRC}'!${doy_l}$2:${doy_l}${n + 1}"
-            hr = f"'{SRC}'!${hour_l}$2:${hour_l}${n + 1}"
             for r_off, sl in enumerate(SLICES):
                 slice_cell = f'$A{2 + r_off}'
                 for h in range(24):
-                    avg = f'AVERAGEIFS({rng},{doy},{_rep_doy_formula(slice_cell)},{hr},{h})'
-                    mult_txt = '' if mult == 1.0 else f'*{mult}'
-                    ws.cell(2 + r_off, 2 + h, f'=IFERROR({avg}{mult_txt},0)')
+                    avg = _slice_mean_cf(SRC, col_letters[column], slice_l, hour_l,
+                                         n, slice_cell, h)
+                    ws.cell(2 + r_off, 2 + h, _cf_cell(avg, mult))
             derived_techs.append(tech)
         else:
             # Non-VRE ("other") tech — borrowed verbatim from the country EPS model.

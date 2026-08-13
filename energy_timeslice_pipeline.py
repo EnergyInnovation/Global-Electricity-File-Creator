@@ -1917,6 +1917,11 @@ def generate_full_pipeline_for_preset(
     resolved_wind_cf_years = kwargs.pop('wind_cf_years', None)
     if resolved_wind_cf_years is None:
         resolved_wind_cf_years = preset.get('wind_cf_years')
+    # Observed-demand source: a staged local CSV (preset key or runner override)
+    # takes precedence over DemandCast. None on both → DemandCast, as before.
+    resolved_demand_series_csv = kwargs.pop('demand_series_csv', None)
+    if resolved_demand_series_csv is None:
+        resolved_demand_series_csv = preset.get('demand_series_csv')
     return generate_full_pipeline_for_country(
         mendeley_dir=os.path.join(data_dir, 'mendeley'),
         efs_dir=os.path.join(data_dir, 'efs'),
@@ -1947,6 +1952,7 @@ def generate_full_pipeline_for_preset(
         latitude_deg=preset.get('latitude_deg'),
         eps_prior_path=preset.get('eps_prior_path'),
         lambda_ridge=preset.get('lambda_ridge', kwargs.pop('lambda_ridge', 1.0)),
+        demand_series_csv=resolved_demand_series_csv,
         **kwargs,
     )
 
@@ -3911,6 +3917,7 @@ def generate_full_pipeline_for_country(
     calibration_method: str = 'level_seasonal',
     eps_prior_path: Optional[str] = None,
     lambda_ridge: float = 1.0,
+    demand_series_csv: Optional[str] = None,
     **kwargs,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series]:
     """
@@ -4078,16 +4085,31 @@ def generate_full_pipeline_for_country(
     calibration_start_year = year - last_n_years + 1
     calibration_end_year = year
     _t = time.perf_counter()
-    _status(
-        'calibrate-load',
-        f"fetching real {demand_country_code} demand "
-        f"{calibration_start_year}–{calibration_end_year} via DemandCast...",
-    )
-    real_demand = fetch_demand_data_demandcast(
-        demand_country_code,
-        start_year=calibration_start_year,
-        end_year=calibration_end_year,
-    )
+    if demand_series_csv:
+        _status(
+            'calibrate-load',
+            f"reading observed {demand_country_code} demand "
+            f"{calibration_start_year}–{calibration_end_year} from local CSV "
+            f"{demand_series_csv}...",
+        )
+        real_demand = load_local_demand_series(
+            demand_series_csv,
+            start_year=calibration_start_year,
+            end_year=calibration_end_year,
+            timezone=country_timezone,
+            name=demand_country_code,
+        )
+    else:
+        _status(
+            'calibrate-load',
+            f"fetching real {demand_country_code} demand "
+            f"{calibration_start_year}–{calibration_end_year} via DemandCast...",
+        )
+        real_demand = fetch_demand_data_demandcast(
+            demand_country_code,
+            start_year=calibration_start_year,
+            end_year=calibration_end_year,
+        )
     # Determine calibration years (last_n_years ending at 'year')
     cal_start_year = year - last_n_years + 1
     cal_end_year = year
@@ -5309,6 +5331,79 @@ def load_enduse_data_mendeley(
     return df
 
 
+def load_local_demand_series(
+    csv_path: str,
+    start_year: Optional[int] = None,
+    end_year: Optional[int] = None,
+    timezone: Optional[str] = None,
+    name: Optional[str] = None,
+) -> pd.Series:
+    """Read an observed hourly demand series from a local CSV.
+
+    Alternative to :func:`fetch_demand_data_demandcast` for countries whose
+    best available demand record is a staged file rather than a DemandCast
+    source. Enabled per country with the ``demand_series_csv`` preset key.
+
+    The CSV must have a timestamp column (``timestamp``/``time``/``datetime``,
+    or the first column) holding **local** wall-clock time for the country, and
+    a demand column (``demand_mw``/``demand``/``load_mw``/``value``, or the
+    second column) in **MW**. Returned tz-aware in ``timezone`` so the series
+    is interchangeable with the DemandCast return value; ambiguous or
+    nonexistent local times (DST transitions) are resolved forward, which is a
+    no-op for countries that do not observe DST.
+
+    Parameters
+    ----------
+    csv_path : str
+        Path to the CSV. Relative paths resolve against the repo root.
+    start_year, end_year : int, optional
+        Inclusive calendar-year filter, matching the DemandCast fetcher.
+    timezone : str, optional
+        IANA timezone of the timestamps. ``None`` leaves the index naive.
+    name : str, optional
+        Name for the returned Series (typically the ISO-3 country code).
+    """
+    path = csv_path if os.path.isabs(csv_path) else os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), csv_path)
+    if not os.path.exists(path):
+        raise FileNotFoundError(
+            f"demand_series_csv points at '{csv_path}', which does not exist "
+            f"(resolved to '{path}')."
+        )
+    df = pd.read_csv(path)
+    if df.shape[1] < 2:
+        raise ValueError(f"'{path}' needs at least a timestamp and a demand column.")
+    lowered = {str(c).strip().lower(): c for c in df.columns}
+    ts_col = next(
+        (lowered[c] for c in ('timestamp', 'time', 'datetime', 'date') if c in lowered),
+        df.columns[0],
+    )
+    val_col = next(
+        (lowered[c] for c in ('demand_mw', 'demand', 'load_mw', 'load', 'value') if c in lowered),
+        df.columns[1],
+    )
+    stamps = pd.DatetimeIndex(pd.to_datetime(df[ts_col], errors='coerce'))
+    values = pd.to_numeric(df[val_col], errors='coerce')
+    series = pd.Series(values.to_numpy(), index=stamps, name=name or val_col)
+    series = series[series.index.notna()].dropna().sort_index()
+    series = series[~series.index.duplicated(keep='first')]
+    if timezone:
+        if series.index.tz is None:
+            series.index = series.index.tz_localize(
+                timezone, ambiguous=True, nonexistent='shift_forward')
+        else:
+            series.index = series.index.tz_convert(timezone)
+    if start_year is not None:
+        series = series[series.index.year >= start_year]
+    if end_year is not None:
+        series = series[series.index.year <= end_year]
+    if series.empty:
+        raise ValueError(
+            f"'{path}' contains no hourly demand rows in {start_year}–{end_year}."
+        )
+    return series
+
+
 def fetch_demand_data_demandcast(
     country_code: str,
     start_year: Optional[int] = None,
@@ -5897,7 +5992,10 @@ def load_eps_magnitude_prior(
             "data/eps_priors/parse_eps_extract.py against the country's "
             "EPS Vensim output first."
         )
-    df = pd.read_csv(prior_csv_path)
+    # comment='#' skips the provenance header written by
+    # data/eps_priors/parse_eps_extract.py (source model, version, git commit,
+    # extraction date). Open the CSV to see which model snapshot this is.
+    df = pd.read_csv(prior_csv_path, comment='#')
     required = {'end_use', 'year', 'eps_mwh_per_year'}
     missing = required - set(df.columns)
     if missing:
@@ -7267,7 +7365,18 @@ def compute_hourly_capacity_profiles(
     timeslice_metadata: Optional[pd.DataFrame] = None,
     representative_dates: Optional[Dict[int, pd.Timestamp]] = None,
 ) -> pd.DataFrame:
-    """Compute 24 hourly mean capacity factors for each timeslice."""
+    """Compute 24 hourly mean capacity factors for each timeslice.
+
+    Default (``representative_dates=None``) is the **slice mean**: each cell is
+    the average CF over every hour assigned to that (slice, hour-of-day), which
+    is what the EPS workbooks express as ``AVERAGEIFS(cf, slice, …, hour, …)``.
+
+    Passing ``representative_dates`` switches to a single representative day's
+    profile per slice. That is the clustering *objective*, not the export
+    convention — a rep-day table's days-weighted annual mean does not match the
+    calibrated hourly annual mean. The production path no longer passes it; see
+    DECISIONS.md 2026-08-12.
+    """
     missing = [c for c in cf_cols if c not in df.columns]
     if missing:
         raise KeyError(f"Missing capacity factor columns: {missing}")
@@ -7320,7 +7429,18 @@ def compute_hourly_load_profiles(
     timeslice_metadata: Optional[pd.DataFrame] = None,
     representative_dates: Optional[Dict[int, pd.Timestamp]] = None,
 ) -> pd.DataFrame:
-    """Compute 24 hourly representative-day load shares for each timeslice."""
+    """Compute 24 hourly load shares (load factors) for each timeslice.
+
+    Default (``representative_dates=None``) is the **slice mean**:
+    ``LF[slice, hour] = mean demand over that (slice, hour-of-day) / annual
+    demand``, matching CLAUDE.md §6. This is the form that satisfies the SHELF
+    balance ``Σ_slices days × Σ_hours LF = 1`` exactly, so EPS allocates each
+    category's annual demand across the year without gain or loss.
+
+    Passing ``representative_dates`` switches to a single representative day per
+    slice, which breaks that balance (0.84–2.24 by category on the KR run). The
+    production path no longer passes it; see DECISIONS.md 2026-08-12.
+    """
     missing = [c for c in load_cols if c not in df.columns]
     if missing:
         raise KeyError(f"Missing load columns: {missing}")
@@ -8192,13 +8312,24 @@ def run_pipeline(
         cols = ['timeslice_name', 'days_represented'] + [c for c in lf_df.columns if c not in {'timeslice_name', 'days_represented'}]
         lf_df = lf_df[cols]
 
+    # SLICE-MEAN, not representative-day (DECISIONS.md 2026-08-12, Option A).
+    # `representative_dates` stays the *clustering* objective — it is what makes
+    # the optimizer put only genuinely extreme days in the peak slices — but the
+    # exported tables are slice means, per CLAUDE.md §6 ("mean demand in slice at
+    # that hour / annual demand") and the eps-us workbooks, whose output cells are
+    # AVERAGEIFS over slice + hour.
+    #
+    # Passing representative_dates here instead made each table a single day's
+    # profile, which does not conserve annual energy: the SHELF balance
+    # Σ_slices days × Σ_hours LF came out anywhere from 0.84 to 2.24 by category
+    # rather than 1.0, so EPS would have allocated the wrong annual demand. Slice
+    # means give exactly 1.0 by construction.
     hourly_cf_df = compute_hourly_capacity_profiles(
         df,
         labels,
         cf_cols,
         timestamps,
         timeslice_metadata=timeslice_metadata,
-        representative_dates=representative_dates,
     )
     hourly_lf_df = compute_hourly_load_profiles(
         df,
@@ -8206,7 +8337,6 @@ def run_pipeline(
         load_cols,
         timestamps,
         timeslice_metadata=timeslice_metadata,
-        representative_dates=representative_dates,
     )
     # Optionally write to an Excel file
     if output_path or country:

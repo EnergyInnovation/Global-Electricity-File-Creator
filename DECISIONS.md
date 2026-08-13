@@ -8,6 +8,197 @@ See `CLAUDE.md` for the canonical methodology that these decisions inform.
 
 ---
 
+## 2026-08-13 — EPS priors re-extracted from live models, with provenance
+
+### Context
+`SHELF-residential-other.csv` for the KR run exported **entirely blank**. Tracing it:
+`eps_prior_KR.csv` carried `residential_other = 0.0` for every year →
+`align_basis_to_prior` scales a zero-prior basis column by `s = 0` →
+the calibrated hourly series is identically zero → the SHELF load factor is
+`hourly / annual` with `annual = 0`, and `annual_totals.replace(0, np.nan)`
+([energy_timeslice_pipeline.py:7472](energy_timeslice_pipeline.py:7472)) turns the
+whole table into NaN.
+
+That raised a second question: the priors are **static committed files**. Nothing in
+the run path regenerates them — `load_eps_magnitude_prior` is a plain `read_csv`, and
+`parse_eps_extract.py` is a manual CLI fed by a Vensim `vdf2tab` export. All three
+priors landed in one commit (`b26466c`, 2026-06-02) and had driven calibration
+unchanged for over two months, with no record in the files of which model snapshot
+they came from.
+
+### Decision
+Re-extracted all three regional priors from fresh headless BAU runs, added a
+**generation-capacity prior** alongside each demand prior, and stamped every file
+with provenance.
+
+| Region | Source model | Version | Span | Branch @ commit | Tree at run |
+|---|---|---|---|---|---|
+| US | `eps-us` | 4.0.5 | 2025–2050 | `main` @ `9b3a6514` | clean |
+| CN | `eps-china-igdp\eps-china-igdp` (**inner** clone) | 4.0.5 | 2024–2060 | `4.0-data-2024IT` @ `60e3b64` | clean |
+| KR | `eps-southkorea` | 4.0.4 | 2021–2050 | `develop_4.0.5` @ `45acd7e` | clean (26 files stashed for the run) |
+
+New/changed files:
+- `data/eps_priors/eps_capacity_<ISO2>.csv` — **new**, `tech,year,eps_mw` from
+  `BAU Electricity Generation Capacity[Electricity Source]` plus
+  `BAU Distributed Electricity Source Capacity` summed over building types and
+  suffixed `(distributed)`. Tech names are raw EPS `Electricity Source` subscripts,
+  not remapped — the SYSHECF side already speaks EPS tech names.
+- `data/eps_priors/eps_provenance.py` — **new**, reads version / base+final year /
+  git branch, commit, date, remote / working-tree state out of the checkout itself.
+- Provenance is a `#` comment block above the CSV header; `load_eps_magnitude_prior`
+  and `scripts/test_china_demand_source.py` now pass `comment='#'`.
+- `scripts/compare_eps_priors.py` — **new**, diffs a re-extraction against the prior
+  snapshot and cross-checks capacity against `data/eps_wind_capacity_split.csv`.
+
+### Rationale for the two judgment calls
+**China: inner clone over parent.** The parent (`eps-china-igdp`, 4.0.0, IT 2019) matched
+the old prior's 2019–2060 span, but is 263 commits behind, last touched 2024-09-30, and
+**lacks three needed variables** (`BAU Data Center Load`,
+`BAU Hydrogen Sector Grid Electricity Demand`, `BAU Distributed Electricity Source Capacity`).
+The inner clone is current, clean, and complete. Cost: the CN prior's span moves to
+2024–2060, and the China preset's `default_year: 2018` now resolves to nearest-year 2024
+instead of 2019 — a pre-existing mismatch, now larger.
+
+**KR: stashed to clean HEAD.** The 26 uncommitted files in `eps-southkorea` are
+`InputData/elec/SHELF` + `SYSHECF` CSVs *written by this pipeline*. Demand is computed
+upstream of the hourly SHELF allocation, so the demand prior is unaffected either way —
+but SHELF/SYSHECF feed dispatch and capacity expansion, so extracting a capacity prior
+from that tree would have fed this pipeline's own output back into its own calibration
+anchor. Stashed for the run, restored immediately after.
+
+### What the re-extraction showed
+1. **KR `residential_other` is still exactly 0.0** — from a fresh clean-HEAD run of the
+   current model. The zero is a genuine property of eps-southkorea, not a stale snapshot.
+   Every KR buildings end-use is bit-identical to the June snapshot (+0.0%), i.e. the KR
+   buildings input data has not changed since. `residential_lighting` and
+   `residential_cooling` are also *exactly* equal (12,803,180 MWh), which still looks like
+   a placeholder allocation in the KR residential end-use split. **Open question for the
+   modeling team — see TODO.**
+2. **Data-center load has arrived in the newer models.** `other_sectors` (district heat +
+   hydrogen + data centers): US 15.3 → 224.0 TWh (+1360%), KR 0.003 → 3.9 TWh. CN went the
+   other way (97.2 → 12.4 TWh), reflecting the 4.0.0 → 4.0.5 rebuild rather than a trend.
+3. **`data/eps_wind_capacity_split.csv` is now stale for CN.** It was built from the 4.0.0
+   parent: 404,977 / 36,770 MW onshore/offshore (shares 0.9168 / 0.0832). The inner 4.0.5
+   model's 2024 capacity is 480,647 / 40,750 MW (shares 0.9218 / 0.0782). KR is close
+   (1,772 vs 1,708 MW onshore, +3.7%; offshore matches exactly). **Not refreshed here** —
+   those weights set the level of both per-type wind CF series and the shape of the blended
+   `wind_cf`, so changing them moves net load and clustering. Deliberately left for a
+   separate, reviewed change.
+4. **The old parser had a latent layout bug.** `parse_tsv` assumed a run-name column between
+   the variable name and the first year (`parts[2:]`). The exports produced here have no such
+   column, so it silently returned **zero rows** rather than erroring. It now locates year
+   columns from the `Time` header row. If the June extraction used a different VDF2TAB
+   invocation, the two snapshots were not produced by equivalent parsing.
+
+### Rejected alternatives
+- **Sidecar `.provenance.json` files.** Keeps the CSV schema untouched, but provenance you
+  have to open a second file to see is provenance nobody reads. The `#` block is visible on
+  open and costs one `comment='#'` argument.
+- **Provenance as extra CSV columns.** Repeats 14 constant fields on every one of ~400 rows.
+- **Folding distributed capacity into the grid-connected totals.** SYSHECF treats distributed
+  solar as its own technology with its own derate (`DISTRIBUTED_SOLAR_CF_DERATE`); merging
+  them would destroy that split.
+- **Fixing `align_basis_to_prior` to treat a zero prior as "not tracked"** (the one-line
+  `if col not in prior or prior[col] <= 0` change). Deliberately **not** bundled here —
+  finding 1 shows the KR zero is real model behavior, so whether to override it with a
+  fallback magnitude is a modeling decision, not a data-refresh decision. Still open.
+
+### Reproduce
+```
+python data/eps_priors/parse_eps_extract.py <PriorExtract.tab> <ISO2> <IT> <FT> \
+    --model-dir <model checkout> --vensim "<path to vendss64.exe>"
+python scripts/compare_eps_priors.py --before <dir of previous eps_prior_*.csv>
+```
+Vensim DSS on this machine is at `C:\Program Files\Vensim\vendss64.exe`, **not** the
+`Vensim DSS x64` path the `eps-run` skill defaults to; pass `-Exe` explicitly.
+
+All extracted values are model output for staff review — verify against the models' own
+documentation and primary sources before use in any work product.
+
+---
+
+## 2026-08-12 — SHELF/SYSHECF exports switch from representative-day to slice-mean (Option A)
+
+### Context
+A `Checker` tab added to the KR SHELF workbook computed, per category,
+`Σ_slices days × Σ_hours LF` — the fraction of annual demand the six timeslices
+reproduce. It must be 1.0. It was not: 0.8404 (residential heating), 0.9449
+(residential cooling), 1.6208 (service other), **2.2442** (service heating).
+
+Root cause: the exported tables were built from a single **representative day**
+per slice (`LF = rep-day hour value ÷ annual`), so the balance only equals 1 if
+the day-weighted rep-day energies happen to reproduce annual energy. They don't.
+Substituting the slice mean into the identical arithmetic returns exactly 1.0000
+for every non-zero category.
+
+The error varies wildly by category because representative days are chosen on
+**net-load** shape — the clustering objective — not per-category energy. A
+category whose seasonality doesn't track net load (service heating) gets a rep
+day that is wildly unrepresentative *for it*, then multiplied by up to 93 days.
+Aggregate demand came out at 1.0047, so the errors partly cancel in total, which
+is why this survived unnoticed.
+
+This contradicted two existing references: CLAUDE.md §6 defines the LF as
+"(**mean** demand in slice at that hour) / annual demand" with the balance equal
+to 1.0, and the canonical eps-us workbooks compute every output cell as
+`AVERAGEIFS(col, slice, …, hour_of_day, …)` — a slice mean. The archived
+`build-input-xlsx` skill likewise documents "Slice-mean over hourly data" as the
+output-tab pattern. The rep-day form had leaked from the clustering objective
+into the export.
+
+### Decision
+Option A, chosen by staff: **the exported values are slice means.** Rep-day
+selection remains the *clustering* objective — it is what makes the optimizer
+place only genuinely extreme days in the peak slices — but it no longer
+determines cell values. Peakiness survives because a peak slice contains only
+extreme days, so their mean is still extreme; this is also why the eps-us
+reference figures are quoted as slice means ("SP slice gross peak … 11-day mean").
+
+Applies to both families:
+- SHELF   `LF[slice,hour] = AVERAGEIFS(col, slice, hour) / SUM(col)`
+- SYSHECF `CF[slice,hour] = AVERAGEIFS(cf col, slice, hour) × mult`, clamped to
+  [0,1] via `IFERROR(MAX(0,MIN(1,…)),0)` exactly as the eps-us cells do.
+
+### Affected files / variables
+- `energy_timeslice_pipeline.py`: `run_pipeline` no longer passes
+  `representative_dates` to `compute_hourly_capacity_profiles` /
+  `compute_hourly_load_profiles` (both already had a slice-mean branch);
+  docstrings record why the parameter exists but is unused in production.
+- `scripts/build_us_run_workbooks.py`: `_repday_lf` → `_slice_mean_lf`; new
+  `_slice_mean_cf` and `_cf_cell` (the eps-us IFERROR/MAX/MIN wrapper); SHELF and
+  SYSHECF cell writers use them. Shared by both builders, so the US run workbook
+  changes with it.
+- `scripts/build_run_workbooks.py`: same switch; new builder-generated `Checker`
+  tab covering all 22 SHELF categories (previously hand-added).
+- `scripts/verify_run_workbooks.py`: formula regexes updated for AVERAGEIFS; the
+  ground-truth section now **asserts** the balance is 1.0 per category instead of
+  printing it as a note.
+
+### Effect on model output
+Every SHELF and SYSHECF value changes. Verified on the South Korea run
+(7 wind sites, capacity-weighted):
+
+- SHELF balance = **1.0000000000** for all 14 non-zero categories (was
+  0.84–2.24). Exported CSVs match an independent pandas slice-mean to 1e-17.
+- SYSHECF days-weighted annual CF now equals the calibrated hourly annual mean
+  to **0.00%** — previously off by −22% (onshore wind), −28% (offshore), +24%
+  (solar). The model will now generate the annual energy the Ember calibration
+  intended.
+- Onshore and offshore wind remain distinct (max|diff| 0.0334 across the 6×24
+  grid); hourly means 0.1861 / 0.1803 against the Ember fleet target 0.1861.
+- `verify_run_workbooks.py`: 0 failures.
+
+**Known remaining divergence (pre-existing, not introduced here):** the
+pipeline's own `EPS_SHELF_FILE_MAP` still resolves some categories via
+`template_split`, whose CSVs balance to that category's *share* of a shared
+aggregate (transport's six modes total 1.0; the commercial trio totals 2.0
+because it splits two aggregate columns). The workbook builder's `SHELF_MAP` is
+all-direct — per the 2026-07-14 staff reclassification it is the authoritative
+mapping — so every category in the delivered workbook balances to exactly 1.0.
+Worth reconciling the CSV path to match.
+
+---
+
 ## 2026-08-12 — Amendment: wind blend weights from EPS start-year capacities
 
 ### Context

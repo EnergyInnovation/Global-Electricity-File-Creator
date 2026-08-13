@@ -42,9 +42,14 @@ from scripts.build_run_workbooks import SHELF_MAP, SHELF_NAME, SYSHECF_NAME  # n
 from scripts.build_us_run_workbooks import HOUR_COLS, SLICES, read_eps_table  # noqa: E402
 
 TOL = 1e-9
-SUMIFS_RE = re.compile(r"SUMIFS\('Demand hourly source'!\$([A-Z]+)\$2:")
+# Both families are slice-mean AVERAGEIFS since 2026-08-12 (DECISIONS.md).
+SUMIFS_RE = re.compile(r"AVERAGEIFS\('Demand hourly source'!\$([A-Z]+)\$2:")
 AVGIFS_RE = re.compile(r"AVERAGEIFS\('CF hourly source'!\$([A-Z]+)\$2:")
-MULT_RE = re.compile(r"\)\*([0-9.]+),0\)")
+MULT_RE = re.compile(r"\)\*([0-9.]+)\)")
+# The slice filter must be the source tab's own 'slice' column compared to the
+# row's slice label ($A<row>) — that is what makes the cell a slice mean rather
+# than a single representative day.
+SLICE_FILTER_RE = re.compile(r"!\$([A-Z]+)\$2:\$[A-Z]+\$\d+,\$A\d+")
 
 
 def header_letter_map(ws) -> dict:
@@ -129,34 +134,45 @@ def check_syshecf(eps_dir: Path, cf: pd.DataFrame, borrow_dir: Path) -> int:
     return fails
 
 
-def ground_truth_facts(demand: pd.DataFrame, clus: pd.DataFrame):
-    """Independent pandas rep-day LF facts that demonstrate the reclassification."""
-    rep = dict(zip(clus['slice_name'].dropna(), clus['rep_doy'].dropna().astype(int)))
+def ground_truth_facts(demand: pd.DataFrame, clus: pd.DataFrame) -> int:
+    """Independent pandas slice-mean LF facts, including the SHELF energy balance.
+
+    The balance Σ_slices days × Σ_hours LF must equal 1.0 for every non-zero
+    category — it is the fraction of annual demand the six timeslices reproduce,
+    and it is what the workbook's Checker tab computes in Excel. A category off
+    1.0 means EPS would allocate the wrong annual demand for it. Counts as a
+    hard failure, not a printed note.
+    """
+    days = dict(zip(clus['slice_name'].dropna(), clus['days'].dropna().astype(int)))
 
     def lf(col):
+        """Slice-mean load factors: {slice: array over 24 hours}."""
         tot = demand[col].sum()
         if tot <= 0:
             return None
         out = {}
-        for sl, r in rep.items():
-            day = demand[demand['day_of_year'] == r].sort_values('hour_of_day')[col].to_numpy()
-            out[sl] = day / tot
+        for sl in days:
+            sel = demand[demand['slice'] == sl]
+            out[sl] = sel.groupby('hour_of_day')[col].mean().reindex(range(24)).to_numpy() / tot
         return out
 
     print('--- ground-truth sanity (pandas, independent of the xlsx) ---')
-    appl = lf('residential_waterheating')
-    if appl:
-        s = sum(appl[sl].sum() * int(clus.loc[clus['slice_name'] == sl, 'days'].iloc[0])
-                for sl in appl)
-        print(f'  residential-appliances := residential_waterheating shape; '
-              f'balance Sigma(LF*days)={s:.4f}')
-    rl, cl = lf('residential_lighting'), lf('residential_lighting')
+    cols = [c for c in demand.columns
+            if c not in ('timestamp', 'day_of_year', 'hour_of_day', 'slice')]
+    fails = 0
+    for col in cols:
+        vals = lf(col)
+        if vals is None:
+            print(f'  {col:26s} annual sum = 0 (zeroed upstream) — balance n/a')
+            continue
+        balance = sum(vals[sl].sum() * days[sl] for sl in days)
+        ok = abs(balance - 1.0) < 1e-9
+        fails += not ok
+        print(f'  {col:26s} balance Sigma(LF*days)={balance:.10f}  '
+              f'{"OK" if ok else "FAIL (must be 1.0)"}')
     print('  residential-lighting and commercial-lighting both := residential_lighting '
-          '(identical by construction): '
-          + ('OK' if rl is not None else 'residential_lighting is zero/absent'))
-    for col in ['residential_other', 'service_heating']:
-        v = lf(col)
-        print(f'  {col:24s} annual sum {"> 0" if v is not None else "= 0 (zeroed upstream)"}')
+          '(identical by construction): OK')
+    return fails
 
 
 def main():
@@ -175,7 +191,7 @@ def main():
     print(f'=== {eps_dir.name} ===')
     fails = check_shelf(eps_dir, demand, clus)
     fails += check_syshecf(eps_dir, cf, borrow_dir)
-    ground_truth_facts(demand, clus)
+    fails += ground_truth_facts(demand, clus)
     print(f'--- failures: {fails} ---')
     if fails:
         print('FAIL')
