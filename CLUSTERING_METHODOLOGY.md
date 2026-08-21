@@ -290,7 +290,7 @@ product.)*
 |---|---|---|---|---|---|---|
 | **United States** (international preset, `demand_shape_source='efs'`) | NREL Electrification Futures Study (Reference × Moderate); RECS `CE8.2.M`/`CE8.3.M` heating/cooling split | EIA Hourly Electric Grid Monitor (v2 API) | `level_seasonal` (US uses EFS shapes; Zapata methods available if `eps_prior_path` set) | Renewables.ninja MERRA-2 | Ember | Northern |
 | **South Korea** | Mendeley/Zapata, region `Korea` | DemandCast → KROGD manual files (`KRO*` in `data/manual_downloads/`) | `zapata_ridge_nnls` | Renewables.ninja MERRA-2 | Ember | Northern |
-| **China** | Mendeley/Zapata, region `China +` | DemandCast → Wu et al. 2023 Zenodo (**2018 only**) | `zapata_ridge_nnls` | Renewables.ninja MERRA-2 | Ember | Northern |
+| **China** | Mendeley/Zapata, region `China +` | **Two sources, selected by run config** — DemandCast → Wu et al. 2023 Zenodo (**2018 only**) at `year=2018, last_n_years=1`; Yi et al. 2026 provincial CSV (2015–2024) for any other year or window. See `CLAUDE.md` §1 | `zapata_ridge_nnls` | Renewables.ninja MERRA-2 | Ember | Northern |
 | **Canada, Japan, India, Germany, France, United Kingdom, Mexico** | Mendeley/Zapata | DemandCast (programmatic: ENTSO-E for EU, CENACE for MX, etc.) | `zapata_ridge_nnls` (needs `eps_prior_path`) else `level_seasonal` | Renewables.ninja MERRA-2 | Ember | Northern |
 | **Australia, Brazil** | Mendeley/Zapata | DemandCast | `zapata_ridge_nnls` / `level_seasonal` | Renewables.ninja MERRA-2 | Ember | **Southern** |
 

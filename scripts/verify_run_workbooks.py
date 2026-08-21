@@ -36,9 +36,15 @@ ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
 from energy_timeslice_pipeline import (  # noqa: E402
-    EPS_SYSHECF_FILE_MAP, get_country_preset, resolve_direct_cf_spec,
+    ELCCAfR_DEGENERATE_MEAN, ELCCAfR_DEMAND_ALTERING_DEFAULT,
+    ELCCAfR_DEMAND_ALTERING_FILE, ELCCAfR_STATISTIC_DEFAULT,
+    EPS_ELCCAfR_FILE_MAP, EPS_ELCCAfR_HEADERS, EPS_ELCCAfR_MIRRORS,
+    EPS_PEAK_TIMESLICES, EPS_SYSHECF_FILE_MAP, get_country_preset,
+    resolve_direct_cf_spec,
 )
-from scripts.build_run_workbooks import SHELF_MAP, SHELF_NAME, SYSHECF_NAME  # noqa: E402
+from scripts.build_run_workbooks import (  # noqa: E402
+    ELCCAfR_NAME, ELCCAfR_STATS_TAB, SHELF_MAP, SHELF_NAME, SYSHECF_NAME,
+)
 from scripts.build_us_run_workbooks import HOUR_COLS, SLICES, read_eps_table  # noqa: E402
 
 TOL = 1e-9
@@ -134,6 +140,204 @@ def check_syshecf(eps_dir: Path, cf: pd.DataFrame, borrow_dir: Path) -> int:
     return fails
 
 
+STATS_REF_RE = re.compile(rf"'{re.escape(ELCCAfR_STATS_TAB)}'!([A-Z]+)(\d+)")
+
+
+def _pandas_peak_stats(cf: pd.DataFrame, column: str, statistic: str) -> dict:
+    """Independent per-(peak slice, hour) mean and low statistic, plain pandas.
+
+    Deliberately does NOT call build_elccafr_table — this is the ground truth the
+    written CSVs are checked against, so it must not share their code path.
+    """
+    out = {}
+    for sl in EPS_PEAK_TIMESLICES:
+        sub = cf[cf['slice'] == sl]
+        means, lows = np.full(24, np.nan), np.full(24, np.nan)
+        for h in range(24):
+            v = pd.to_numeric(sub.loc[sub['hour_of_day'] == h, column],
+                              errors='coerce').dropna().to_numpy(dtype=float)
+            if v.size == 0:
+                continue
+            means[h] = v.mean()
+            lows[h] = v.min() if statistic == 'min' else np.percentile(v, float(statistic[1:]))
+        out[sl] = (means, lows)
+    return out
+
+
+def check_elccafr(eps_dir: Path, cf: pd.DataFrame, preset: dict) -> int:
+    """ELCCAfR: CSV values vs independent pandas, formula wiring, and the
+    SYSHECF x ELCCAfR = worst-day identity."""
+    statistic = str(preset.get('elccafr_statistic', ELCCAfR_STATISTIC_DEFAULT))
+    demand_altering = float(
+        preset.get('elccafr_demand_altering', ELCCAfR_DEMAND_ALTERING_DEFAULT))
+    csv_dir = eps_dir / 'ELCCAfR'
+    wb = openpyxl.load_workbook(eps_dir / ELCCAfR_NAME, data_only=False)
+    stats_ws = wb[ELCCAfR_STATS_TAB] if ELCCAfR_STATS_TAB in wb.sheetnames else None
+    fails = 0
+    print(f'--- ELCCAfR (statistic={statistic}; CSV vs pandas, wiring, identity) ---')
+
+    expected_files = list(EPS_ELCCAfR_FILE_MAP) + [ELCCAfR_DEMAND_ALTERING_FILE]
+    for file_name in expected_files:
+        path = csv_dir / f'{file_name}.csv'
+        if not path.exists():
+            print(f'  {file_name:32s} MISSING CSV     FAIL')
+            fails += 1
+            continue
+        if file_name not in wb.sheetnames:
+            print(f'  {file_name:32s} MISSING TAB     FAIL')
+            fails += 1
+            continue
+        tbl = read_eps_table(path).reindex(index=SLICES, columns=HOUR_COLS).astype(float)
+        ws = wb[file_name]
+
+        # Universal invariants: shape, range, non-peak rows exactly 1.0.
+        problems = []
+        if tbl.isna().to_numpy().any():
+            problems.append('not 6x24')
+        vals = tbl.to_numpy(dtype=float)
+        if not ((vals >= 0.0) & (vals <= 1.0)).all():
+            problems.append('value outside [0,1]')
+        nonpeak = [s for s in SLICES if s not in EPS_PEAK_TIMESLICES]
+        if not np.allclose(tbl.loc[nonpeak].to_numpy(dtype=float), 1.0, atol=TOL):
+            problems.append('non-peak row != 1.0')
+        if file_name != ELCCAfR_DEMAND_ALTERING_FILE:
+            a1 = read_eps_table(path).index.name
+            if a1 != EPS_ELCCAfR_HEADERS[file_name]:
+                problems.append(f'A1 header {a1!r}')
+
+        if file_name == ELCCAfR_DEMAND_ALTERING_FILE:
+            peak = tbl.loc[list(EPS_PEAK_TIMESLICES)].to_numpy(dtype=float)
+            if not np.allclose(peak, demand_altering, atol=TOL):
+                problems.append(f'peak rows != {demand_altering}')
+            tab = np.array([[float(ws.cell(2 + r, 2 + h).value) for h in range(24)]
+                            for r in range(6)])
+            if not np.allclose(tab, vals, atol=TOL):
+                problems.append('tab != CSV')
+            ok = not problems
+            print(f'  {file_name:32s} judgment {demand_altering}    '
+                  f'{"OK" if ok else "FAIL (" + "; ".join(problems) + ")"}')
+            fails += not ok
+            continue
+
+        resolved = resolve_direct_cf_spec(
+            EPS_SYSHECF_FILE_MAP.get(EPS_ELCCAfR_FILE_MAP[file_name]), cf.columns)
+
+        source_file = EPS_ELCCAfR_MIRRORS.get(file_name)
+        source_derived = source_file is not None and resolve_direct_cf_spec(
+            EPS_SYSHECF_FILE_MAP.get(EPS_ELCCAfR_FILE_MAP.get(source_file)),
+            cf.columns) is not None
+        if resolved is None and source_derived:
+            # Mirror: CSV must equal the mirrored tech's CSV, and the tab's peak
+            # cells must reference that tab (not hold a stale copy of its values).
+            mirror_tbl = read_eps_table(csv_dir / f'{source_file}.csv').reindex(
+                index=SLICES, columns=HOUR_COLS).astype(float)
+            d = float(np.max(np.abs(vals - mirror_tbl.to_numpy(dtype=float))))
+            if d > TOL:
+                problems.append(f'CSV != {source_file} (max|diff|={d:.2e})')
+            for r_off, sl in enumerate(SLICES):
+                for h in range(24):
+                    cell = ws.cell(2 + r_off, 2 + h).value
+                    if sl not in EPS_PEAK_TIMESLICES:
+                        if not isinstance(cell, (int, float)) or abs(float(cell) - 1.0) > TOL:
+                            problems.append(f'{sl} h{h} non-peak != 1.0')
+                            break
+                    else:
+                        want = (f"='{source_file}'!"
+                                f'{openpyxl.utils.get_column_letter(2 + h)}{2 + r_off}')
+                        if str(cell) != want:
+                            problems.append(f'{sl} h{h} ref {cell!r} != {want!r}')
+                            break
+                else:
+                    continue
+                break
+            ok = not problems
+            print(f'  {file_name:32s} mirrors {source_file[len("ELCCAfR-"):]:<12s} '
+                  f'{"OK" if ok else "FAIL (" + "; ".join(problems) + ")"}')
+            fails += not ok
+            continue
+
+        if resolved is None:
+            # Constant tech: CSV and tab must both be literal 1.0 everywhere.
+            if not np.allclose(vals, 1.0, atol=TOL):
+                problems.append('constant tech != 1.0')
+            tab = np.array([[float(ws.cell(2 + r, 2 + h).value) for h in range(24)]
+                            for r in range(6)])
+            if not np.allclose(tab, 1.0, atol=TOL):
+                problems.append('tab != 1.0')
+            ok = not problems
+            print(f'  {file_name:32s} constant 1.0    '
+                  f'{"OK" if ok else "FAIL (" + "; ".join(problems) + ")"}')
+            fails += not ok
+            continue
+
+        column, _mult = resolved
+        stats = _pandas_peak_stats(cf, column, statistic)
+        max_diff, max_identity = 0.0, 0.0
+        degenerate = 0
+        for sl in EPS_PEAK_TIMESLICES:
+            means, lows = stats[sl]
+            for h in range(24):
+                got = float(tbl.loc[sl, HOUR_COLS[h]])
+                if np.isnan(means[h]) or means[h] < ELCCAfR_DEGENERATE_MEAN:
+                    degenerate += 1
+                    if abs(got - 1.0) > TOL:
+                        problems.append(f'{sl} h{h} degenerate != 1.0')
+                    continue
+                want = min(max(lows[h] / means[h], 0.0), 1.0)
+                max_diff = max(max_diff, abs(got - want))
+                # SYSHECF x ELCCAfR = the low-statistic CF at that hour.
+                max_identity = max(max_identity, abs(means[h] * got - lows[h]))
+        # CSVs are written at 4dp, so allow half a unit in the last place.
+        if max_diff > 5e-5:
+            problems.append(f'CSV vs pandas max|diff|={max_diff:.2e}')
+        if max_identity > 5e-5:
+            problems.append(f'identity max|diff|={max_identity:.2e}')
+
+        # Formula wiring: each peak cell divides a MINIFS row by an AVERAGEIFS
+        # row of the same hour column on the stats tab, both labelled with the
+        # cell's own slice. Checked against the stats tab itself, not row numbers.
+        if stats_ws is None:
+            problems.append('stats tab missing')
+        else:
+            for r_off, sl in enumerate(SLICES):
+                if sl not in EPS_PEAK_TIMESLICES:
+                    continue
+                for h in range(24):
+                    formula = ws.cell(2 + r_off, 2 + h).value
+                    refs = STATS_REF_RE.findall(str(formula))
+                    letter = openpyxl.utils.get_column_letter(2 + h)
+                    if len(refs) != 3 or {c for c, _ in refs} != {letter}:
+                        problems.append(f'{sl} h{h} bad refs')
+                        break
+                    # =IF(<mean> < eps, 1, MIN(1, MAX(0, <low> / <mean>)))
+                    rows = [int(rw) for _, rw in refs]
+                    mean_row, low_row = rows[0], rows[1]
+                    if rows[2] != mean_row:
+                        problems.append(f'{sl} h{h} guard row != denominator row')
+                        break
+                    mean_src = str(stats_ws.cell(mean_row, 2 + h).value)
+                    low_src = str(stats_ws.cell(low_row, 2 + h).value)
+                    # MINIFS must carry the _xlfn. prefix in the stored XML or
+                    # Excel opens the cell as #NAME?.
+                    low_fn = '_xlfn.MINIFS' if statistic == 'min' else 'PERCENTILE'
+                    if ('AVERAGEIFS' not in mean_src or low_fn not in low_src
+                            or stats_ws.cell(mean_row, 1).value != sl
+                            or stats_ws.cell(low_row, 1).value != sl):
+                        problems.append(f'{sl} h{h} refs wrong block')
+                        break
+                else:
+                    continue
+                break
+
+        ok = not problems
+        print(f'  {file_name:32s} derived -> {column:18s} '
+              f'max|diff|={max_diff:.2e} identity={max_identity:.2e} '
+              f'degenerate={degenerate:3d} '
+              f'{"OK" if ok else "FAIL (" + "; ".join(problems) + ")"}')
+        fails += not ok
+    return fails
+
+
 def ground_truth_facts(demand: pd.DataFrame, clus: pd.DataFrame) -> int:
     """Independent pandas slice-mean LF facts, including the SHELF energy balance.
 
@@ -191,13 +395,16 @@ def main():
     print(f'=== {eps_dir.name} ===')
     fails = check_shelf(eps_dir, demand, clus)
     fails += check_syshecf(eps_dir, cf, borrow_dir)
+    fails += check_elccafr(eps_dir, cf, preset)
     fails += ground_truth_facts(demand, clus)
     print(f'--- failures: {fails} ---')
     if fails:
         print('FAIL')
         sys.exit(1)
     print('PASS: all output tabs wired to the mapped source columns; borrowed '
-          'tables match the country EPS model exactly.')
+          'tables match the country EPS model exactly; ELCCAfR CSVs match an '
+          'independent pandas recomputation and satisfy SYSHECF x ELCCAfR = '
+          'worst-day CF.')
 
 
 if __name__ == '__main__':

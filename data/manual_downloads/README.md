@@ -20,6 +20,25 @@ Files in this folder are inputs that the pipeline cannot fetch automatically. Ea
   - No trailing all-comma blank row (data.go.kr exports have been observed to include one).
   - If you strip blank rows manually, do it in **byte mode** to preserve the EUC-KR encoding of the Korean column headers.
 
+### CN_hourly_demand_2015_2024.csv — China national hourly electricity demand
+
+- **Citation:** Yi, B., Luo, Q., Zhang, S., Ji, Y., Yu, S. & Fan, Y. (2026). *Hourly electricity load curve dataset for Chinese provinces derived from meteorological variables.* **Scientific Data 13, 978.** https://doi.org/10.1038/s41597-026-07327-8
+- **Data repository:** figshare — https://doi.org/10.6084/m9.figshare.29832701
+- **License:** **CC BY-NC-ND 4.0** (Attribution–NonCommercial–NoDerivatives). Stricter than every other source in this folder: non-commercial use only, and no distribution of derivatives. Confirm with the publisher that the intended use is permitted **before** publishing anything derived from it, and cite it in any output that uses it.
+- **Coverage:** 31 provincial-level regions (excludes Hong Kong, Macao, Taiwan), hourly, 2015–2024. Published units are **GWh per hour**; local time (CST, UTC+8).
+- **Method (upstream):** 2018 load data from China's National Development and Reform Commission regressed on hourly meteorology (temperature, wind speed, solar radiation, relative humidity) via building-adjusted internal temperature (BAIT) heating/cooling degree-days, with province-specific power coefficients and regional threshold temperatures; extended to other years using annual electricity demand and air-conditioner ownership. **A reconstruction, not a metered series.**
+- **How this file is produced:** the published workbook (`Data output.xlsx`, ~42 MB) is **not committed** — it is too large and its license restricts redistribution. Convert your own copy:
+  ```
+  python scripts/build_china_hourly_demand.py --source "<path>/Data output.xlsx"
+  ```
+  which sums the 31 provinces to a national series, converts GWh/h → MW, and writes this CSV plus `CN_hourly_demand_2015_2024_coverage.csv` (per-year hours, missing cells, annual TWh, mean/peak GW).
+- **Filename note:** the `CN_` prefix is deliberately *not* one of the `DEMANDCAST_MANUAL_FILE_PREFIXES`, so this file is read directly by the pipeline (`load_local_demand_series`) rather than mirrored into the DemandCast clone.
+- **When it is used:** only for China runs whose year/window is anything other than `year=2018, last_n_years=1` — see `CLAUDE.md` §1 "China observed-demand source".
+- **Sanity-checks before committing a refresh:**
+  - The coverage report shows `hours == expected_hours` for every year (8,784 in leap years) and `n_missing_cells == 0`.
+  - Annual totals track CEC/NBS published national consumption (2018 ≈ 6,900 TWh, 2024 ≈ 9,854 TWh at the time of writing).
+  - Annual load factors land in a plausible 0.70–0.78 band.
+
 ### EDGAR_*.xlsx, EDGAR_*.zip — EDGAR / IEA emissions reference data
 
 - **Publisher:** European Commission Joint Research Centre, EDGAR project; with IEA energy combustion CO₂.

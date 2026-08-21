@@ -232,24 +232,40 @@ DemandCast uses programmatic APIs for most non-U.S. countries (ENTSO-E for Europ
 ### China
 
 **Demand-shape source:** Mendeley (Zapata/Khanna), region `China +`.
-**Demand calibration source:** DemandCast → Wu et al. (2023) Zenodo dataset (auto-downloaded at runtime).
+**Demand calibration source:** **two sources, selected automatically from the run configuration.**
+
+| Run configuration | Observed-demand source |
+|---|---|
+| `YEAR = 2018` **and** `LAST_N_YEARS = 1` (the China preset defaults) | DemandCast → Wu et al. (2023) Zenodo, auto-downloaded at runtime. Covers 2018 only, which is the only configuration it can serve. Kept as the default so the historical EPS-China run stays reproducible. |
+| any other year or window | Yi et al. (2026) provincial hourly load, staged at `data/manual_downloads/CN_hourly_demand_2015_2024.csv`. Covers 2015–2024, so it is the only source that can serve a multi-year window or a post-2018 target year. |
+
+The rule lives in `energy_timeslice_pipeline.resolve_demand_series_csv` and is driven by
+the China preset's `demand_series_csv` + `demandcast_pin` keys. Override it for a single
+run with `DEMAND_SERIES_CSV` in `run_pipeline.py` (`'demandcast'`, or a CSV path). The run
+log prints which source was used, with its citation.
 
 **Manual steps:**
 
 | # | Step | Notes |
 |---|---|---|
 | 1 | Download the three Chinese renewables.ninja files into `data/weather/` | `ninja-weather-country-CN-temperature_area_wtd-merra2.csv`, `_wind_speed_`, `_irradiance_surface_`. ~260 MB total. |
+| 2 | *(only if you need a year or window other than 2018/1)* Download the Yi et al. workbook from figshare and convert it | `python scripts/build_china_hourly_demand.py --source "<path>/Data output.xlsx"` → writes `data/manual_downloads/CN_hourly_demand_2015_2024.csv` plus a per-year coverage report. The source workbook is ~42 MB and is not committed. |
 
-That is the only manual step specific to China — the calibration demand series auto-downloads from Zenodo on first use.
+Step 1 is the only manual step for the default (2018) configuration — that calibration
+demand series auto-downloads from Zenodo on first use.
 
 **Citations to verify against primary sources:**
 
-- China hourly demand: Wu, Y. et al., *Hourly electric power load dataset for China*, Zenodo, `https://zenodo.org/records/8322210`. License: CC-BY 4.0. Coverage: **2018 only** (Jan 1, 2018 – Dec 31, 2018) — this is why the China preset's `default_year` is 2018 with `last_n_years=1`.
+- China hourly demand, 2018 only: Wu, Y. et al., *Hourly electric power load dataset for China*, Zenodo, `https://zenodo.org/records/8322210`. License: CC-BY 4.0. Coverage **2018 only** (Jan 1 – Dec 31, 2018) — this is why the China preset's `default_year` is 2018 with `last_n_years=1`.
+- China hourly demand, 2015–2024: Yi, B., Luo, Q., Zhang, S., Ji, Y., Yu, S. & Fan, Y. (2026). *Hourly electricity load curve dataset for Chinese provinces derived from meteorological variables.* **Scientific Data 13, 978.** https://doi.org/10.1038/s41597-026-07327-8 — data: figshare https://doi.org/10.6084/m9.figshare.29832701. License: **CC BY-NC-ND 4.0** (non-commercial, no derivatives — confirm this permits your intended use before publishing anything derived from it). 31 provincial-level regions, hourly, 2015–2024, GWh per hour.
 - DemandCast retrieval module: [`.vendor/demandcast/demandcast/retrievals/electricity_demand_data_sources/wu_et_al.py`](.vendor/demandcast/demandcast/retrievals/electricity_demand_data_sources/wu_et_al.py).
 
 **Known caveats to flag for staff:**
 
-- The China calibration window is **a single year (2018)**. This is much narrower than other countries and means weather-driven demand variability is not averaged out. If you want post-2018 calibration, you'll need a different upstream demand source — none is currently registered in DemandCast for CHN.
+- **The two sources disagree on hourly shape even in 2018, the year they share.** Annual energy matches to 0.01 % (6,899 vs 6,900 TWh) but hourly correlation is only 0.83 (NRMSE 7.7 % of mean); February energy differs by +17.8 %, and the annual peak moves from Aug 8 to Jul 20. Switching sources makes China materially more summer-peaking. Full quantification: [`output/china_demand_source_test/RESULTS.md`](output/china_demand_source_test/RESULTS.md).
+- **Both sources are reconstructions anchored to the same limited 2018 NDRC load data**, not independent measurements. Yi et al. extend it with meteorological regression (BAIT-based heating/cooling degree-days, province-specific power coefficients); Wu et al. use a different method. Neither is a metered national series.
+- **Leap-year target years are currently broken.** `YEAR = 2024` produces a days-per-timeslice file summing to 366 rather than the 365 EPS expects. Prefer `YEAR = 2023` until that is fixed.
+- The default configuration still uses **a single calibration year (2018)**, much narrower than other countries, so weather-driven demand variability is not averaged out. Widening the window (`LAST_N_YEARS = 4`) automatically switches to the Yi et al. source.
 - The Mendeley region key is `China +`, not `China`. The trailing `+` reflects how the Zapata/Khanna dataset names a regional aggregate that includes a small set of neighbouring areas. Worth confirming that aggregate matches your modeling boundary before publication.
 
 ## Demand-Shape Source Logic

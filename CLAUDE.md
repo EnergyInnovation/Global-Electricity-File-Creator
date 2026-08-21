@@ -27,6 +27,52 @@ model, dropped into `eps-us/InputData/elec/SHELF/` and
 
 ### NEVER use EFS for residential or commercial. EFS national load profiles are too flat (industry-weighted, pre-data-center vintage) and dilute peakiness. Real shape diversity comes from ResStock/ComStock.
 
+### China observed-demand source — two sources, selected by run configuration (2026-08-20)
+
+China is the only preset with two usable observed hourly demand records. They cover
+different periods and **disagree on hourly shape even where they overlap**, so which one
+a run uses is a methodology choice, not a detail. The selection is automatic:
+
+| Run configuration | Source |
+|---|---|
+| `year == 2018` **and** `last_n_years == 1` (the preset defaults) | **DemandCast → Wu et al. 2023** (Zenodo `https://zenodo.org/records/8322210`, CC-BY 4.0). Covers **2018 only** — the only configuration it can serve. Kept as the default so the historical EPS-China run stays reproducible. |
+| any other year or window | **Yi et al. 2026** provincial CSV, `data/manual_downloads/CN_hourly_demand_2015_2024.csv`. Covers **2015–2024** — the only source that can serve a multi-year calibration window or a post-2018 target year. |
+
+Implemented by `resolve_demand_series_csv` (preset keys `demand_series_csv` +
+`demandcast_pin`, plus `demand_series_citation` for the log and workbook About tab).
+Runner override: `DEMAND_SERIES_CSV` in `run_pipeline.py` — `'demandcast'` forces
+DemandCast, a path forces that CSV, `None` applies the rule. `demandcast_pin` is
+generic: any preset may name a `year`, a `last_n_years`, or both, and every named field
+must match for the pin to fire.
+
+**Citation (required in any output derived from it):**
+
+> Yi, B., Luo, Q., Zhang, S., Ji, Y., Yu, S. & Fan, Y. (2026). Hourly electricity load
+> curve dataset for Chinese provinces derived from meteorological variables.
+> *Scientific Data* **13**, 978. https://doi.org/10.1038/s41597-026-07327-8
+> Data: figshare https://doi.org/10.6084/m9.figshare.29832701.
+> License: **CC BY-NC-ND 4.0** — non-commercial, no derivatives. Confirm this permits
+> the intended use before publishing anything derived from it.
+
+31 provincial-level regions (excludes HK/Macao/Taiwan), hourly, 2015–2024, **GWh per
+hour**. Built by regressing 2018 NDRC load data on hourly meteorology via
+building-adjusted internal temperature (BAIT) heating/cooling degree-days with
+province-specific power coefficients, then extending to other years using annual demand
+and air-conditioner ownership. Convert the published workbook with
+`scripts/build_china_hourly_demand.py --source "<path>/Data output.xlsx"` (sums the 31
+provinces, GWh/h → MW, writes a per-year coverage report alongside).
+
+**Do not treat either source as a metered national series** — both are reconstructions
+anchored to the same limited 2018 NDRC data. Quantified impact of the swap (SHELF,
+SYSHECF, clustering, peak season) is in
+`output/china_demand_source_test/RESULTS.md`; reproduce with
+`scripts/test_china_demand_source.py`. Headline: hourly correlation between the two 2018
+series is only 0.83, and switching makes China materially more summer-peaking (summer
+peak-to-average 1.64 → 1.73, winter 1.42 → 1.20).
+
+**Leap-year caveat:** `year=2024` currently yields a days-per-timeslice file summing to
+366, not the 365 EPS requires. Use 2023 until that is fixed.
+
 ### Net-load clustering + VRE generation sources
 
 - **National:** `data/cambium24_midcase_national/Cambium24_MidCase_hourly_usa_2025.csv`
@@ -221,15 +267,18 @@ Cambium vintage still differs: state pipeline uses Cambium 2022 per-state; natio
 - `C:\Users\RobbieOrvis\Models\US\Models\eps-us\InputData\elec\SHELF\` — 22 `SHELF-*.csv` + `SHELF-days-per-timeslice.csv`
 - `C:\Users\RobbieOrvis\Models\US\Models\eps-us\InputData\elec\SYSHECF\` — variable techs only
 
-**ALWAYS BACK UP** the eps-us SHELF and SYSHECF folders before overwriting. Use `_backup_*` subfolders.
+**ALWAYS BACK UP** the eps-us SHELF, SYSHECF and ELCCAfR folders before overwriting. Use `_backup_*` subfolders.
 
 ### State / other
 - `output/<state>_timeslice_results_*.csv` (legacy national format)
 - `output/<state>/SHELF/`, `output/<state>/SYSHECF/`, Excel workbooks
 
+### International (per-country pipeline)
+- `output/<Country>_timeslice_results_EPS/` — `SHELF/`, `SYSHECF/`, `ELCCAfR/`, `workbook_sources/`, and the three self-contained workbooks built by `scripts/build_run_workbooks.py`. Nothing is copied into a regional EPS model automatically; that is a deliberate manual step after review.
+
 ---
 
-## 6. SHELF + SYSHECF format
+## 6. SHELF + SYSHECF + ELCCAfR format
 
 ### SHELF
 - One file per category, 22 files total.
@@ -247,6 +296,26 @@ Cambium vintage still differs: state pipeline uses Cambium 2022 per-state; natio
 - Values are capacity factors (0–1), also **slice means** — `AVERAGEIFS(cf col, slice, <slice>, hour_of_day, <hour>)`, clamped with `IFERROR(MAX(0,MIN(1,…)),0)` as in the eps-us workbook.
 - **VRE techs are EIA-calibrated:** the table's annual-weighted CF = EIA target. This only holds under slice means; the previous rep-day export missed the calibrated annual mean by −22% to +24% (KR).
 - Non-variable techs preserved as legacy templates.
+
+### ELCCAfR (added 2026-08-18 — see DECISIONS.md)
+
+A per-`(tech, slice, hour)` capacity-adequacy derate on the same 6×24 grid. **25 files**: 24 generation files (one per member of the EPS `Electricity Source` subscript) + `ELCCAfR-demand-altering-techs.csv`. There is **no `solar-pv-dist` or `pumped-hydro` file** — neither is in that subscript, even though both are in `EPS_SYSHECF_FILE_MAP`.
+
+- Header row: `<tech display name>,Hour0,...,Hour23`, matching the eps-us A1 labels exactly (`EPS_ELCCAfR_HEADERS`). The demand-altering file uses `Unit: dimensionless (ELCC fraction at hour)`.
+- EPS applies it in the **reliability calculation only, never dispatch**. Both uses sum over `Binding Peak Hour for Reliability Additions[peak day electricity timeslice!, Hour!]`, so **only the two peak slices can ever bind** — the four non-peak rows are 1.0.
+- Values: `<low statistic> CF / mean CF` over the days the clustering assigned to that slice. The denominator is the *same* slice mean that becomes the SYSHECF cell, over the *same* day set, so:
+
+  **`SYSHECF × ELCCAfR = the worst-day CF at that hour`**
+
+  Keeping both statistics over the identical day set is what makes that identity hold. Do **not** compute ELCCAfR over a separately pinned top-N-by-net-load day set — that breaks it. (Verified for KR 2026-08-18: mean block matches the deployed SYSHECF to 2e-16, identity to 2e-05 = CSV 4dp rounding.)
+- Cells whose mean is below `ELCCAfR_DEGENERATE_MEAN` (1e-3 — solar overnight) → 1.0, not a 0/0 ratio.
+- Techs whose SYSHECF is a **borrowed constant** get exactly 1.0: min and mean over a slice's days coincide by construction. 20 of 24 for KR. This includes **hydro** — right for thermal, questionable for hydro in high-hydro regions.
+- **Mirrors** (`EPS_ELCCAfR_MIRRORS`, added 2026-08-20): a tech with no CF series of its own can track one that has, instead of the 1.0 its borrowed SYSHECF implies. Currently `solar-thermal → solar-pv` — CSP shares the solar resource, so crediting it as fully firm at the binding peak hour overstates its capacity value. Applied only when the tech is *not* independently derived and its target *is*, so a region that derives solar thermal keeps its own values. Mirrors change the **deployed CSV**, so they live in the pipeline, not just the workbook.
+- **Write `_xlfn.MINIFS`, never bare `MINIFS`.** OOXML stores post-2007 functions with that prefix; a bare name written by openpyxl opens as `#NAME?` in Excel. Same applies to any other modern function added to these workbooks. `verify_run_workbooks.py` asserts it.
+- Preset keys: `elccafr_statistic` (default `'min'`, the documented eps-us methodology; `'pNN'` e.g. `'p05'` is sample-size stable) and `elccafr_demand_altering` (default 0.9, a judgment parameter carried from eps-us).
+- A CF calibration multiplier **cancels in the ratio** — only the day-to-day *shape* of a CF series moves ELCCAfR, never its level.
+
+**Regional EPS models currently carry byte-identical copies of the eps-us ELCCAfR files** (verified by md5 for `eps-southkorea` and `eps-china-igdp\eps-china-igdp`, 2026-08-18). Replacing them changes reliability-driven capacity build — back up and diff first.
 
 ---
 
@@ -304,6 +373,35 @@ The model's gross SP slice peak should be within ~5% of 745 GW (i.e., 710–780 
 
 ### Open — to pick up next (loosely highest-leverage first)
 
+- [ ] **Decide the ELCCAfR low statistic: `min` vs `p05`.** Currently `min` (faithful to the
+  documented eps-us methodology). A straight minimum takes the worst of however many days a
+  peak slice happens to hold — 30/39 for the KR run vs 11/10 for eps-us — so slice length
+  changes the derate for reasons that are a clustering artifact. Switch with the preset key
+  `elccafr_statistic: 'p05'`; for KR offshore wind that moves SP 0.288 → 0.425 and
+  WP 0.502 → 0.615. Needs a modeling-team call. See DECISIONS.md 2026-08-18.
+
+- [ ] **Review and deploy the KR ELCCAfR files.** Built and verified 2026-08-18, sitting in
+  `output/SouthKorea_timeslice_results_EPS/ELCCAfR/`. `eps-southkorea` currently carries
+  byte-identical *US* files; the biggest change is offshore wind (3.1× SP / 4.4× WP more
+  firm capacity credited). Back up `eps-southkorea/InputData/elec/ELCCAfR/` first.
+
+- [ ] **Run ELCCAfR for China.** Same command as KR with `--borrow-dir` pointed at
+  `eps-china-igdp\eps-china-igdp\InputData\elec` (the inner 4.0.5 clone — see the model
+  registry hazard 1). Check the hydro question there: CN hydro ELCCAfR lands at 1.0 because
+  its SYSHECF is borrowed, but hydro capacity credit genuinely varies wet vs dry year.
+
+- [ ] **Verify the ELCCAfR wind values against unaveraged site-year data.** On the
+  `ninja_sites` path the CF is a day-of-year × hour climatology averaged across sites and 7
+  years, which removes the interannual and cross-site variability this derate is supposed to
+  measure — so the wind derates are probably too generous. Solar may have the same issue;
+  confirm what averaging the ninja weather product carries.
+
+- [ ] **Regenerate the eps-us ELCCAfR files.** Their workbook records Cambium22 as the
+  source while eps-us ships days-per-timeslice 11/10 derived from Cambium24, and the
+  peak-day set behind the shipped values isn't recorded. The three
+  `scripts/compute_hybrid_elccafr*.py` scripts are the only peak-day-selection code in the
+  repo and use top-27/top-20 by net load in half-year pools, which matches neither.
+
 - [ ] **Decide how the calibration should treat a zero EPS prior.** `eps_prior_KR.csv` has
   `residential_other = 0.0` for every year — confirmed real, not stale, by a fresh clean-HEAD
   re-extraction on 2026-08-13. `align_basis_to_prior`
@@ -332,6 +430,25 @@ The model's gross SP slice peak should be within ~5% of 745 GW (i.e., 710–780 
   spans 2024–2060, so `load_eps_magnitude_prior` falls back to nearest-year 2024 (it warns). The
   mismatch predates this change (the old prior started 2019) but is now 6 years wide. Decide
   whether the China run year should move or the prior should be extended backwards.
+  **Interacts with the demand-source rule (2026-08-20):** moving the China run year off 2018
+  also switches the observed-demand source from Wu et al. to Yi et al. — those are two
+  decisions, and the impact test (`output/china_demand_source_test/RESULTS.md`) shows the
+  source change alone moves the binding peak season. Decide them together, not by accident.
+
+- [ ] **Leap-year target years produce 366 days-per-timeslice.** A China run at `year=2024`
+  writes a `SHELF-days-per-timeslice.csv` summing to 366; the same run at 2023 sums to 365.
+  EPS expects 365 (§6). Confirmed a leap-year artifact, independent of the demand source.
+  Blocks adopting 2024 as the China target year — the otherwise-preferred configuration now
+  that Yi et al. covers through 2024. Also check whether Feb 29 leaks into the SHELF/SYSHECF
+  slice means, and add the assertion to `scripts/verify_run_workbooks.py`.
+
+- [ ] **Resolve the one-hour label discrepancy between China's two demand sources.** The
+  DemandCast wrapper (`_retrieve_demandcast_series_from_source`) hard-codes the Wu et al.
+  series to start at `2018-01-01 01:00:00`; the Yi et al. workbook carries explicit
+  `00:00`-based timestamps. Positional alignment maximizes correlation (0.826 at lag 0 vs
+  0.793 at lag ±1), so the two label the same underlying hours one apart. Whichever is wrong
+  shifts the entire China SHELF diurnal shape by an hour. Needs checking against the sources'
+  own documentation — not resolvable from the data alone.
 
 - [ ] **Run a full end-to-end non-US pipeline to verify the clustering consolidation.** China, South Korea, Brazil, or Australia would be the smoke test. Needs external data: DemandCast (real demand), Mendeley dataset (end-use shapes), Ember (annual CFs), Renewables.ninja (weather → VRE). Entry point: `energy_timeslice_pipeline.generate_full_pipeline_for_preset(country='Brazil', ...)`. The clustering layer is consolidated (single canonical algorithm with hemisphere awareness) but no non-US run has been executed since the consolidation. **Quickest validation:** pick Brazil (smallest data footprint of the SH presets) and run a single year end-to-end. Verify (1) no exceptions, (2) Summer Peak DOYs fall in Dec–Feb (SH summer), (3) days_per_timeslice sums to 365.
 

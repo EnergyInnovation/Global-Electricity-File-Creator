@@ -308,6 +308,270 @@ EPS_SYSHECF_FILE_MAP: Dict[str, Any] = {
     'SYSHECF-pumped-hydro': None,
 }
 
+# ---------------------------------------------------------------------------
+# ELCCAfR — ELCC Adjustment for Reliability
+# ---------------------------------------------------------------------------
+# A per-(tech, slice, hour) capacity-adequacy derate on the same 6x24 grid as
+# SHELF and SYSHECF. EPS multiplies it into the RELIABILITY branch only, never
+# into dispatch:
+#
+#   Last Year Hourly Bid Electricity Capacity Factors for Reliability by Plant
+#   Type = <bid CF by plant type> * ELCCAfR[Electricity Source]   (EPS.mdl)
+#
+#   Total Electricity Demand by Hour Plus Reserve Margin After Demand Altering
+#   Technologies = ... + <peak-load reduction> * ELCCAfR[demand altering]
+#
+# Both feed "...in Binding Hour by Plant Type", which sums over
+# Binding Peak Hour for Reliability Additions[peak day electricity timeslice!,
+# Hour!] — so only the two peak slices can ever bind, which is why the four
+# non-peak rows are 1.0.
+#
+# One file per member of the EPS 'Electricity Source' subscript (24 of them),
+# plus the demand-altering-technologies file = 25 CSVs. NOTE: solar-pv-dist and
+# pumped-hydro appear in EPS_SYSHECF_FILE_MAP but are NOT in 'Electricity
+# Source', so they have no ELCCAfR file. Do not add them.
+#
+# The value maps each ELCCAfR file to the SYSHECF file whose capacity-factor
+# series drives it, so a tech that is pipeline-derived here gets a derived
+# derate and a tech whose SYSHECF is a borrowed constant gets 1.0 (its min and
+# mean over the slice's days are equal by construction).
+EPS_ELCCAfR_FILE_MAP: Dict[str, str] = {
+    'ELCCAfR-hard-coal': 'SYSHECF-hard-coal',
+    'ELCCAfR-steam-turbine': 'SYSHECF-steam-turbine',
+    'ELCCAfR-combined-cycle': 'SYSHECF-combined-cycle',
+    'ELCCAfR-nuclear': 'SYSHECF-nuclear',
+    'ELCCAfR-hydro': 'SYSHECF-hydro',
+    'ELCCAfR-onshore-wind': 'SYSHECF-onshore-wind',
+    'ELCCAfR-solar-pv': 'SYSHECF-solar-pv',
+    'ELCCAfR-solar-thermal': 'SYSHECF-solar-thermal',
+    'ELCCAfR-biomass': 'SYSHECF-biomass',
+    'ELCCAfR-geothermal': 'SYSHECF-geothermal',
+    'ELCCAfR-petroleum': 'SYSHECF-petroleum',
+    'ELCCAfR-natural-gas-peaker': 'SYSHECF-natural-gas-peaker',
+    'ELCCAfR-lignite': 'SYSHECF-lignite',
+    'ELCCAfR-offshore-wind': 'SYSHECF-offshore-wind',
+    'ELCCAfR-crude-oil': 'SYSHECF-crude-oil',
+    'ELCCAfR-heavy-or-residual-oil': 'SYSHECF-heavy-or-residual-oil',
+    'ELCCAfR-MSW': 'SYSHECF-MSW',
+    'ELCCAfR-hard-coal-CCS': 'SYSHECF-hard-coal-CCS',
+    'ELCCAfR-combined-cycle-CCS': 'SYSHECF-combined-cycle-CCS',
+    'ELCCAfR-biomass-CCS': 'SYSHECF-biomass-CCS',
+    'ELCCAfR-lignite-CCS': 'SYSHECF-lignite-CCS',
+    'ELCCAfR-SMR': 'SYSHECF-SMR',
+    'ELCCAfR-hydrogen-CT': 'SYSHECF-hydrogen-CT',
+    'ELCCAfR-hydrogen-CC': 'SYSHECF-hydrogen-CC',
+}
+
+# First-cell (A1) label per ELCCAfR CSV, matching the eps-us files exactly.
+# Vensim ignores A1 for a 'B2' GET DIRECT CONSTANTS read; this is for humans.
+EPS_ELCCAfR_HEADERS: Dict[str, str] = {
+    'ELCCAfR-hard-coal': 'hard coal',
+    'ELCCAfR-steam-turbine': 'natural gas steam turbine',
+    'ELCCAfR-combined-cycle': 'natural gas combined cycle',
+    'ELCCAfR-nuclear': 'nuclear',
+    'ELCCAfR-hydro': 'hydro',
+    'ELCCAfR-onshore-wind': 'onshore wind',
+    'ELCCAfR-solar-pv': 'solar pv',
+    'ELCCAfR-solar-thermal': 'solar thermal',
+    'ELCCAfR-biomass': 'biomass',
+    'ELCCAfR-geothermal': 'geothermal',
+    'ELCCAfR-petroleum': 'petroleum',
+    'ELCCAfR-natural-gas-peaker': 'natural gas peaker',
+    'ELCCAfR-lignite': 'lignite',
+    'ELCCAfR-offshore-wind': 'offshore wind',
+    'ELCCAfR-crude-oil': 'crude oil',
+    'ELCCAfR-heavy-or-residual-oil': 'heavy or residual fuel oil',
+    'ELCCAfR-MSW': 'municipal solid waste',
+    'ELCCAfR-hard-coal-CCS': 'hard coal w CCS',
+    'ELCCAfR-combined-cycle-CCS': 'natural gas combined cycle w CCS',
+    'ELCCAfR-biomass-CCS': 'biomass w CCS',
+    'ELCCAfR-lignite-CCS': 'lignite w CCS',
+    'ELCCAfR-SMR': 'small modular reactor',
+    'ELCCAfR-hydrogen-CT': 'hydrogen combustion turbine',
+    'ELCCAfR-hydrogen-CC': 'hydrogen combined cycle',
+}
+
+# Technologies with no CF series of their own that should track another
+# technology's derate rather than sit at 1.0. Solar thermal shares the solar
+# resource, so its capacity credit varies with the same weather that drives
+# solar PV; leaving it at 1.0 would credit CSP as fully firm at the peak hour.
+# Applied only when the tech is not independently derived AND its mirror target
+# is — so a region that does derive solar thermal keeps its own values.
+# Added 2026-08-20 per staff edit to the KR workbook.
+EPS_ELCCAfR_MIRRORS: Dict[str, str] = {
+    'ELCCAfR-solar-thermal': 'ELCCAfR-solar-pv',
+}
+
+ELCCAfR_DEMAND_ALTERING_FILE = 'ELCCAfR-demand-altering-techs'
+ELCCAfR_DEMAND_ALTERING_UNIT = 'Unit: dimensionless (ELCC fraction at hour)'
+EPS_PEAK_TIMESLICES = ('Summer Peak', 'Winter Peak')
+# A cell whose mean CF over the slice's days is below this is treated as "no
+# resource at this hour" (e.g. solar overnight) and set to 1.0 rather than to a
+# meaningless 0/0 ratio. SYSHECF is ~0 there anyway, so the product is unchanged.
+ELCCAfR_DEGENERATE_MEAN = 1e-3
+# US value from the eps-us file; a judgment parameter about demand-response
+# reliability at peak, NOT derivable from capacity-factor data. Override per
+# region with the preset key 'elccafr_demand_altering'.
+ELCCAfR_DEMAND_ALTERING_DEFAULT = 0.9
+# 'min'  — worst single day in the slice (the documented eps-us methodology).
+# 'pNN'  — NNth percentile across the slice's days; sample-size stable, which
+#          matters because peak-slice day counts differ a lot by region
+#          (eps-us 11/10 vs the South Korea run's 30/39). Override per region
+#          with the preset key 'elccafr_statistic'.
+ELCCAfR_STATISTIC_DEFAULT = 'min'
+
+
+def _elccafr_reduce(values: np.ndarray, statistic: str) -> float:
+    """Collapse one (slice, hour) cell's per-day CF values to its low statistic."""
+    if statistic == 'min':
+        return float(np.min(values))
+    if statistic.startswith('p'):
+        try:
+            q = float(statistic[1:])
+        except ValueError:
+            raise ValueError(f"Unrecognized ELCCAfR statistic '{statistic}'.")
+        return float(np.percentile(values, q))
+    raise ValueError(
+        f"Unrecognized ELCCAfR statistic '{statistic}'. Use 'min' or 'pNN' (e.g. 'p05').")
+
+
+def build_elccafr_constant_table(value: float = 1.0) -> pd.DataFrame:
+    """6x24 table of a single constant — used for techs with no derived CF."""
+    return pd.DataFrame(float(value), index=EPS_TIMESLICE_ORDER, columns=EPS_HOUR_COLUMNS)
+
+
+def build_elccafr_demand_altering_table(
+    peak_value: float = ELCCAfR_DEMAND_ALTERING_DEFAULT,
+) -> pd.DataFrame:
+    """Demand-altering-technologies derate: ``peak_value`` on the two peak
+    slices, 1.0 elsewhere (only peak slices bind in the reliability calc)."""
+    table = build_elccafr_constant_table(1.0)
+    for slice_name in EPS_PEAK_TIMESLICES:
+        table.loc[slice_name, :] = float(peak_value)
+    return table
+
+
+def build_elccafr_table(
+    values: Iterable[float],
+    slice_labels: Iterable[str],
+    hours: Iterable[int],
+    statistic: str = ELCCAfR_STATISTIC_DEFAULT,
+) -> pd.DataFrame:
+    """Compute one technology's 6x24 ELCCAfR table from an hourly CF series.
+
+    For each peak slice and hour-of-day, over the days the clustering assigned
+    to that slice::
+
+        ELCCAfR = low-statistic CF / mean CF        (clamped to [0, 1])
+
+    The denominator is the *same* slice mean that becomes the SYSHECF cell
+    (CLAUDE.md section 6), so for a derived tech::
+
+        SYSHECF x ELCCAfR = the worst-day CF at that hour
+
+    which is the capacity-adequacy quantity EPS wants in the binding peak hour.
+    Keeping both statistics over the identical day set is what makes that
+    identity hold; computing ELCCAfR over a separately pinned day set would
+    break it.
+
+    Non-peak slices are 1.0 — they can never bind (see EPS_ELCCAfR_FILE_MAP).
+    Cells whose mean is below ELCCAfR_DEGENERATE_MEAN are 1.0.
+
+    Parameters are three aligned hourly sequences so both callers can use this:
+    the pipeline (timeslice ids mapped to EPS labels) and the workbook builder
+    (the 'slice' column of workbook_sources/cf_hourly_source.csv).
+    """
+    frame = pd.DataFrame({
+        'value': pd.to_numeric(pd.Series(list(values)), errors='coerce'),
+        'slice': pd.Series(list(slice_labels)).astype(str).to_numpy(),
+        'hour': pd.to_numeric(pd.Series(list(hours)), errors='coerce').astype('Int64').to_numpy(),
+    }).dropna()
+
+    table = build_elccafr_constant_table(1.0)
+    for slice_name in EPS_PEAK_TIMESLICES:
+        sub = frame[frame['slice'] == slice_name]
+        if sub.empty:
+            continue
+        for hour in range(24):
+            cell = sub.loc[sub['hour'] == hour, 'value'].to_numpy(dtype=float)
+            if cell.size == 0:
+                continue
+            mean_cf = float(cell.mean())
+            if mean_cf < ELCCAfR_DEGENERATE_MEAN:
+                continue  # leave at 1.0
+            ratio = _elccafr_reduce(cell, statistic) / mean_cf
+            table.loc[slice_name, EPS_HOUR_COLUMNS[hour]] = float(min(max(ratio, 0.0), 1.0))
+    return table
+
+
+def build_all_elccafr_tables(
+    hourly_cf_source: pd.DataFrame,
+    eps_label_map: pd.Series,
+    statistic: str = ELCCAfR_STATISTIC_DEFAULT,
+    demand_altering: float = ELCCAfR_DEMAND_ALTERING_DEFAULT,
+) -> Tuple[Dict[str, pd.DataFrame], Dict[str, str]]:
+    """Build all 25 ELCCAfR tables. Returns ``(tables, notes)`` keyed by file name.
+
+    ``hourly_cf_source`` must be the FULL hourly series (one row per hour of the
+    year) with 'timeslice' and 'hour_of_day' columns — NOT the collapsed 6x24
+    profile that ``compute_hourly_capacity_profiles`` returns and that SYSHECF is
+    built from. ELCCAfR measures spread across the days inside a slice, so a
+    frame that has already been averaged over those days would yield a
+    meaningless all-1.0 table.
+    """
+    work = hourly_cf_source.reset_index()
+    if 'timeslice' not in work.columns or 'hour_of_day' not in work.columns:
+        raise KeyError("Hourly capacity-factor data must include 'timeslice' and 'hour_of_day'.")
+    if not work.duplicated(subset=['timeslice', 'hour_of_day']).any():
+        raise ValueError(
+            'ELCCAfR needs the full hourly series: every (timeslice, hour_of_day) pair in '
+            f'the frame passed is unique ({len(work)} rows), so it has already been averaged '
+            'over each slice\'s days and carries no spread to measure. Pass the 8760-row '
+            'capacity-factor frame, not the output of compute_hourly_capacity_profiles.')
+    slice_labels = work['timeslice'].map(eps_label_map.to_dict())
+
+    tables: Dict[str, pd.DataFrame] = {}
+    notes: Dict[str, str] = {}
+    derived: set = set()
+    for file_name, syshecf_file in EPS_ELCCAfR_FILE_MAP.items():
+        resolved = resolve_direct_cf_spec(
+            EPS_SYSHECF_FILE_MAP.get(syshecf_file), work.columns)
+        if resolved is None:
+            # SYSHECF is a borrowed/template constant per (slice, hour): its min
+            # and mean over the slice's days coincide, so the derate is exactly 1.
+            tables[file_name] = build_elccafr_constant_table(1.0)
+            notes[file_name] = (
+                f'constant 1.0 — {syshecf_file} is not pipeline-derived, so its CF has '
+                'no day-to-day variation within a slice')
+            continue
+        column, multiplier = resolved
+        # The multiplier cancels in the ratio, so it is deliberately not applied.
+        tables[file_name] = build_elccafr_table(
+            work[column], slice_labels, work['hour_of_day'], statistic=statistic)
+        notes[file_name] = (
+            f'derived from {column} as {statistic}/mean CF across each peak slice\'s days '
+            f'(same day set and denominator as {syshecf_file})')
+        derived.add(file_name)
+
+    # Mirrors: a tech with no CF series of its own tracks a related tech that has
+    # one, instead of the meaningless 1.0 its borrowed SYSHECF would imply.
+    for file_name, source_file in EPS_ELCCAfR_MIRRORS.items():
+        if file_name in derived or file_name not in tables:
+            continue
+        if source_file not in derived:
+            continue
+        tables[file_name] = tables[source_file].copy()
+        notes[file_name] = (
+            f'mirrors {source_file} — no independent CF series, but it shares that '
+            "technology's resource, so its capacity credit varies the same way")
+
+    tables[ELCCAfR_DEMAND_ALTERING_FILE] = build_elccafr_demand_altering_table(demand_altering)
+    notes[ELCCAfR_DEMAND_ALTERING_FILE] = (
+        f'constant {demand_altering} on peak slices, 1.0 elsewhere — a judgment parameter '
+        'on demand-response reliability, not derived from capacity-factor data')
+    return tables, notes
+
+
 COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
     'south korea': {
         'aliases': ['korea', 'republic of korea', 'kr', 'kor', 'southkorea'],
@@ -349,6 +613,14 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         # start-year capacities via data/eps_wind_capacity_split.csv — no preset
         # key needed. Set 'wind_capacity_split' here only to override that
         # lookup: {'onshore': …, 'offshore': …}.
+        #
+        # ELCCAfR (capacity-adequacy derate). 'min' reproduces the documented
+        # eps-us methodology; note this run's peak slices hold 30 (Summer) and
+        # 39 (Winter) days vs eps-us's 11/10, and a straight min takes the worst
+        # of however many days there are — see DECISIONS.md 2026-08-17. Set
+        # 'elccafr_statistic': 'p05' for a sample-size-stable alternative.
+        'elccafr_statistic': 'min',
+        'elccafr_demand_altering': 0.9,  # US value; needs a KR demand-response view
         'status': 'verified',
     },
     'china': {
@@ -373,6 +645,32 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         'calibration_method': 'zapata_ridge_nnls',
         'default_year': 2018,
         'last_n_years': 1,
+        # ---- Observed-demand source: two sources, selected by run config ----
+        # China is the one preset with two usable observed hourly demand
+        # records, and they disagree on hourly shape even where they overlap.
+        # The rule (see DECISIONS.md 2026-08-13):
+        #
+        #   year == 2018 AND last_n_years == 1  → DemandCast / Wu et al.
+        #       The legacy baseline. Wu et al. covers 2018 only, which is why
+        #       the preset defaults pin that year and window. Kept as the
+        #       default so the historical China run stays reproducible.
+        #
+        #   any other year or window            → Yi et al. 2026 (below)
+        #       Covers 2015–2024, so it is the only source that can serve a
+        #       multi-year calibration window or a post-2018 target year.
+        #       Asking for either is taken as asking for this source.
+        #
+        # Force one explicitly with the runner override DEMAND_SERIES_CSV
+        # ('demandcast', or a CSV path) when you need to override the rule.
+        'demand_series_csv': 'data/manual_downloads/CN_hourly_demand_2015_2024.csv',
+        'demandcast_pin': {'year': 2018, 'last_n_years': 1},
+        'demand_series_citation': (
+            "Yi, B., Luo, Q., Zhang, S., Ji, Y., Yu, S. & Fan, Y. (2026). "
+            "Hourly electricity load curve dataset for Chinese provinces derived "
+            "from meteorological variables. Scientific Data 13, 978. "
+            "https://doi.org/10.1038/s41597-026-07327-8 — data: figshare "
+            "https://doi.org/10.6084/m9.figshare.29832701 (CC BY-NC-ND 4.0)"
+        ),
         # Wind CF comes from Renewables.ninja per-site SIMULATION outputs
         # (hub-height, power-curve, bias-corrected) rather than the 2 m weather
         # variable. Site CSVs live in data/weather/ninja_sim/CN/ (fetched by
@@ -1849,6 +2147,23 @@ def get_country_preset(country: str) -> Dict[str, Any]:
     raise KeyError(f"Unsupported country '{country}'. Supported presets: {supported}.")
 
 
+def elccafr_run_metadata(country: Optional[str]) -> Dict[str, Any]:
+    """Preset-resolved ELCCAfR settings, for inclusion in ``run_metadata``.
+
+    Falls back to the module defaults for an unrecognized or missing country so
+    a bare-DataFrame pipeline call still exports ELCCAfR.
+    """
+    try:
+        preset = get_country_preset(country) if country else {}
+    except KeyError:
+        preset = {}
+    return {
+        'elccafr_statistic': preset.get('elccafr_statistic', ELCCAfR_STATISTIC_DEFAULT),
+        'elccafr_demand_altering': preset.get(
+            'elccafr_demand_altering', ELCCAfR_DEMAND_ALTERING_DEFAULT),
+    }
+
+
 def list_country_presets() -> pd.DataFrame:
     """List the built-in country presets and their readiness status."""
     rows = []
@@ -1864,6 +2179,56 @@ def list_country_presets() -> pd.DataFrame:
             'status': preset.get('status', 'mapped'),
         })
     return pd.DataFrame(rows)
+
+
+# Sentinel for the ``demand_series_csv`` override meaning "use DemandCast",
+# distinct from ``None`` (= "no override, apply the preset rule").
+DEMANDCAST_SOURCE = 'demandcast'
+
+
+def resolve_demand_series_csv(
+    preset: Dict[str, Any],
+    year: int,
+    last_n_years: int,
+    override: Optional[str] = None,
+) -> Optional[str]:
+    """Choose the observed-demand source for a run.
+
+    Returns the path of a staged hourly demand CSV, or ``None`` to fall back to
+    DemandCast (:func:`fetch_demand_data_demandcast`).
+
+    Resolution order:
+
+    1. ``override`` — the runner's ``DEMAND_SERIES_CSV`` setting. A path forces
+       that CSV; the literal ``'demandcast'`` forces DemandCast; ``None`` means
+       "no override" and falls through.
+    2. The preset's ``demand_series_csv``, unless the preset also defines
+       ``demandcast_pin`` and this run matches it — in which case DemandCast is
+       used instead.
+    3. ``None`` (DemandCast) for presets with no ``demand_series_csv`` at all.
+
+    ``demandcast_pin`` exists because China has two observed hourly records with
+    different coverage. DemandCast's Wu et al. source covers 2018 only, so it is
+    kept for the run configuration it can actually serve (``year=2018``,
+    ``last_n_years=1``) and the multi-year Yi et al. CSV is used whenever the run
+    asks for a different target year or a wider calibration window. A pin may
+    name ``year``, ``last_n_years``, or both; every named field must match.
+    """
+    if override is not None:
+        if str(override).strip().lower() == DEMANDCAST_SOURCE:
+            return None
+        return override
+
+    csv_path = preset.get('demand_series_csv')
+    if not csv_path:
+        return None
+
+    pin = preset.get('demandcast_pin')
+    if isinstance(pin, dict) and pin:
+        run_config = {'year': year, 'last_n_years': last_n_years}
+        if all(run_config.get(key) == value for key, value in pin.items()):
+            return None
+    return csv_path
 
 
 def generate_full_pipeline_for_preset(
@@ -1917,11 +2282,17 @@ def generate_full_pipeline_for_preset(
     resolved_wind_cf_years = kwargs.pop('wind_cf_years', None)
     if resolved_wind_cf_years is None:
         resolved_wind_cf_years = preset.get('wind_cf_years')
-    # Observed-demand source: a staged local CSV (preset key or runner override)
-    # takes precedence over DemandCast. None on both → DemandCast, as before.
-    resolved_demand_series_csv = kwargs.pop('demand_series_csv', None)
-    if resolved_demand_series_csv is None:
-        resolved_demand_series_csv = preset.get('demand_series_csv')
+    # Observed-demand source. A staged local CSV takes precedence over
+    # DemandCast; presets without a 'demand_series_csv' key use DemandCast as
+    # before. See resolve_demand_series_csv for the run-config rule that lets a
+    # preset keep DemandCast for one pinned (year, window) and switch to its CSV
+    # for everything else.
+    resolved_demand_series_csv = resolve_demand_series_csv(
+        preset,
+        year=selected_year,
+        last_n_years=selected_last_n_years,
+        override=kwargs.pop('demand_series_csv', None),
+    )
     return generate_full_pipeline_for_country(
         mendeley_dir=os.path.join(data_dir, 'mendeley'),
         efs_dir=os.path.join(data_dir, 'efs'),
@@ -1953,6 +2324,7 @@ def generate_full_pipeline_for_preset(
         eps_prior_path=preset.get('eps_prior_path'),
         lambda_ridge=preset.get('lambda_ridge', kwargs.pop('lambda_ridge', 1.0)),
         demand_series_csv=resolved_demand_series_csv,
+        demand_series_citation=preset.get('demand_series_citation'),
         **kwargs,
     )
 
@@ -3918,6 +4290,7 @@ def generate_full_pipeline_for_country(
     eps_prior_path: Optional[str] = None,
     lambda_ridge: float = 1.0,
     demand_series_csv: Optional[str] = None,
+    demand_series_citation: Optional[str] = None,
     **kwargs,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series]:
     """
@@ -4092,6 +4465,8 @@ def generate_full_pipeline_for_country(
             f"{calibration_start_year}–{calibration_end_year} from local CSV "
             f"{demand_series_csv}...",
         )
+        if demand_series_citation:
+            _status('calibrate-load', f"  source: {demand_series_citation}")
         real_demand = load_local_demand_series(
             demand_series_csv,
             start_year=calibration_start_year,
@@ -4655,9 +5030,17 @@ def generate_full_pipeline_for_country(
     resolved_output_path = resolve_output_path(output_path, country=region_name)
     run_metadata = {
         'country': region_name,
+        # Which observed hourly demand record calibrated this run, so the
+        # provenance travels with the outputs rather than only the console log.
+        'observed_demand_source': demand_series_csv or 'DemandCast',
+        'observed_demand_citation': (
+            demand_series_citation if demand_series_csv else None
+        ),
+        'observed_demand_window': f'{calibration_start_year}-{calibration_end_year}',
         'demand_shape_source': df_synthetic.attrs.get('demand_shape_source', demand_shape_source),
         'demand_shape_source_year': df_synthetic.attrs.get('demand_shape_source_year', year),
         'demand_shape_source_scenario': df_synthetic.attrs.get('demand_shape_source_scenario', scenario),
+        **elccafr_run_metadata(region_name),
     }
 
     run_details = run_pipeline(
@@ -6640,6 +7023,7 @@ def generate_timeslices_for_country(
             'demand_shape_source': df_synthetic.attrs.get('demand_shape_source', demand_shape_source),
             'demand_shape_source_year': df_synthetic.attrs.get('demand_shape_source_year', year),
             'demand_shape_source_scenario': df_synthetic.attrs.get('demand_shape_source_scenario', scenario),
+            **elccafr_run_metadata(region_name),
         },
     )
     return cf_df, lf_df, labels
@@ -7783,6 +8167,24 @@ def _build_methodology_sheet(
             f'{next_number + 5}. Where the pipeline only has an aggregate category, existing EPS template tabs are used as split weights to allocate that aggregate across finer categories.',
             f'{next_number + 6}. Coverage and file provenance are documented on the Coverage sheet.',
         ])
+    elif family == 'ELCCAfR':
+        statistic = str((run_metadata or {}).get('elccafr_statistic', ELCCAfR_STATISTIC_DEFAULT))
+        demand_altering = float(
+            (run_metadata or {}).get('elccafr_demand_altering', ELCCAfR_DEMAND_ALTERING_DEFAULT))
+        lines = [
+            'About',
+            'This workbook contains the per-(technology, timeslice, hour) ELCC Adjustment for Reliability tables formatted for EPS.',
+            'Methodology',
+            '1. ELCCAfR is a capacity-adequacy derate that EPS multiplies into the reliability calculation only, never into dispatch.',
+            f'2. For each peak slice and hour-of-day, ELCCAfR = {statistic} capacity factor / mean capacity factor across the days the clustering assigned to that slice.',
+            '3. The denominator is the same slice mean that becomes the SYSHECF cell, so SYSHECF x ELCCAfR equals the worst-day capacity factor at that hour.',
+            '4. The four non-peak slices are 1.0: only peak slices can bind in the EPS reliability calculation.',
+            f'5. Cells whose mean capacity factor is below {ELCCAfR_DEGENERATE_MEAN} (for example solar overnight) are set to 1.0 rather than a 0/0 ratio.',
+            '6. Technologies whose SYSHECF table is a borrowed constant have no within-slice capacity-factor variation, so their ELCCAfR is exactly 1.0.',
+            f'7. Demand-altering technologies use {demand_altering} on peak slices, a judgment parameter on demand-response reliability rather than a derived value.',
+            '8. There is no ELCCAfR file for distributed solar PV or pumped hydro: neither is a member of the EPS Electricity Source subscript.',
+            '9. Coverage and file provenance are documented on the Coverage sheet.',
+        ]
     else:
         lines = [
             'About',
@@ -7798,7 +8200,15 @@ def _build_methodology_sheet(
         ]
     if run_metadata:
         lines.append('Run Metadata')
-        for key in ('country', 'demand_shape_source', 'demand_shape_source_year', 'demand_shape_source_scenario'):
+        for key in (
+            'country',
+            'demand_shape_source',
+            'demand_shape_source_year',
+            'demand_shape_source_scenario',
+            'observed_demand_source',
+            'observed_demand_window',
+            'observed_demand_citation',
+        ):
             if key in run_metadata and run_metadata[key] not in [None, '']:
                 lines.append(f"{key}: {run_metadata[key]}")
     coverage_summary = []
@@ -7818,8 +8228,16 @@ def export_eps_input_tables(
     timeslice_metadata: Optional[pd.DataFrame],
     eps_template_root: Optional[str] = None,
     run_metadata: Optional[Dict[str, Any]] = None,
+    hourly_cf_source: Optional[pd.DataFrame] = None,
 ) -> pd.DataFrame:
-    """Export EPS-ready SHELF and SYSHECF files plus a coverage report."""
+    """Export EPS-ready SHELF, SYSHECF and ELCCAfR files plus a coverage report.
+
+    ``hourly_capacity_factors`` / ``hourly_load_factors`` are the collapsed 6x24
+    profiles. ``hourly_cf_source`` is the full hourly capacity-factor frame
+    (8760 rows, with 'timeslice' and 'hour_of_day' columns) that ELCCAfR needs to
+    measure spread across the days inside each slice; without it the ELCCAfR
+    family is skipped rather than written wrong.
+    """
     if timeslice_metadata is None or timeslice_metadata.empty:
         return pd.DataFrame()
     if hourly_capacity_factors is None or hourly_capacity_factors.empty:
@@ -7830,12 +8248,15 @@ def export_eps_input_tables(
     os.makedirs(root_output_dir, exist_ok=True)
     shelf_dir = os.path.join(root_output_dir, 'SHELF')
     syshecf_dir = os.path.join(root_output_dir, 'SYSHECF')
+    elccafr_dir = os.path.join(root_output_dir, 'ELCCAfR')
     os.makedirs(shelf_dir, exist_ok=True)
     os.makedirs(syshecf_dir, exist_ok=True)
+    os.makedirs(elccafr_dir, exist_ok=True)
 
     eps_label_map = build_eps_timeslice_label_map(timeslice_metadata)
     report_rows: list[Dict[str, Any]] = []
-    workbook_inputs: Dict[str, Dict[str, pd.DataFrame]] = {'SHELF': {}, 'SYSHECF': {}}
+    workbook_inputs: Dict[str, Dict[str, pd.DataFrame]] = {
+        'SHELF': {}, 'SYSHECF': {}, 'ELCCAfR': {}}
 
     def _resolve_template_dir(family: str) -> Optional[str]:
         if not eps_template_root:
@@ -7903,6 +8324,42 @@ def export_eps_input_tables(
         unit_label='Unit: dimensionless (capacity factor)',
     )
 
+    # ELCCAfR is a second statistic over the same hourly CF series and the same
+    # per-slice day set that produced SYSHECF, so it is built here rather than
+    # through _export_family (which maps one output cell to one source column).
+    # It needs the FULL hourly frame, not the collapsed 6x24 profile that
+    # SYSHECF is built from — the spread across a slice's days is the whole
+    # quantity being measured.
+    if hourly_cf_source is None or hourly_cf_source.empty:
+        print('WARNING: no hourly capacity-factor source supplied; skipping the ELCCAfR '
+              'export. Build it from the run with scripts/build_run_workbooks.py.')
+    else:
+        elccafr_statistic = str(
+            (run_metadata or {}).get('elccafr_statistic', ELCCAfR_STATISTIC_DEFAULT))
+        elccafr_demand_altering = float(
+            (run_metadata or {}).get('elccafr_demand_altering',
+                                     ELCCAfR_DEMAND_ALTERING_DEFAULT))
+        elccafr_tables, elccafr_notes = build_all_elccafr_tables(
+            hourly_cf_source,
+            eps_label_map,
+            statistic=elccafr_statistic,
+            demand_altering=elccafr_demand_altering,
+        )
+        for file_name, table in elccafr_tables.items():
+            output_path = os.path.join(elccafr_dir, f'{file_name}.csv')
+            header = (ELCCAfR_DEMAND_ALTERING_UNIT if file_name == ELCCAfR_DEMAND_ALTERING_FILE
+                      else EPS_ELCCAfR_HEADERS[file_name])
+            _write_eps_csv(output_path, table, header)
+            report_rows.append({
+                'family': 'ELCCAfR',
+                'file_name': f'{file_name}.csv',
+                'status': 'generated',
+                'source_column': EPS_ELCCAfR_FILE_MAP.get(file_name, ''),
+                'note': elccafr_notes[file_name],
+                'output_path': output_path,
+            })
+            workbook_inputs['ELCCAfR'][file_name] = table
+
     excel_engine = None
     for candidate in ('xlsxwriter', 'openpyxl'):
         try:
@@ -7915,6 +8372,7 @@ def export_eps_input_tables(
     workbook_specs = {
         'SHELF': os.path.join(root_output_dir, 'Seasonal Hourly Equipment Load Factors by End Use.xlsx'),
         'SYSHECF': os.path.join(root_output_dir, 'Start Year Seasonal Expected Hourly Electricity Capacity Factors.xlsx'),
+        'ELCCAfR': os.path.join(root_output_dir, 'ELCCAfR ELCC Adjustment for Reliability.xlsx'),
     }
     if excel_engine is not None:
         for family, workbook_path in workbook_specs.items():
@@ -7955,6 +8413,7 @@ def export_to_excel(
     timeslice_metadata: Optional[pd.DataFrame] = None,
     eps_template_root: Optional[str] = DEFAULT_EPS_TEMPLATE_ROOT,
     run_metadata: Optional[Dict[str, Any]] = None,
+    hourly_cf_source: Optional[pd.DataFrame] = None,
 ) -> None:
     """Write aggregated capacity and load factors to an Excel workbook.
 
@@ -8046,6 +8505,7 @@ def export_to_excel(
                 timeslice_metadata=timeslice_metadata,
                 eps_template_root=eps_template_root,
                 run_metadata=run_metadata,
+                hourly_cf_source=hourly_cf_source,
             )
         print(
             "No Excel writer backend is installed; wrote CSV files instead of "
@@ -8076,6 +8536,7 @@ def export_to_excel(
             timeslice_metadata=timeslice_metadata,
             eps_template_root=eps_template_root,
             run_metadata=run_metadata,
+            hourly_cf_source=hourly_cf_source,
         )
 
 
@@ -8338,6 +8799,13 @@ def run_pipeline(
         timestamps,
         timeslice_metadata=timeslice_metadata,
     )
+    # Full hourly CF frame for ELCCAfR. hourly_cf_df above is already averaged
+    # over each slice's days (that is what SYSHECF wants); ELCCAfR measures the
+    # spread across those days, so it needs the un-collapsed series.
+    elccafr_cf_source = df[[c for c in cf_cols if c in df.columns]].copy()
+    elccafr_cf_source['timeslice'] = labels.values
+    elccafr_cf_source['hour_of_day'] = pd.to_datetime(timestamps).dt.hour.values
+
     # Optionally write to an Excel file
     if output_path or country:
         output_path = resolve_output_path(output_path, country=country)
@@ -8351,6 +8819,7 @@ def run_pipeline(
             hourly_load_factors=hourly_lf_df,
             timeslice_metadata=timeslice_metadata,
             run_metadata=run_metadata,
+            hourly_cf_source=elccafr_cf_source,
         )
         # Workbook-source CSVs (eps-us source-tab format) alongside the EPS
         # CSVs. Runs after export_to_excel so the SYSHECF template CSVs exist

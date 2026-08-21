@@ -46,7 +46,7 @@ except Exception:
 #
 # Run the pipeline once to see the full preset table printed to the console.
 # Aliases work too (e.g. 'KR', 'kor', 'southkorea' all resolve to South Korea).
-COUNTRY = 'South Korea'
+COUNTRY = 'China'
 
 # Target year for the synthetic representative-day output.
 #
@@ -56,7 +56,7 @@ COUNTRY = 'South Korea'
 #   2018, 2020, 2024, 2030, 2040, 2050. If you pick something else, the
 #   pipeline maps to the nearest available year (e.g. 2025 → 2024).
 # - For non-US (Mendeley) runs: years 1971–2100 are valid.
-YEAR = None
+YEAR = 2023#None
 
 
 # ============================================================================
@@ -75,8 +75,44 @@ N_CLUSTERS = 6
 # - None = use the preset's default (varies by country, typically 1–4 years).
 # - Larger windows smooth weather variability but blur recent demand changes.
 # - Calibration data sources: DemandCast (most countries), EIA (United States),
-#   KROGD (South Korea — files in data/manual_downloads/).
-LAST_N_YEARS = None
+#   KROGD (South Korea — files in data/manual_downloads/), Yi et al. 2026
+#   (China — see DEMAND_SERIES_CSV below).
+# - CHINA: this setting, together with YEAR, selects which observed demand
+#   source is used. See DEMAND_SERIES_CSV.
+LAST_N_YEARS = 4#None
+
+# Observed hourly demand source override.
+#
+#   None (recommended) — let the country preset decide.
+#   'demandcast'       — force the DemandCast retrieval path.
+#   '<path to CSV>'    — force a staged hourly demand CSV (columns: a timestamp
+#                        in the country's local time, and demand in MW).
+#
+# CHINA has two observed records and the preset picks between them from the run
+# configuration, because they cover different periods and disagree on hourly
+# shape even where they overlap:
+#
+#   YEAR = 2018 and LAST_N_YEARS = 1  (the China preset defaults)
+#       → DemandCast / Wu et al. The legacy baseline. This source covers 2018
+#         only, which is the only configuration it can serve. Keeping it as the
+#         default means the historical EPS-China run stays reproducible.
+#
+#   any other YEAR or LAST_N_YEARS
+#       → Yi, B., Luo, Q., Zhang, S., Ji, Y., Yu, S. & Fan, Y. (2026). Hourly
+#         electricity load curve dataset for Chinese provinces derived from
+#         meteorological variables. Scientific Data 13, 978.
+#         https://doi.org/10.1038/s41597-026-07327-8
+#         Data: figshare https://doi.org/10.6084/m9.figshare.29832701
+#         (CC BY-NC-ND 4.0). 31 provinces, hourly, 2015–2024, GWh/h; summed to
+#         a national MW series by scripts/build_china_hourly_demand.py into
+#         data/manual_downloads/CN_hourly_demand_2015_2024.csv.
+#
+#         Note: 2024 is a leap year and the run's days-per-timeslice currently
+#         sums to 366 rather than the 365 EPS expects. Prefer YEAR = 2023 until
+#         that is fixed. See output/china_demand_source_test/RESULTS.md.
+#
+# The run log prints which source was used and its citation.
+DEMAND_SERIES_CSV = None
 
 # Whether to apply the seasonal-mean calibration step in addition to the
 # annual-level scaling. Only used when CALIBRATION_METHOD = 'level_seasonal'.
@@ -524,6 +560,7 @@ def main() -> None:
         'n_clusters': N_CLUSTERS,
         'output_path': OUTPUT_PATH,
         'last_n_years': LAST_N_YEARS,
+        'demand_series_csv': DEMAND_SERIES_CSV,
         'seasonal_calibration': SEASONAL_CALIBRATION,
         'scenario': SCENARIO,
         # Forwarded via **kwargs to generate_full_pipeline_for_country:
