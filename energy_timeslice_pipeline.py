@@ -129,6 +129,17 @@ DEFAULT_EPS_SHELF_WORKBOOK_PATH = os.path.join(
 EPS_TIMESLICE_ORDER = ['Winter', 'Spring', 'Summer', 'Fall', 'Summer Peak', 'Winter Peak']
 EPS_HOUR_COLUMNS = [f'Hour{i}' for i in range(24)]
 DISTRIBUTED_SOLAR_CF_DERATE = 0.70
+# How the OFFSHORE wind SYSHECF series is levelled when a preset has per-site
+# onshore/offshore simulations (wind_cf_source='ninja_sites'). Ember publishes
+# one fleet-wide wind CF, and in most regions that fleet is overwhelmingly
+# onshore, so scaling both series by the blend's factor ('blend_scale', the
+# pre-2026-09-04 behaviour) stamps the onshore fleet's derate onto offshore
+# sites simulated with modern hub-height machines (South Korea: 0.32 raw ->
+# 0.18). 'uncalibrated' keeps offshore at its raw simulated mean and lets
+# onshore absorb the fleet residual so the capacity-weighted blend still hits
+# the Ember target. A preset may also give an explicit offshore CF target
+# (float, or {'value':..., 'basis':..., 'source':...}).
+WIND_OFFSHORE_CALIBRATION_DEFAULT = 'uncalibrated'
 EPS_SHELF_FILE_MAP: Dict[str, Any] = {
     'SHELF-days-per-timeslice': None,
     'SHELF-residential-heating': {'mode': 'direct', 'column': 'residential_heating_load_factor'},
@@ -280,7 +291,13 @@ EPS_SYSHECF_FILE_MAP: Dict[str, Any] = {
             {'mode': 'direct', 'column': 'wind_cf'},
         ],
     },
-    'SYSHECF-solar-pv': {'mode': 'direct', 'column': 'solar_cf'},
+    # Utility-scale PV: the ex-post 'solar_utility_cf' level (preset
+    # solar_cf_target, national statistics) when the run produced one; else the
+    # Ember-calibrated fleet series.
+    'SYSHECF-solar-pv': {'mode': 'first_available', 'options': [
+        {'mode': 'direct', 'column': 'solar_utility_cf'},
+        {'mode': 'direct', 'column': 'solar_cf'},
+    ]},
     'SYSHECF-solar-thermal': None,
     'SYSHECF-biomass': None,
     'SYSHECF-geothermal': None,
@@ -304,7 +321,13 @@ EPS_SYSHECF_FILE_MAP: Dict[str, Any] = {
     'SYSHECF-SMR': None,
     'SYSHECF-hydrogen-CT': None,
     'SYSHECF-hydrogen-CC': None,
-    'SYSHECF-solar-pv-dist': {'mode': 'direct', 'column': 'solar_cf', 'multiplier': DISTRIBUTED_SOLAR_CF_DERATE},
+    # Distributed PV: the run-level 'solar_dist_cf' series (utility shape x the
+    # preset's distributed-to-utility ratio, or a national distributed CF target)
+    # when the run produced one; otherwise the legacy flat derate.
+    'SYSHECF-solar-pv-dist': {'mode': 'first_available', 'options': [
+        {'mode': 'direct', 'column': 'solar_dist_cf'},
+        {'mode': 'direct', 'column': 'solar_cf', 'multiplier': DISTRIBUTED_SOLAR_CF_DERATE},
+    ]},
     'SYSHECF-pumped-hydro': None,
 }
 
@@ -613,6 +636,45 @@ COUNTRY_PRESETS: Dict[str, Dict[str, Any]] = {
         # start-year capacities via data/eps_wind_capacity_split.csv — no preset
         # key needed. Set 'wind_capacity_split' here only to override that
         # lookup: {'onshore': …, 'offshore': …}.
+        #
+        # Offshore wind level (2026-09-04). The Ember fleet CF (0.186) is 95%
+        # onshore; scaling offshore by the blend's factor gave 0.18 for sites
+        # the hub-height simulation puts at 0.32 — and 0.32 is where Korean
+        # evidence sits (KEEI / 10th Basic Plan 30% fixed-bottom, Tamra 29%
+        # measured). Keep the raw simulation; onshore absorbs the residual.
+        'wind_offshore_calibration': 'uncalibrated',
+        # Clustering input is the Ember-levelled FLEET solar/wind series; the
+        # utility/distributed and onshore/offshore levels below are applied
+        # ex post to the exported tables only, so they cannot move the day
+        # assignment (57/83/68/88 + 30/39 peak days, as migrated 2026-08-13).
+        # data/clustering_pins/KR_clustering_2026-08-13.csv holds that assignment
+        # if a run ever needs 'pinned_clustering_csv' to reproduce it.
+        # Solar levels (2026-09-04). Ember's Korea solar CF (0.157 over
+        # 2021-24) divides TOTAL generation (incl. self-consumption) by IRENA
+        # capacity that tracks the grid-connected 사업용 fleet only, so it is
+        # ~6-10% high. KEA/KNREC 신재생에너지 보급통계 splits both capacity and
+        # generation into 사업용 (utility, grid-connected; metered) and 자가용
+        # (self-consumption; generation IMPUTED by KEA as capacity x ~15.5%).
+        # The EPS applies SYSHECF-solar-pv to BHRaSYC+BPMCCS capacity (= 사업용)
+        # and SYSHECF-solar-pv-dist to BDESC capacity (= 자가용), so the two
+        # targets map one-to-one. Basis: generation / mean of the two year-end
+        # capacities (the EPS credits build-year capacity at TACFMfPBTY 0.5).
+        # Both are EX-POST levels on the exported tables; net load and the
+        # clustering keep the Ember fleet series (its generation total is right).
+        'solar_cf_target': {
+            'value': 0.148,
+            'basis': 'KEA 사업용 solar generation / average year-end 사업용 capacity, '
+                     'mean of 2021-2024 (0.147, 0.155, 0.146, 0.143)',
+            'source': 'KEA/KNREC 2024 신재생에너지 보급통계, tabs 1.2 발전량 and 1.3 보급용량 '
+                      '(knrec.or.kr/biz/pds/statistic)',
+        },
+        'distributed_solar_cf': {
+            'target': 0.140,
+            'basis': 'KEA 자가용 solar imputed generation / average year-end 자가용 capacity, '
+                     '2022-2024 (0.149, 0.138, 0.138); KEA imputes 자가용 output at ~15.5% '
+                     'utilisation, so this is an assumption, not a metered value',
+            'source': 'same KEA tables',
+        },
         #
         # ELCCAfR (capacity-adequacy derate). 'min' reproduces the documented
         # eps-us methodology; note this run's peak slices hold 30 (Summer) and
@@ -2319,6 +2381,12 @@ def generate_full_pipeline_for_preset(
         wind_sites_dir=preset.get('wind_sites_dir'),
         wind_cf_years=resolved_wind_cf_years,
         wind_capacity_split=preset.get('wind_capacity_split'),
+        solar_cf_target=preset.get('solar_cf_target'),
+        distributed_solar_cf=preset.get('distributed_solar_cf'),
+        wind_offshore_calibration=preset.get(
+            'wind_offshore_calibration', WIND_OFFSHORE_CALIBRATION_DEFAULT),
+        pinned_clustering_csv=resolve_pinned_clustering_csv(
+            preset.get('pinned_clustering_csv'), kwargs.pop('pinned_clustering_csv', None)),
         calibration_method=resolved_calibration_method,
         latitude_deg=preset.get('latitude_deg'),
         eps_prior_path=preset.get('eps_prior_path'),
@@ -3149,6 +3217,158 @@ def _cap_and_redistribute_cf(
     diag['final_max'] = float(np.nanmax(out))
     diag['residual_mean_error'] = float(np.nanmean(out) - target_mean)
     return out, diag
+
+
+def _resolve_cf_target_spec(spec: Any) -> Optional[Dict[str, Any]]:
+    """Normalise a preset CF-target spec to ``{'value', 'basis', 'source'}``.
+
+    Accepts ``None`` (no override), a bare number, or a dict with ``value`` (or
+    ``target``) plus optional ``basis``/``source`` strings that travel into the
+    run log and the workbook About sheet.
+    """
+    if spec is None:
+        return None
+    if isinstance(spec, (int, float)) and not isinstance(spec, bool):
+        return {'value': float(spec), 'basis': None, 'source': None}
+    if isinstance(spec, dict):
+        value = spec.get('value', spec.get('target'))
+        if value is None:
+            raise ValueError(f"CF target spec {spec!r} needs a 'value' (or 'target') key.")
+        return {
+            'value': float(value),
+            'basis': spec.get('basis'),
+            'source': spec.get('source'),
+        }
+    raise ValueError(f"Unsupported CF target spec {spec!r}; expected a number or a dict.")
+
+
+def resolve_distributed_solar_ratio(
+    spec: Any,
+    utility_target: float,
+) -> Tuple[float, str]:
+    """Distributed-to-utility solar CF ratio for ``solar_dist_cf``.
+
+    ``spec`` may be ``None`` (legacy flat derate ``DISTRIBUTED_SOLAR_CF_DERATE``),
+    ``{'ratio': r}``, or ``{'target': cf, 'basis': ..., 'source': ...}`` — a
+    national distributed-PV capacity factor, converted to a ratio against the
+    utility target so the distributed table keeps the utility hourly shape.
+    Returns ``(ratio, note)``.
+    """
+    if spec is None:
+        return (
+            float(DISTRIBUTED_SOLAR_CF_DERATE),
+            f'legacy flat derate {DISTRIBUTED_SOLAR_CF_DERATE:.2f} x utility-scale CF '
+            '(inference from NREL ATB utility vs distributed PV performance)',
+        )
+    if isinstance(spec, (int, float)) and not isinstance(spec, bool):
+        return float(spec), f'preset ratio {float(spec):.3f} x utility-scale CF'
+    if isinstance(spec, dict) and 'ratio' in spec and spec.get('target') is None:
+        ratio = float(spec['ratio'])
+        note = f'preset ratio {ratio:.3f} x utility-scale CF'
+    else:
+        resolved = _resolve_cf_target_spec(spec)
+        if not (np.isfinite(utility_target) and utility_target > 0):
+            raise ValueError('distributed_solar_cf target given but the utility solar target is not finite/positive.')
+        ratio = resolved['value'] / float(utility_target)
+        note = (
+            f"national distributed-PV target {resolved['value']:.4f} / utility target "
+            f"{utility_target:.4f} = ratio {ratio:.3f}"
+        )
+        if resolved.get('basis'):
+            note += f"; basis: {resolved['basis']}"
+        if resolved.get('source'):
+            note += f" [{resolved['source']}]"
+    if not np.isfinite(ratio) or ratio <= 0:
+        raise ValueError(f'distributed solar ratio resolved to {ratio!r}.')
+    return ratio, note
+
+
+def resolve_wind_type_targets(
+    fleet_target: float,
+    raw_type_means: Dict[str, float],
+    blend_weights: Dict[str, float],
+    raw_blend_mean: float,
+    mode: Any = WIND_OFFSHORE_CALIBRATION_DEFAULT,
+) -> Tuple[Dict[str, float], str]:
+    """Per-type (onshore/offshore) annual-mean CF targets from ONE fleet target.
+
+    Ember gives a single fleet-wide wind CF. The blended series is calibrated to
+    it regardless; this decides what the onshore and offshore SYSHECF series
+    are levelled to:
+
+    * ``'blend_scale'`` — legacy: every type series x (fleet_target / raw blend
+      mean). Preserves the simulated onshore/offshore ratio, but in an
+      onshore-dominated fleet that factor IS the onshore fleet's derate, and it
+      lands on offshore sites too.
+    * ``'uncalibrated'`` (default) — offshore stays at its raw simulated mean
+      (hub-height, modern machines); onshore is set so the capacity-weighted
+      blend of the two type means equals the fleet target:
+      ``on = (fleet - w_off x off) / w_on``.
+    * a number or ``{'value': ...}`` — explicit offshore CF target (national
+      planning value or metered fleet); onshore absorbs the residual as above.
+
+    Falls back to ``'blend_scale'`` (with a warning) when the residual solve is
+    degenerate (no onshore weight, non-positive onshore target). Returns
+    ``({column: target}, note)``.
+    """
+    import warnings
+    cols = {t: c for t, c in WIND_SITE_TYPE_CF_COLUMNS.items() if c in raw_type_means}
+    scale = float(fleet_target) / float(raw_blend_mean) if raw_blend_mean and raw_blend_mean > 0 else float('nan')
+
+    def _blend_scale(reason: str) -> Tuple[Dict[str, float], str]:
+        return (
+            {c: float(raw_type_means[c]) * scale for c in raw_type_means},
+            f"blend_scale: every site-type series x {scale:.4f} (fleet {fleet_target:.4f} / raw blend "
+            f"{raw_blend_mean:.4f}){' - ' + reason if reason else ''}",
+        )
+
+    if mode == 'blend_scale' or 'onshore' not in cols or 'offshore' not in cols:
+        return _blend_scale('' if mode == 'blend_scale' else 'only one site type present')
+    on_col, off_col = cols['onshore'], cols['offshore']
+    w = {t: float(blend_weights.get(t, 0.0) or 0.0) for t in ('onshore', 'offshore')}
+    tot = w['onshore'] + w['offshore']
+    if tot <= 0:
+        w = {'onshore': 0.5, 'offshore': 0.5}
+        tot = 1.0
+    w = {t: v / tot for t, v in w.items()}
+
+    if mode == 'uncalibrated':
+        off_target = float(raw_type_means[off_col])
+        how = 'left at the raw hub-height simulation mean'
+    else:
+        resolved = _resolve_cf_target_spec(mode)
+        if resolved is None:
+            raise ValueError(f"wind_offshore_calibration={mode!r} not understood.")
+        off_target = resolved['value']
+        how = 'preset offshore target'
+        if resolved.get('basis'):
+            how += f" ({resolved['basis']})"
+    if w['onshore'] <= 0:
+        return {off_col: float(fleet_target), on_col: float(raw_type_means[on_col]) * scale}, (
+            f'offshore-only fleet: offshore calibrated to the fleet target {fleet_target:.4f}; '
+            f'onshore x {scale:.4f}')
+    on_target = (float(fleet_target) - w['offshore'] * off_target) / w['onshore']
+    if not np.isfinite(on_target) or on_target <= 0:
+        warnings.warn(
+            f"Onshore residual target {on_target!r} is not usable (fleet {fleet_target:.4f}, offshore "
+            f"weight {w['offshore']:.3f} x {off_target:.4f}); falling back to blend_scale.",
+            stacklevel=2,
+        )
+        return _blend_scale('residual solve degenerate')
+    implied = on_target / float(raw_type_means[on_col]) if raw_type_means[on_col] > 0 else float('nan')
+    if np.isfinite(implied) and (implied > CF_CALIBRATION_MULTIPLIER_WARN_THRESHOLD or implied < 0.25):
+        warnings.warn(
+            f"Onshore wind needs x{implied:.2f} to close the fleet residual (raw {raw_type_means[on_col]:.4f} -> "
+            f"{on_target:.4f}) once offshore is held at {off_target:.4f}; check the offshore level or the "
+            "site set before trusting either series.",
+            stacklevel=2,
+        )
+    note = (
+        f"onshore absorbs the fleet residual: onshore {on_target:.4f} = (fleet {fleet_target:.4f} - "
+        f"{w['offshore']:.3f} x offshore {off_target:.4f}) / {w['onshore']:.3f} (raw onshore "
+        f"{raw_type_means[on_col]:.4f}, x{implied:.3f}); offshore {off_target:.4f} {how}"
+    )
+    return {on_col: on_target, off_col: off_target}, note
 
 
 def calibrate_capacity_factors(
@@ -4282,6 +4502,10 @@ def generate_full_pipeline_for_country(
     wind_sites_dir: Optional[str] = None,
     wind_cf_years: Optional[int] = None,
     wind_capacity_split: Optional[Dict[str, float]] = None,
+    solar_cf_target: Optional[Any] = None,
+    distributed_solar_cf: Optional[Any] = None,
+    wind_offshore_calibration: Any = WIND_OFFSHORE_CALIBRATION_DEFAULT,
+    pinned_clustering_csv: Optional[str] = None,
     make_plots: bool = True,
     compare_pinned_unpinned: bool = False,
     calibration_only: bool = False,
@@ -4853,11 +5077,34 @@ def generate_full_pipeline_for_country(
     capacities, observed_cf = load_ember_annual_capacity_factors(
         ember_csv_path, country=ember_country_name, variables=['Solar', 'Wind'], last_n_years=last_n_years
     )
+    _ember_solar_target = observed_cf.get('Solar', float('nan'))
+    _solar_target_note = (
+        f"Ember {ember_country_name}: mean generation / mean year-end capacity over the last "
+        f"{last_n_years} year(s) = {_ember_solar_target:.4f}"
+    )
+    # The Ember FLEET level stays on solar_cf: Ember generation = Ember CF x Ember
+    # capacity, so the fleet series behind net load and clustering is right in
+    # energy terms even where Ember's CF/capacity attribution is not. A preset
+    # solar_cf_target is an EX-POST level for the exported utility-scale table
+    # (solar_utility_cf, below), so the clustering input does not move when the
+    # utility/distributed split is re-levelled from national statistics.
+    _solar_override = _resolve_cf_target_spec(solar_cf_target)
+    if _solar_override is not None:
+        _solar_target_note = (
+            f"exported utility-scale level: preset solar_cf_target {_solar_override['value']:.4f} "
+            f"(Ember fleet level {_ember_solar_target:.4f} kept for net load / clustering)"
+        )
+        if _solar_override.get('basis'):
+            _solar_target_note += f"; basis: {_solar_override['basis']}"
+        if _solar_override.get('source'):
+            _solar_target_note += f" [{_solar_override['source']}]"
+        _status('cf', f"  solar target: {_solar_target_note}")
     _solar_target = observed_cf.get('Solar', float('nan'))
     _wind_target = observed_cf.get('Wind', float('nan'))
+    _wind_calibration_note = 'single blended wind series calibrated to the Ember fleet target'
     _status(
         'cf',
-        f"Ember targets for {country_iso2}: solar={_solar_target:.4f}  wind={_wind_target:.4f}  "
+        f"CF targets for {country_iso2}: solar={_solar_target:.4f}  wind={_wind_target:.4f}  "
         f"(calibration mode = {cf_calibration_mode})",
     )
     if wind_cf_source == 'ninja_sites':
@@ -4877,21 +5124,31 @@ def generate_full_pipeline_for_country(
         if _wind_target is not None and np.isfinite(float(_wind_target)):
             _diags = dict(cf_scaled.attrs.get('calibration_diagnostics', {}))
             # Ember publishes one fleet-wide wind CF, so the blended series is
-            # the only anchorable quantity. Calibrate it to the target, then
-            # scale the onshore/offshore series by the SAME factor the blend
-            # needed (target ÷ raw blended mean) rather than calibrating each to
-            # the fleet target — that keeps the offshore-vs-onshore CF ratio the
-            # site simulations imply, while leaving the capacity-weighted blend
-            # on target. Each type still goes through cap_redistribute so it
-            # stays bounded in [0, 1].
+            # the only anchorable quantity; it is calibrated to the target and
+            # keeps driving net load and clustering. The onshore/offshore
+            # SYSHECF levels come from resolve_wind_type_targets under the
+            # preset's wind_offshore_calibration mode (default: offshore stays
+            # at its raw simulated mean, onshore absorbs the residual so the
+            # capacity-weighted blend of the two still equals the fleet
+            # target). Each series goes through cap_redistribute so it stays
+            # bounded in [0, 1].
             _wind_raw_blend = float(pd.to_numeric(cf_df['wind_cf'], errors='coerce').mean())
             _wind_scale = (
                 float(_wind_target) / _wind_raw_blend if _wind_raw_blend > 0 else float('nan')
             )
-            for _col, _tgt in [('wind_cf', float(_wind_target))] + [
-                (c, float(pd.to_numeric(cf_df[c], errors='coerce').mean()) * _wind_scale)
-                for c in _wind_type_cf_cols
-            ]:
+            _raw_type_means = {
+                c: float(pd.to_numeric(cf_df[c], errors='coerce').mean()) for c in _wind_type_cf_cols
+            }
+            _blend_weights = dict(getattr(site_wind, 'attrs', {}).get('wind_blend_weights', {}) or {})
+            _type_targets, _wind_calibration_note = resolve_wind_type_targets(
+                fleet_target=float(_wind_target),
+                raw_type_means=_raw_type_means,
+                blend_weights=_blend_weights,
+                raw_blend_mean=_wind_raw_blend,
+                mode=wind_offshore_calibration,
+            )
+            _status('cf', f"  wind type levels: {_wind_calibration_note}")
+            for _col, _tgt in [('wind_cf', float(_wind_target))] + list(_type_targets.items()):
                 if not np.isfinite(_tgt):
                     cf_scaled[_col] = cf_df[_col]
                     continue
@@ -4911,9 +5168,9 @@ def generate_full_pipeline_for_country(
             for _col in _wind_type_cf_cols:
                 _status(
                     'cf',
-                    f"  {_col}: calibrated to {float(cf_scaled[_col].mean()):.4f} "
-                    f"(raw × {_wind_scale:.3f}, the blend's Ember scale — preserves the "
-                    f"site-implied onshore/offshore ratio)",
+                    f"  {_col}: raw {_raw_type_means[_col]:.4f} -> calibrated "
+                    f"{float(cf_scaled[_col].mean()):.4f} "
+                    f"(blend_scale would have given {_raw_type_means[_col] * _wind_scale:.4f})",
                 )
         else:
             for _col in ['wind_cf', *_wind_type_cf_cols]:
@@ -4981,7 +5238,31 @@ def generate_full_pipeline_for_country(
     # Wind generation (and hence net load) uses the blended wind_cf; the
     # site-type series ride along so they reach the SYSHECF export on the same
     # calendar. Both end in '_cf' so the load-column filter below skips them.
-    _carry_cf_cols = ['solar_cf', 'wind_cf', *[c for c in _wind_type_cf_cols if c in cf_scaled.columns]]
+    # Distributed PV: same hourly shape as utility-scale, levelled by the
+    # preset's distributed_solar_cf (national target or ratio), else the legacy
+    # flat derate. Feeds SYSHECF-solar-pv-dist via EPS_SYSHECF_FILE_MAP.
+    # Ex-post split of the Ember-calibrated fleet series into the two exported
+    # solar tables. Both keep the fleet hourly shape; only the levels differ.
+    _solar_fleet_series = pd.to_numeric(cf_scaled['solar_cf'], errors='coerce').to_numpy()
+    _utility_level = _solar_override['value'] if _solar_override is not None else float(_solar_target)
+    _utility_ratio = _utility_level / float(_solar_target) if _solar_target and _solar_target > 0 else 1.0
+    cf_scaled['solar_utility_cf'] = np.clip(_solar_fleet_series * _utility_ratio, 0.0, 1.0)
+    _status(
+        'cf',
+        f"  solar_utility_cf: fleet series x {_utility_ratio:.4f}; annual mean "
+        f"{float(np.nanmean(cf_scaled['solar_utility_cf'])):.4f}",
+    )
+    _dist_ratio, _dist_note = resolve_distributed_solar_ratio(distributed_solar_cf, _utility_level)
+    cf_scaled['solar_dist_cf'] = np.clip(_solar_fleet_series * _utility_ratio * _dist_ratio, 0.0, 1.0)
+    _status(
+        'cf',
+        f"  solar_dist_cf: {_dist_note}; annual mean "
+        f"{float(np.nanmean(cf_scaled['solar_dist_cf'])):.4f}",
+    )
+    _carry_cf_cols = [
+        'solar_cf', 'solar_utility_cf', 'solar_dist_cf', 'wind_cf',
+        *[c for c in _wind_type_cf_cols if c in cf_scaled.columns],
+    ]
     gen_df = pd.DataFrame(index=cf_scaled.index)
     for _col in _carry_cf_cols:
         gen_df[_col] = cf_scaled[_col]
@@ -5040,6 +5321,15 @@ def generate_full_pipeline_for_country(
         'demand_shape_source': df_synthetic.attrs.get('demand_shape_source', demand_shape_source),
         'demand_shape_source_year': df_synthetic.attrs.get('demand_shape_source_year', year),
         'demand_shape_source_scenario': df_synthetic.attrs.get('demand_shape_source_scenario', scenario),
+        # Capacity-factor levelling provenance (2026-09-04): what set the
+        # utility solar, distributed solar and onshore/offshore wind levels.
+        'solar_cf_target_note': _solar_target_note,
+        'distributed_solar_cf_note': _dist_note,
+        'wind_calibration_note': _wind_calibration_note,
+        'clustering_source': (
+            f'pinned day-to-slice assignment from {pinned_clustering_csv}'
+            if pinned_clustering_csv else 'k-means representative-day clustering (cluster_days_repday) on this run\'s net load'
+        ),
         **elccafr_run_metadata(region_name),
     }
 
@@ -5056,6 +5346,7 @@ def generate_full_pipeline_for_country(
         feature_weight_mode=kwargs.get('feature_weight_mode', 'netload_focus'),
         search_seeds=kwargs.get('search_seeds'),
         run_metadata=run_metadata,
+        pinned_clustering_csv=pinned_clustering_csv,
     )
     cf_results = run_details['capacity_factors']
     lf_results = run_details['load_factors']
@@ -8192,10 +8483,14 @@ def _build_methodology_sheet(
             'Methodology',
             '1. Solar and wind hourly capacity factors are derived from weather-based profiles and calibrated to observed annual values where data are available.',
             '2. The same six representative timeslices used for SHELF are applied here so demand and supply remain aligned.',
-            '3. Utility-scale solar PV maps directly from the calibrated solar capacity factor profile.',
-            '4. Distributed solar PV uses the same hourly shape as utility-scale solar, multiplied by a rooftop derate factor.',
-            f'5. The current distributed PV derate is {DISTRIBUTED_SOLAR_CF_DERATE:.2f}, based on an inference from NREL ATB utility-scale vs distributed PV average performance assumptions.',
-            '6. Onshore and offshore wind use separate calibrated wind profiles where the run has per-site simulation data classified onshore vs offshore, and the same blended wind profile otherwise; other non-variable technologies remain template-based unless a specific derivation is added.',
+            '3. Utility-scale solar PV maps directly from the calibrated solar capacity factor profile. Annual level: '
+            + str((run_metadata or {}).get('solar_cf_target_note') or 'Ember generation / year-end capacity') + '.',
+            '4. Distributed solar PV uses the same hourly shape as utility-scale solar, levelled as: '
+            + str((run_metadata or {}).get('distributed_solar_cf_note')
+                  or f'legacy flat derate {DISTRIBUTED_SOLAR_CF_DERATE:.2f} x utility-scale CF') + '.',
+            '5. Onshore and offshore wind use separate profiles where the run has per-site simulation data classified onshore vs offshore (the same blended profile otherwise). Levels: '
+            + str((run_metadata or {}).get('wind_calibration_note') or 'blended series calibrated to the Ember fleet CF') + '.',
+            '6. Other non-variable technologies remain template-based unless a specific derivation is added.',
             '7. Coverage and file provenance are documented on the Coverage sheet.',
         ]
     if run_metadata:
@@ -8208,6 +8503,10 @@ def _build_methodology_sheet(
             'observed_demand_source',
             'observed_demand_window',
             'observed_demand_citation',
+            'solar_cf_target_note',
+            'distributed_solar_cf_note',
+            'wind_calibration_note',
+            'clustering_source',
         ):
             if key in run_metadata and run_metadata[key] not in [None, '']:
                 lines.append(f"{key}: {run_metadata[key]}")
@@ -8673,6 +8972,88 @@ def export_workbook_source_csvs(
     print(f"Workbook-source CSVs written to '{src_dir}'.")
 
 
+def resolve_pinned_clustering_csv(preset_value: Optional[str], override: Optional[str]) -> Optional[str]:
+    """Runner override wins: ``None`` -> preset value; ``'recluster'`` -> no pin; a path -> that path.
+
+    Relative paths resolve against the current directory first, then this module's folder
+    (so preset values like ``data/clustering_pins/KR_....csv`` work from any cwd).
+    """
+    value = preset_value if override is None else override
+    if value is None:
+        return None
+    if isinstance(value, str) and value.strip().lower() in ('recluster', 'none', ''):
+        return None
+    path = str(value)
+    if not os.path.isabs(path) and not os.path.exists(path):
+        alt = os.path.join(os.path.dirname(os.path.abspath(__file__)), path)
+        if os.path.exists(alt):
+            path = alt
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"pinned_clustering_csv not found: {path}")
+    return path
+
+
+def labels_from_pinned_clustering(
+    timestamps: pd.Series,
+    csv_path: str,
+    n_clusters: int = 6,
+) -> Tuple[pd.Series, Any, Dict[int, int], Dict[int, pd.Timestamp]]:
+    """Rebuild the clustering outputs from a saved ``workbook_sources/clustering.csv``.
+
+    The file has one row per day-of-year (``doy``, ``slice``) plus, on the first six
+    rows, the per-slice summary (``slice_name``, ``days``, ``rep_doy``). Using it
+    instead of re-running k-means freezes the day-to-slice assignment, so a change
+    that only moves capacity-factor LEVELS (a preset CF target, an offshore
+    levelling mode) leaves every SHELF table byte-identical and changes only the
+    SYSHECF/ELCCAfR tables. Same return signature as :func:`cluster_timeslices`.
+    """
+    pin = pd.read_csv(csv_path)
+    if not {'doy', 'slice'}.issubset(pin.columns):
+        raise ValueError(f"{csv_path} needs 'doy' and 'slice' columns (a workbook_sources/clustering.csv).")
+    assign = pin.dropna(subset=['doy', 'slice']).copy()
+    assign['doy'] = assign['doy'].astype(int)
+    assign = assign.set_index('doy')['slice'].astype(str)
+    n_nonpeak = n_clusters - 2
+    slice_to_int: Dict[str, int] = {
+        'Winter': 0, 'Spring': 1, 'Summer': 2, 'Fall': 3,
+        'Summer Peak': n_nonpeak, 'Winter Peak': n_nonpeak + 1,
+    }
+    unknown = sorted(set(assign.unique()) - set(slice_to_int))
+    if unknown:
+        raise ValueError(f"{csv_path}: unknown slice names {unknown}; expected {sorted(slice_to_int)}.")
+    idx = pd.DatetimeIndex(pd.to_datetime(pd.Series(timestamps).to_numpy()))
+    doys = pd.Index(idx.dayofyear)
+    missing = sorted(set(doys) - set(assign.index))
+    if missing == [366] and 365 in assign.index:
+        assign.loc[366] = assign.loc[365]  # leap day inherits Dec-31's slice
+    elif missing:
+        raise ValueError(f"{csv_path} has no slice for day(s) of year {missing[:10]}.")
+    labels = pd.Series([slice_to_int[assign.loc[int(d)]] for d in doys], index=idx)
+    mapping: Dict[int, int] = {i: i for i in range(n_clusters)}
+    representative_dates: Dict[int, pd.Timestamp] = {}
+    base = pd.Timestamp(year=int(idx[0].year), month=1, day=1)
+    if {'slice_name', 'rep_doy'}.issubset(pin.columns):
+        summary = pin.dropna(subset=['slice_name', 'rep_doy'])
+        for _, row in summary.iterrows():
+            name = str(row['slice_name'])
+            if name in slice_to_int:
+                representative_dates[slice_to_int[name]] = base + pd.Timedelta(days=int(row['rep_doy']) - 1)
+    for name, int_id in slice_to_int.items():
+        if int_id not in representative_dates:
+            days = sorted(int(d) for d in assign.index if assign.loc[int(d)] == name)
+            if days:
+                representative_dates[int_id] = base + pd.Timedelta(days=days[len(days) // 2] - 1)
+    import warnings
+    placeholder = KMeans(n_clusters=max(2, n_nonpeak), random_state=0, n_init=1)
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
+        try:
+            placeholder.fit(np.arange(max(2, n_nonpeak)).reshape(-1, 1).astype(float))
+        except Exception:  # pragma: no cover
+            pass
+    return labels, placeholder, mapping, representative_dates
+
+
 def run_pipeline(
     df: pd.DataFrame,
     load_col: str,
@@ -8686,6 +9067,7 @@ def run_pipeline(
     feature_weight_mode: str = 'netload_focus',
     search_seeds: Optional[Iterable[int]] = None,
     run_metadata: Optional[Dict[str, Any]] = None,
+    pinned_clustering_csv: Optional[str] = None,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series]:
     """Run the full timeslice aggregation pipeline on the input data.
 
@@ -8742,14 +9124,29 @@ def run_pipeline(
     # Hemisphere season-month defaults (Australia, Brazil, Chile, etc.) inside
     # cluster_timeslices. Explicit winter_months / summer_months passed via
     # kwargs would still override.
-    labels, model, mapping, representative_dates = cluster_timeslices(
-        net,
-        timestamps=timestamps,
-        n_clusters=n_clusters,
-        feature_weight_mode=feature_weight_mode,
-        search_seeds=search_seeds,
-        country=country,
-    )
+    if pinned_clustering_csv:
+        # Frozen day-to-slice assignment (see labels_from_pinned_clustering): a
+        # capacity-factor re-level must not re-cluster, or every SHELF table and
+        # the dispatch calibration built on those slices would move with it.
+        labels, model, mapping, representative_dates = labels_from_pinned_clustering(
+            timestamps, pinned_clustering_csv, n_clusters=n_clusters,
+        )
+        _status(
+            'cluster',
+            f"day-to-slice assignment PINNED from {pinned_clustering_csv} (k-means skipped; "
+            f"days per slice: " + ', '.join(
+                f'{k}={int(v)}' for k, v in (labels.iloc[::24].value_counts().sort_index()).items()
+            ) + ')',
+        )
+    else:
+        labels, model, mapping, representative_dates = cluster_timeslices(
+            net,
+            timestamps=timestamps,
+            n_clusters=n_clusters,
+            feature_weight_mode=feature_weight_mode,
+            search_seeds=search_seeds,
+            country=country,
+        )
     # Aggregate capacity factors and load factors
     cf_df = compute_capacity_factors(df, labels, cf_cols)
     lf_df = compute_load_factors(df, labels, load_cols)

@@ -8,6 +8,103 @@ See `CLAUDE.md` for the canonical methodology that these decisions inform.
 
 ---
 
+## 2026-09-04 — VRE levels: preset CF targets (utility + distributed solar) and offshore wind no longer derated by the onshore fleet
+
+### Context
+Investigating eps-southkorea's solar (+21-28% vs KESIS) and offshore-wind (0.18 vs ~0.30) capacity
+factors traced both to the Ember calibration step, not to the weather/site physics:
+
+- **Solar.** The raw PV series averages 0.205 and is scaled to the Ember target, 0.1565 for KR
+  (mean 2021-24 generation / mean year-end capacity). Ember/IRENA Korea capacity tracks KEA's
+  grid-connected 사업용 fleet (17.9 GW end-2021 vs KEA total 21.2) while Ember generation is the KEA
+  TOTAL including self-consumption 자가용, so the statistic is full-fleet output over partial-fleet
+  capacity. KEA's own split gives a metered utility CF of 0.147/0.155/0.146/0.143 (2021-24, average
+  capacity basis) and an imputed self-consumption CF of ~0.14 (KEA books 자가용 output as capacity x
+  ~15.5%). The EPS maps the two exactly: SYSHECF-solar-pv drives BHRaSYC+BPMCCS capacity (= 사업용),
+  SYSHECF-solar-pv-dist drives BDESC capacity (= 자가용).
+- **Offshore wind.** The ninja site simulations (V164 8 MW @ 140 m) average 0.321 for Buan/Sinan/Ulsan,
+  in line with Korean evidence (KEEI / 10th Plan 30%, Tamra 29% since 2017). The code scaled BOTH type
+  series by the factor the 95%-onshore blend needed to hit the Ember fleet 0.186 (x0.5625), so the
+  offshore table carried the old onshore fleet's derate: 0.321 -> 0.180. In the EPS, 43 GW of mandated
+  offshore by 2038 then dispatched at 0.21-0.24.
+
+### Decision
+1. **Preset CF-target keys** (all optional; Ember remains the fallback):
+   - `solar_cf_target`: number or `{'value', 'basis', 'source'}` — overrides the Ember utility solar
+     target. Basis and source travel into the run log and the SYSHECF About sheet.
+   - `distributed_solar_cf`: `{'target': cf, ...}` (national distributed-PV CF, converted to a ratio
+     against the utility target) or `{'ratio': r}`. The run now emits a `solar_dist_cf` series =
+     utility shape x ratio; `SYSHECF-solar-pv-dist` takes it when present and falls back to the legacy
+     `0.70 x solar_cf` otherwise, so presets without the key are unchanged.
+   - `wind_offshore_calibration`: `'uncalibrated'` (new default), `'blend_scale'` (legacy), or an
+     explicit offshore target. Implemented by `resolve_wind_type_targets`: offshore keeps its raw
+     simulated mean (or the given target) and onshore is set so the capacity-weighted blend of the two
+     type means still equals the Ember fleet target (`on = (fleet - w_off x off) / w_on`). The blended
+     `wind_cf` behind net load/clustering is still calibrated to the fleet target as before. Degenerate
+     residuals fall back to `blend_scale` with a warning; an implied onshore multiplier outside
+     [0.25, 1.5] warns.
+2. **South Korea preset**: `solar_cf_target` 0.148 (KEA 사업용, 2021-24), `distributed_solar_cf`
+   target 0.140 (KEA 자가용, imputed), `wind_offshore_calibration` 'uncalibrated'.
+3. About sheet items 3-5 now state the actual levelling used (from `run_metadata`).
+
+### Rationale / rejected
+- Hand-scaling the CSVs in eps-southkorea (the original handoff) gives the same numbers once but
+  diverges from the pipeline and is overwritten at the next migration (Robbie, 2026-09-04: fix it in
+  the pipeline so Korea and other regions inherit it).
+- Calibrating offshore to the fleet target directly was rejected: the fleet target is an onshore
+  number wherever offshore is a few percent of capacity.
+- Using the 11th Basic Plan's implied solar CF (13.8-14.3%) was rejected as the basis: those ratios
+  are on year-end capacity and understate the average-capacity CF the EPS effectively applies.
+
+### Amendment 2 (same day): the split is EX POST; the clustering input does not change
+Robbie's point: only combined (fleet) generation is observed, and Ember's fleet CF x Ember capacity
+IS the reported generation, so the fleet series behind net load is right in energy terms whatever
+the CF/capacity attribution. The utility/distributed solar and onshore/offshore wind levels are an
+ex-post disaggregation from other sources and belong on the exported tables only. Solar was
+restructured to match wind: `solar_cf` stays Ember-levelled and drives net load/clustering; the
+run emits `solar_utility_cf` (= fleet x solar_cf_target / Ember) and `solar_dist_cf` for the two
+exported tables. Net load is therefore identical to the August run and the clustering reproduces
+57/83/68/88 + 30/39 with no pin; the KR preset pin was removed (the key and the saved assignment
+remain available). The re-clustering that the earlier version triggered also scored WORSE on its
+own objective (net-load reconstruction NRMSE 0.396 vs 0.389 for the August assignment), which says
+the 9-seed k-means search is not robust; adding the previous assignment as a search candidate is
+the durable fix, not done here.
+
+### Amendment (same day): pinned day-to-slice assignment, and a runner pin that broke reproduction
+Re-running Korea after the CF change moved the clustering from 57/83/68/88 + 30/39 peak days to
+83/68/41/93 + 17/63: the k-means seed search flips on a ~0.2 GW mean net-load change (solar
+0.157 -> 0.148 on 22 GW). Every SHELF table would have moved with it, and eps-southkorea's
+dispatch calibration (coal SYSHECF override, RAF, hydro scaling) was fit on the old slices. Two
+things were needed to make a CF re-level a SYSHECF-only change:
+
+1. **`pinned_clustering_csv` preset key / `PINNED_CLUSTERING_CSV` runner setting.** Points at a
+   saved `workbook_sources/clustering.csv`; `labels_from_pinned_clustering` rebuilds the labels
+   and representative days from it and k-means is skipped. KR pins
+   `data/clustering_pins/KR_clustering_2026-08-13.csv` (the assignment behind the migrated
+   files). With the pin, the new run reproduces every SHELF day count and changes the four VRE
+   SYSHECF tables by a pure per-table scalar: solar-pv x0.946, solar-pv-dist -> 0.140 mean,
+   onshore x0.958, offshore x1.778 (max cell 0.44). Set the runner to `'recluster'` to re-cluster
+   deliberately.
+2. **`run_pipeline.py` had `YEAR = 2023` / `LAST_N_YEARS = 4` left over from the China work
+   (commit 8fc261c).** A Korea run with that pin uses a 2020-2023 calibration window and does
+   not reproduce the August files at all (88/58/46/135/18/20 even in legacy CF mode). Restored
+   to `YEAR = None` (preset default); with that and legacy CF mode the pipeline reproduces the
+   eps-southkorea VRE SYSHECF tables to 1e-10, so the pipeline itself is deterministic.
+
+Known, not fixed here: several eps-southkorea SHELF CSVs differ from the pipeline's current
+SHELF output beyond float formatting (e.g. commercial-lighting annual sum 0.0159 vs 0.0135,
+LDVs 0.0173 vs 0.0031) - either hand-edited after migration or from a category mapping that has
+since changed. Reconcile before any SHELF re-migration.
+
+### Effect
+- KR: SYSHECF-solar-pv mean 0.157 -> 0.148; solar-pv-dist 0.110 (0.70 derate) -> 0.140; offshore wind
+  0.180 -> 0.321; onshore 0.186 -> ~0.179 (absorbs the offshore residual). Shapes unchanged.
+- **China changes at its next run** through the new default: its offshore table will rise from the
+  blend-scaled level to the raw Rudong/Yangjiang/Putian simulation mean and onshore will drop
+  slightly (8% offshore share). Set `'wind_offshore_calibration': 'blend_scale'` on the CN preset to
+  freeze the old behaviour if a re-run must reproduce the historical files.
+- Presets on the 2 m-weather wind path (no site split) are untouched.
+
 ## 2026-08-20 — China gets two observed-demand sources, selected by run configuration
 
 ### Context

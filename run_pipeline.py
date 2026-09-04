@@ -46,7 +46,7 @@ except Exception:
 #
 # Run the pipeline once to see the full preset table printed to the console.
 # Aliases work too (e.g. 'KR', 'kor', 'southkorea' all resolve to South Korea).
-COUNTRY = 'China'
+COUNTRY = 'South Korea'
 
 # Target year for the synthetic representative-day output.
 #
@@ -56,7 +56,7 @@ COUNTRY = 'China'
 #   2018, 2020, 2024, 2030, 2040, 2050. If you pick something else, the
 #   pipeline maps to the nearest available year (e.g. 2025 → 2024).
 # - For non-US (Mendeley) runs: years 1971–2100 are valid.
-YEAR = 2023#None
+YEAR = None  # preset default (KR = 2025); was pinned to 2023 for the China work
 
 
 # ============================================================================
@@ -422,6 +422,17 @@ MAKE_DIAGNOSTIC_PLOTS = True
 # pinned-vs-unpinned NRMSE pair for a publication or report.
 COMPARE_PINNED_UNPINNED = False
 
+# Freeze the day-to-slice assignment to a saved workbook_sources/clustering.csv
+# instead of re-running k-means. Use when only capacity-factor LEVELS change
+# (preset CF targets, offshore levelling) and the country's EPS dispatch
+# calibration depends on the existing slices — SHELF then stays byte-identical
+# and only SYSHECF/ELCCAfR move.
+#   None         — preset default (South Korea pins data/clustering_pins/KR_clustering_2026-08-13.csv;
+#                  other presets re-cluster)
+#   'recluster'  — ignore the preset pin and re-cluster
+#   <path>       — pin to that clustering.csv
+PINNED_CLUSTERING_CSV = None
+
 
 # ============================================================================
 # 10. CALIBRATION-ONLY MODE  (fast iteration on calibration choices)
@@ -574,6 +585,7 @@ def main() -> None:
         'cf_calibration_mode': CF_CALIBRATION_MODE,
         'make_plots': MAKE_DIAGNOSTIC_PLOTS,
         'compare_pinned_unpinned': COMPARE_PINNED_UNPINNED,
+        'pinned_clustering_csv': PINNED_CLUSTERING_CSV,
         'calibration_only': CALIBRATION_ONLY,
         'calibration_method': CALIBRATION_METHOD,
         'lambda_ridge': LAMBDA_RIDGE,

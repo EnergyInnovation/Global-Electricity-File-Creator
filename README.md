@@ -155,6 +155,28 @@ Mapped but not fully revalidated in this thread:
 - `Mexico`
 - `United Kingdom`
 
+### Capacity-factor levels (preset keys, added 2026-09-04)
+
+The hourly SHAPES of the VRE tables come from weather / site simulations; their annual LEVELS
+are set by a calibration target. By default that target is Ember (mean generation over mean
+year-end capacity, last `last_n_years`), which is wrong wherever the Ember/IRENA capacity basis
+does not match the generation basis (South Korea: capacity excludes self-consumption solar,
+generation includes it). Three optional preset keys override the defaults; every value should
+carry a `basis` and `source` so the About sheet and run log record where it came from.
+
+| Key | Values | Effect |
+|---|---|---|
+| `solar_cf_target` | number, or `{'value', 'basis', 'source'}` | Annual level of the exported `SYSHECF-solar-pv` (utility-scale, i.e. the capacity the EPS holds in BHRaSYC/BPMCCS). Applied EX POST: net load and clustering keep the Ember fleet series, whose generation total is right. Falls back to Ember. |
+| `distributed_solar_cf` | `{'target': cf, 'basis', 'source'}` or `{'ratio': r}` | Annual level of `SYSHECF-solar-pv-dist` (the EPS BDESC behind-the-meter capacity): the utility shape scaled to the national distributed CF, or by a fixed ratio. Falls back to the legacy `0.70 x` utility derate. |
+| `wind_offshore_calibration` | `'uncalibrated'` (default), `'blend_scale'` (legacy), or an offshore CF target | With per-site simulations, Ember gives ONE fleet CF that is mostly onshore. Default keeps offshore at its raw hub-height simulation mean and levels onshore so the capacity-weighted blend still equals the fleet target; `blend_scale` scales both by the same factor (the pre-2026-09-04 behaviour, which stamped Korea's onshore fleet derate onto offshore: 0.32 -> 0.18). |
+| `pinned_clustering_csv` | path to a saved `workbook_sources/clustering.csv` (runner: `PINNED_CLUSTERING_CSV`, `'recluster'` to override) | Freezes the day-to-slice assignment so a CF re-level changes only SYSHECF/ELCCAfR; SHELF stays byte-identical. South Korea pins `data/clustering_pins/KR_clustering_2026-08-13.csv`, the assignment its EPS dispatch calibration was fit on. |
+
+Where to find national bases: South Korea — KEA/KNREC 신재생에너지 보급통계 splits solar capacity and
+generation into 사업용 (utility, metered) and 자가용 (self-consumption; generation imputed at ~15.5%
+utilisation). United States — EIA-923/860 utility-scale vs EIA-861M small-scale estimates. Other
+countries — the national TSO/statistics office; IRENA alone cannot supply the split. See
+`DECISIONS.md` 2026-09-04.
+
 ## Per-Country Manual Setup
 
 The pipeline auto-downloads most inputs (Mendeley end-use shapes, Ember annual statistics, DemandCast for most non-U.S. demand series). A few inputs cannot be retrieved automatically and must be staged by hand. This section documents the manual steps for each country whose preset has been verified end-to-end.
