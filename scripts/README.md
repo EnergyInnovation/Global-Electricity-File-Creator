@@ -6,6 +6,11 @@ Outputs from these scripts (CSVs etc.) go to `scripts/data_outputs/`.
 
 ## Files
 
+### US SHELF workbook (4.0.x and 5.0)
+
+- **`build_shelf_workbook.py`** — builds the self-contained SHELF workbook for eps-us. `--version 4.0` (default) is the workbook EPS 4.0.x reads; `--version 5.0` adds the timeslice names, data-center split, system-load shapes and industry load shapes EPS 5.0 reads. Inputs are looked up through `shelf_v5/paths.py` (no user folder in the code) and fall back to the saved national series in `data/national_aggregated/`.
+- **`shelf_v5/`** — the 5.0 additions, Excel recalculation and CSV export, and the checks. Start with **`shelf_v5/README.md`**: it gives the three commands that regenerate the eps-us `develop` workbook from a clone.
+
 ### Diagnostics / utilities (kept for re-use)
 
 - **`verify_shelf_balance.py`** — verify that each `SHELF-*.csv` in `eps-us/InputData/elec/SHELF/` satisfies `sum(LF × hours_per_slice) = 1.0` for non-zero categories. Useful sanity check after any SHELF rebuild.
