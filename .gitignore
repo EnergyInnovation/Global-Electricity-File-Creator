@@ -4,3 +4,9 @@ data/efs/EFSLoadProfile_Reference_Moderate.zip
 data/weather/ninja-weather-country-US-temperature_area_wtd-merra2.csv
 data/weather/ninja-weather-country-US-wind_speed_area_wtd-merra2.csv
 data/weather/ninja-weather-country-US-irradiance_surface_area_wtd-merra2.csv
+
+# Local settings and large inputs for the SHELF workbook build
+local_paths.yml
+data/siels/*.zip
+output/us_shelf_*/
+data/national_aggregated/siels_national_hourly_tennessee_central.csv
