@@ -16,6 +16,9 @@ DEFAULTS = {
     # raw downloads (large; none are in the repository)
     'resstock_root': ROOT.parent / 'ResStock SHELF' / 'ResStock_Upgrade0',
     'comstock_root': ROOT.parent / 'ResStock SHELF' / 'ComStock_tmy_release1',
+    # actual-2012-weather releases (--buildings amy2012): folders state=XX for ResStock, XX for ComStock
+    'resstock_amy2012_root': ROOT.parent / 'ResStock SHELF' / 'resstock_amy2012_release_1',
+    'comstock_amy2012_root': ROOT.parent / 'ResStock SHELF' / 'comstock_amy2012_release_2',
     'efs_zip': ROOT / 'data' / 'efs' / 'EFSLoadProfile_Reference_Moderate.zip',
     'siels_zip': ROOT / 'data' / 'siels' / 'industrial_load_shapes_2018.zip',
     # inside the repository

@@ -17,8 +17,12 @@ inputs and compared with the exported CSV:
 
 Usage:
     python scripts/shelf_v5/verify_v5.py <out folder> [--align-weekdays] [--siels-tennessee eastern|central]
+        [--buildings typical|amy2012] [--building-clock pipeline|eastern] [--television omit|other]
+        [--building-delay-hours H]
 <out folder> is the --out of build_shelf_workbook.py (default output/us_shelf_5.0/). Pass the same
---align-weekdays / --siels-tennessee options the workbook was built with.
+--align-weekdays / --siels-tennessee / --buildings / --building-clock / --television / --building-delay-hours
+options the workbook was built with (they select which saved national series the buildings tabs are checked
+against). With --buildings amy2012, television is counted unless --television omit is given, as in the build.
 Exit code 0 when every check passes.
 """
 from __future__ import annotations
@@ -37,7 +41,7 @@ import pandas as pd
 
 HERE = Path(__file__).resolve()
 sys.path.insert(0, str(HERE.parents[1]))
-from shelf_v5 import names, paths                                   # noqa: E402
+from shelf_v5 import buildings as bld, efs_clock, names, paths                 # noqa: E402
 from shelf_v5.industry import ASSIGN, CHECKROW0, WEEKEND, label     # noqa: E402
 from shelf_v5.siels import ALIAS, FILES, NAMES as METERED, read_cache, CACHE_NAME   # noqa: E402
 
@@ -80,7 +84,15 @@ def main() -> int:
     ap.add_argument('--align-weekdays', action='store_true')
     ap.add_argument('--siels-tennessee', choices=['eastern', 'central'], default='eastern')
     ap.add_argument('--siels-zip')
+    ap.add_argument('--buildings', choices=list(bld.SOURCES), default='amy2012')
+    ap.add_argument('--building-clock', choices=list(bld.CLOCKS), default='eastern')
+    ap.add_argument('--television', choices=list(bld.TELEVISION), default=None)
+    ap.add_argument('--building-delay-hours', type=float, default=0.0)
+    ap.add_argument('--efs-clock', choices=list(efs_clock.CLOCKS), default='eastern')
     a = ap.parse_args()
+    if a.buildings == 'amy2012' and a.align_weekdays:
+        ap.error('--align-weekdays does not apply to --buildings amy2012')
+    a.television = bld.resolve_television(a.buildings, a.television)
     folder = Path(a.out) / 'elec' / 'SHELF'
     ok = True
 
@@ -207,9 +219,11 @@ def main() -> int:
 
     # ---- 2. buildings, transport, system-load and data-center tabs
     cdir = paths.lookup('cache_dir')
-    res = pd.read_csv(cdir / 'resstock_national_hourly.csv', index_col=0)
-    com = pd.read_csv(cdir / 'comstock_national_hourly.csv', index_col=0)
+    res = pd.read_csv(cdir / bld.cache_name('resstock', a.buildings, a.building_clock, a.television), index_col=0)
+    com = pd.read_csv(cdir / bld.cache_name('comstock', a.buildings, a.building_clock), index_col=0)
     efs = pd.read_csv(cdir / 'efs_national_hourly.csv', index_col=0)
+    if a.efs_clock == 'eastern':
+        efs = efs_clock.to_eastern(efs)
     crow = list(csv.reader(open(paths.lookup('cambium_hourly'), newline='')))
     j = crow[5].index('enduse_load')
     enduse = np.array([float(r[j]) for r in crow[6:8766]])
@@ -219,12 +233,18 @@ def main() -> int:
         day_slice = np.roll(slice_arr, -shift_days) if shift_days else slice_arr   # source day d -> clustering day d+shift
         return np.array([v[day_slice == sl].mean(0) / v.sum() for sl in LABELS])
 
+    def delayed(values, tau):
+        """Worked out here on its own: blend of the series moved later by floor(tau) and floor(tau)+1 hours, year wrapping."""
+        v = np.asarray(values, dtype=float)[:8760]
+        k = int(np.floor(tau)); f = tau - k
+        return v if not tau else (1 - f) * np.roll(v, k) + f * np.roll(v, k + 1)
+
     bshift = 1 if a.align_weekdays else 0
     expect = {}
     for c in res.columns:
-        expect[c] = averaged(res[c].values, bshift)
+        expect[c] = averaged(delayed(res[c].values, a.building_delay_hours), bshift)
     for c in com.columns:
-        expect[c] = averaged(com[c].values, bshift)
+        expect[c] = averaged(delayed(com[c].values, a.building_delay_hours), bshift)
     for c in ('LDVs', 'HDVs', 'rail'):
         expect[c] = averaged(efs[c].values)
     expect['district-heat-hydrogen'] = expect['geoeng'] = averaged(enduse)
@@ -237,7 +257,10 @@ def main() -> int:
         n += got.size
     report('buildings, transport, system-load and data-center tabs recomputed', worst < TOL,
            f'{n} values in {len(expect)} files; largest relative difference {worst:.1e}'
-           + ('; buildings shifted one day (--align-weekdays)' if bshift else ''))
+           + ('; buildings shifted one day (--align-weekdays)' if bshift else '')
+           + (f'; buildings: {a.buildings} source, {a.building_clock} clock, television {a.television}'
+              + (f', {a.building_delay_hours:g} h delay' if a.building_delay_hours else '')
+              if (a.buildings, a.building_clock, a.building_delay_hours) != ('typical', 'pipeline', 0.0) else ''))
 
     # ---- 3. every exported row adds up to 1 over the year, or is all zeros
     dvec = np.array([days[sl] for sl in LABELS])
