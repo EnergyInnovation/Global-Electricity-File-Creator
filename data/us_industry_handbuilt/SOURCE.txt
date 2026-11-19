@@ -1,0 +1,4 @@
+handbuilt_tabs.xlsx holds the tabs Other Data & Calcs, NREL load shapes, EPRI load shapes, Ag copied unchanged from
+Seasonal Hourly Equipment Load Factors by End Use.xlsx
+eps-us branch develop, commit d2d418df (2026-11-16)
+extracted 2026-11-17 by scripts/shelf_v5/extract_seed.py
