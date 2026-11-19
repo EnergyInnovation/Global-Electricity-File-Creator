@@ -23,8 +23,28 @@ Target file:
 
 Run:
     python scripts/build_syshecf_workbook.py
+
+Options (2026-11-17; all off by default, so the default build is unchanged):
+    --out <xlsx>               where to write the workbook (default: the OUT path below)
+    --labels 5.0               EPS 5.0 timeslice names (Representative Day 1-4, Net Peak Summer/Winter
+                               Day, as on eps-us develop) instead of Winter/Spring/.../Winter Peak
+    --csv-out <folder>         also write SYSHECF-<tech>.csv for the Cambium-derived techs, computed in
+                               Python with the same arithmetic as the workbook formulas
+    --solar-shift-hours <h>    move the Cambium solar series (utility PV, distributed PV, CSP) <h> hours
+                               later before the timeslice averages are taken. Cambium labels its hours
+                               as hour-beginning averages, but its solar values behave like the output
+                               at the END of each labelled hour (sun tests 2026-11-17), which puts the
+                               solar day about half an hour early; 0.5 corrects that. The shift is done
+                               by formulas: a 'Solar timing' tab holds the hours, and shifted CF columns
+                               are added to the hourly tab. Each hour becomes the time-weighted mean of
+                               the two source hours it overlaps, wrapping within the day, so every day's
+                               energy and the annual CF calibration to the EIA targets are unchanged.
+                               With 0 (the default) none of this is added.
+If scikit-learn is not installed, the clustering falls back to the saved day list
+data/cambium24_midcase_national/k6_slice_assignment_repday.csv (the list on eps-us develop).
 """
 from __future__ import annotations
+import argparse
 import csv
 import sys
 from pathlib import Path
@@ -37,12 +57,19 @@ from openpyxl.utils import get_column_letter
 
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(Path(__file__).parent))
 
-from state_pipeline.builders.clustering import SLICE_NAMES
-from state_pipeline.builders.clustering_repday import cluster_days_repday
+from shelf_v5.names import CANONICAL as SLICE_NAMES_CANONICAL, V5_LABELS as SLICE_NAMES_V5
+try:
+    from state_pipeline.builders.clustering import SLICE_NAMES
+    from state_pipeline.builders.clustering_repday import cluster_days_repday
+except ImportError:                       # scikit-learn missing: use the saved day list instead
+    SLICE_NAMES = list(SLICE_NAMES_CANONICAL)
+    cluster_days_repday = None
 
 CAMBIUM_HOURLY = ROOT / "data" / "cambium24_midcase_national" / "Cambium24_MidCase_hourly_usa_2025.csv"
 CAMBIUM_ANNUAL = ROOT / "data" / "cambium24_midcase_national" / "Cambium24_MidCase_annual_national.csv"
+SAVED_CLUSTERING = ROOT / "data" / "cambium24_midcase_national" / "k6_slice_assignment_repday.csv"
 EIA_408B       = ROOT / "data" / "epa_04_08_b.xlsx"
 OUT = Path(
     r"C:\Users\RobbieOrvis\Models\US\Models\eps-us\InputData\elec\SYSHECF"
@@ -95,6 +122,10 @@ TEMPLATE_TECHS = [
 
 SLICES = list(SLICE_NAMES)
 HOUR_COLS = [f'Hour{h}' for h in range(24)]
+
+# Techs whose Cambium hourly series --solar-shift-hours moves later
+SOLAR_SHIFT_TECHS = ('solar-pv', 'solar-pv-dist', 'solar-thermal')
+SOLAR_TIMING_TAB = 'Solar timing'
 
 # Final SYSHECF tab order — matches EPS subscript order for Electricity Source.
 # Per user 2026-05-22 list. solar-pv-dist and pumped-hydro are NOT in that
@@ -162,7 +193,7 @@ PURPOSE_FONT = Font(bold=True)
 
 
 def add_about_tab(wb: openpyxl.Workbook, days_per_slice: dict | None = None,
-                  file_name_no_ext: str = ''):
+                  file_name_no_ext: str = '', solar_shift_hours: float = 0.0):
     """About tab:
       - A1 (bold): file name (without .xlsx)
       - A3: "Sources:"
@@ -175,8 +206,8 @@ def add_about_tab(wb: openpyxl.Workbook, days_per_slice: dict | None = None,
     ws.column_dimensions['A'].width = 14
     ws.column_dimensions['B'].width = 110
 
-    sp_days = days_per_slice.get('Summer Peak', 0) if days_per_slice else 0
-    wp_days = days_per_slice.get('Winter Peak', 0) if days_per_slice else 0
+    sp_days = days_per_slice.get(SLICES[4], 0) if days_per_slice else 0
+    wp_days = days_per_slice.get(SLICES[5], 0) if days_per_slice else 0
     today = dt.date.today().isoformat()
 
     # A1: SYSHECF abbreviation + file name in bold (default size)
@@ -290,6 +321,8 @@ def add_about_tab(wb: openpyxl.Workbook, days_per_slice: dict | None = None,
          'EIA Table 4.8.B, and the project methodology (CLAUDE.md at project root) '
          'before being used in any work product.'),
     ]
+    if solar_shift_hours:
+        notes_lines.append(SOLAR_TIMING_NOTE)
 
     # "Notes:" label stays on notes_row_a; methodology bullets start one row below
     for i, (label, text) in enumerate(notes_lines):
@@ -603,10 +636,150 @@ def add_syshecf_template_tab(wb: openpyxl.Workbook, tech: str, cf: float, displa
 
 
 # ---------------------------------------------------------------------------
+# Solar timing shift (--solar-shift-hours)
+# ---------------------------------------------------------------------------
+
+SOLAR_TIMING_NOTE = (
+    'Solar timing shift',
+    "Cambium documents its hours as hour-beginning averages (a 1:00 value covers 1:00-2:00), but its "
+    "solar values behave like the output at the END of each labelled hour: in the hour in which the sun "
+    "sets, Cambium shows no solar output even when the sun is up for most of that hour, and its solar "
+    "day is centred about half an hour before solar noon (tests against the sun, a clear-sky PV model and "
+    "EIA-930 metered solar, 2026-11-17). The utility PV, distributed PV and CSP CF columns are therefore "
+    "moved later by the hours in 'Solar timing'!B3 before the timeslice averages are taken. Each hour "
+    "becomes the time-weighted mean of the two source hours it overlaps, wrapping within the day; with "
+    "0.5 h this is the average of the readings at the start and at the end of the hour. Every day's "
+    "energy is unchanged, so the annual CF calibration to the EIA targets is unchanged.")
+
+
+def shift_within_days(cf: np.ndarray, hours: float) -> np.ndarray:
+    """Python twin of the shifted CF columns: move an 8,760-hour series `hours` later, each hour taken
+    as constant over its hour, wrapping within each day so every day's total is unchanged."""
+    if not hours:
+        return np.asarray(cf, dtype=float)
+    k = int(np.floor(hours))
+    f = hours - k
+    x = np.asarray(cf, dtype=float).reshape(-1, 24)
+    return ((1 - f) * np.roll(x, k, axis=1) + f * np.roll(x, k + 1, axis=1)).ravel()
+
+
+def add_solar_timing_tab(wb: openpyxl.Workbook, hours: float) -> dict:
+    """Tab holding the shift. Returns absolute references to the shift, whole hours and fraction."""
+    idx = wb.sheetnames.index('EIA CF targets') + 1 if 'EIA CF targets' in wb.sheetnames else len(wb.sheetnames)
+    ws = wb.create_sheet(SOLAR_TIMING_TAB, idx)
+    ws.column_dimensions['A'].width = 34
+    ws.column_dimensions['B'].width = 12
+    ws.column_dimensions['C'].width = 100
+    ws.cell(row=1, column=1, value='Solar timing shift applied to the Cambium solar CF columns').font = SECTION_FONT
+    ws.cell(row=1, column=1).fill = SECTION_FILL
+    rows = [
+        ('Shift later (hours)', hours, 'Edit to change. 0 = Cambium as published. 0.5 = the correction '
+                                      'supported by the 2026-11-17 tests (plausible range 0.4-0.7).'),
+        ('Whole hours', '=INT(B3)', 'Whole-hour part of the shift.'),
+        ('Fraction of an hour', '=B3-B4', 'Weight on the earlier of the two source hours each hour overlaps.'),
+    ]
+    for i, (label, val, note) in enumerate(rows):
+        ws.cell(row=3 + i, column=1, value=label).font = Font(bold=True)
+        ws.cell(row=3 + i, column=2, value=val)
+        ws.cell(row=3 + i, column=3, value=note).alignment = Alignment(wrap_text=True, vertical='top')
+    ws.cell(row=7, column=1, value='Why').font = Font(bold=True)
+    c = ws.cell(row=7, column=3, value=SOLAR_TIMING_NOTE[1])
+    c.alignment = Alignment(wrap_text=True, vertical='top')
+    ws.row_dimensions[7].height = 120
+    ws.cell(row=8, column=1, value='Formula').font = Font(bold=True)
+    ws.cell(row=8, column=3, value="Shifted CF for day d, hour h = (1 - fraction) x CF(d, h - whole hours) + "
+                                   "fraction x CF(d, h - whole hours - 1), hours counted modulo 24 within day d.")
+    t = f"'{SOLAR_TIMING_TAB}'"
+    return {'shift': f'{t}!$B$3', 'whole': f'{t}!$B$4', 'frac': f'{t}!$B$5'}
+
+
+def add_shifted_cf_column(ws, src_col_letter: str, dest_col: int, header: str,
+                          doy_col_letter: str, hod_col_letter: str,
+                          data_start: int, data_end: int, refs: dict) -> str:
+    """Add a column of shifted CFs next to the hourly data (formulas). Returns its column letter."""
+    letter = get_column_letter(dest_col)
+    ws.cell(row=data_start - 1, column=dest_col, value=header).font = Font(bold=True, italic=True)
+    rng = f'${src_col_letter}${data_start}:${src_col_letter}${data_end}'
+    for r in range(data_start, data_end + 1):
+        base = f'24*({doy_col_letter}{r}-1)'
+        ws.cell(row=r, column=dest_col, value=(
+            f"=(1-{refs['frac']})*INDEX({rng},{base}+MOD({hod_col_letter}{r}-{refs['whole']},24)+1)"
+            f"+{refs['frac']}*INDEX({rng},{base}+MOD({hod_col_letter}{r}-{refs['whole']}-1,24)+1)"))
+    return letter
+
+
+# ---------------------------------------------------------------------------
+# Python twin of the SYSHECF formulas (for --csv-out and checks)
+# ---------------------------------------------------------------------------
+
+def syshecf_table(cf: np.ndarray, row_slice: np.ndarray, row_hour: np.ndarray,
+                  slices: list[str], target: float | None) -> list[list[float]]:
+    """Same arithmetic as the SYSHECF-<tech> formulas:
+    IFERROR(MAX(0, MIN(1, AVERAGEIFS(cf, slice, s, hour, h) * target / AVERAGE(cf))), 0)."""
+    cf = np.asarray(cf, dtype=float)
+    mean = cf.mean()
+    table = []
+    for sl in slices:
+        row = []
+        for h in range(24):
+            m = (row_slice == sl) & (row_hour == h)
+            if not m.any():
+                row.append(0.0)
+                continue
+            v = cf[m].mean()
+            if target is not None:
+                if mean == 0:
+                    row.append(0.0)
+                    continue
+                v = v * target / mean
+            row.append(float(max(0.0, min(1.0, v))))
+        table.append(row)
+    return table
+
+
+def write_syshecf_csv(path: Path, display: str, table: list[list[float]], slices: list[str]):
+    """CSV in the eps-us SYSHECF layout, numbers to 10 significant figures."""
+    with open(path, 'w', newline='') as f:
+        w = csv.writer(f)
+        w.writerow([display] + HOUR_COLS)
+        for sl, vals in zip(slices, table):
+            w.writerow([sl] + ['0' if v == 0 else f'{v:.10g}' for v in vals])
+
+
+def load_clustering(total_demand, solar_gen, wind_gen) -> tuple[dict, dict]:
+    """(days per slice, DOY -> slice) with the canonical slice names."""
+    if cluster_days_repday is not None:
+        cr = cluster_days_repday(total_demand, solar_gen, wind_gen, peak_top_n=1, max_peak_days=365)
+        return dict(cr.days_per_timeslice), cr.slice_assignment.to_dict()
+    print(f"  scikit-learn not installed: using the saved day list {SAVED_CLUSTERING.name}")
+    saved = pd.read_csv(SAVED_CLUSTERING)
+    assignment = {int(d): s for d, s in zip(saved.day_of_year, saved.slice)}
+    days = {sl: sum(1 for s in assignment.values() if s == sl) for sl in SLICE_NAMES_CANONICAL}
+    return days, assignment
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
-def main():
+def parse_args(argv=None):
+    p = argparse.ArgumentParser(description=__doc__.split('\n')[0])
+    p.add_argument('--out', type=Path, default=OUT, help='workbook to write')
+    p.add_argument('--labels', choices=['4.0', '5.0'], default='4.0', help='timeslice names')
+    p.add_argument('--csv-out', type=Path, default=None, help='also write SYSHECF CSVs (Cambium techs) here')
+    p.add_argument('--solar-shift-hours', type=float, default=0.0,
+                   help='move the Cambium solar series this many hours later (default 0 = as published)')
+    return p.parse_args(argv)
+
+
+def main(argv=None):
+    global SLICES
+    args = parse_args(argv)
+    out_path = args.out
+    shift = float(args.solar_shift_hours)
+    label_of = dict(zip(SLICE_NAMES_CANONICAL, SLICE_NAMES_V5 if args.labels == '5.0' else SLICE_NAMES_CANONICAL))
+    SLICES = [label_of[s] for s in SLICE_NAMES]
+
     # Load source raw CSVs
     print(f"[load] {CAMBIUM_HOURLY}")
     hourly_rows = _read_csv_raw(CAMBIUM_HOURLY)
@@ -640,24 +813,24 @@ def main():
     total_demand = _col_as_series('busbar_load')
     solar_gen = _col_as_series('upv_MWh') + _col_as_series('distpv_MWh')
     wind_gen = _col_as_series('wind-ons_MWh') + _col_as_series('wind-ofs_MWh')
-    cr = cluster_days_repday(total_demand, solar_gen, wind_gen,
-                              peak_top_n=1, max_peak_days=365)
-    print(f"  days_per_timeslice = {cr.days_per_timeslice}")
-    slice_assignment = cr.slice_assignment.to_dict()
+    days_canonical, assignment_canonical = load_clustering(total_demand, solar_gen, wind_gen)
+    days_per_slice = {label_of[s]: n for s, n in days_canonical.items()}
+    slice_assignment = {d: label_of[s] for d, s in assignment_canonical.items()}
+    print(f"  days_per_timeslice = {days_per_slice}")
 
     # Build workbook
     print(f"[build] constructing workbook")
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
 
-    add_about_tab(wb, cr.days_per_timeslice,
-                  file_name_no_ext=OUT.stem)
-    add_clustering_tab(wb, cr.days_per_timeslice, slice_assignment)
+    add_about_tab(wb, days_per_slice,
+                  file_name_no_ext=out_path.stem, solar_shift_hours=shift)
+    add_clustering_tab(wb, days_per_slice, slice_assignment)
     add_eia_targets_tab(wb)
     add_eia_408b_source_tab(wb, EIA_408B)
     annual_col_idx = add_cambium_annual_source_tab(wb, annual_rows)
     tech_cf_col_letter, data_start, data_end = add_cambium_hourly_source_tab(
-        wb, hourly_rows, annual_col_idx, cr,
+        wb, hourly_rows, annual_col_idx, None,
     )
 
     # Compute the derived helper column letters in Cambium hourly source
@@ -665,6 +838,19 @@ def main():
     doy_col_letter = get_column_letter(n_src_cols + 1)
     hour_col_letter = get_column_letter(n_src_cols + 2)
     slice_col_letter = get_column_letter(n_src_cols + 3)
+
+    # Solar timing shift: shifted CF columns after the per-tech CF columns, used by the solar tabs
+    if shift:
+        refs = add_solar_timing_tab(wb, shift)
+        ws_h = wb['Cambium hourly source']
+        next_col = n_src_cols + 4 + len(TECHS_CAMBIUM)
+        for tech in SOLAR_SHIFT_TECHS:
+            if tech in tech_cf_col_letter:
+                tech_cf_col_letter[tech] = add_shifted_cf_column(
+                    ws_h, tech_cf_col_letter[tech], next_col, f'CF_{tech}_shifted',
+                    doy_col_letter, hour_col_letter, data_start, data_end, refs)
+                next_col += 1
+        print(f"  solar CF columns shifted {shift:+g} h later (tab '{SOLAR_TIMING_TAB}')")
 
     # EIA target row lookup (rows 3+ for techs)
     eia_target_rows = {tech: 3 + i for i, tech in enumerate(EIA_CF_TARGETS)}
@@ -702,14 +888,41 @@ def main():
         else:
             print(f"  WARN: tech '{tech}' in SYSHECF_TAB_ORDER not mapped — skipping")
 
-    OUT.parent.mkdir(exist_ok=True, parents=True)
+    out_path.parent.mkdir(exist_ok=True, parents=True)
     try:
-        wb.save(OUT)
+        wb.save(out_path)
     except PermissionError:
-        print(f"  ERROR: cannot write {OUT} — close it in Excel first.")
+        print(f"  ERROR: cannot write {out_path} — close it in Excel first.")
         return
-    print(f"[done] wrote {OUT}")
+    print(f"[done] wrote {out_path}")
     print(f"       sheets: {len(wb.sheetnames)}")
+
+    if args.csv_out:
+        write_csvs(args.csv_out, hourly_rows, annual_rows, slice_assignment, shift)
+
+
+def write_csvs(folder: Path, hourly_rows, annual_rows, slice_assignment: dict, shift: float):
+    """SYSHECF-<tech>.csv for the Cambium techs, from the same inputs and arithmetic as the workbook."""
+    folder.mkdir(parents=True, exist_ok=True)
+    headers = hourly_rows[5]
+    data = hourly_rows[6:]
+    ann_h = annual_rows[0]
+    ann_2 = annual_rows[1]                                   # row 2 of the annual tab = 2025
+    n = len(data)
+    row_doy = np.arange(n) // 24 + 1
+    row_hour = np.arange(n) % 24
+    row_slice = np.array([slice_assignment.get(int(d), SLICES[0]) for d in row_doy])
+    for tech, mwh_col, mw_col, display in TECHS_CAMBIUM:
+        if mwh_col not in headers or mw_col not in ann_h:
+            continue
+        mwh = np.array([float(r[headers.index(mwh_col)]) for r in data])
+        cap = float(ann_2[ann_h.index(mw_col)])
+        cf = mwh / cap if cap else np.zeros(n)
+        if shift and tech in SOLAR_SHIFT_TECHS:
+            cf = shift_within_days(cf, shift)
+        table = syshecf_table(cf, row_slice, row_hour, SLICES, EIA_CF_TARGETS.get(tech))
+        write_syshecf_csv(folder / f'SYSHECF-{tech}.csv', display, table, SLICES)
+    print(f"[csv] wrote SYSHECF CSVs for the Cambium techs to {folder}")
 
 
 if __name__ == '__main__':
